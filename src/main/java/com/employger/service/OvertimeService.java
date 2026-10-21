@@ -8,10 +8,13 @@ import com.employger.entity.User;
 import com.employger.repository.AttendanceRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.OvertimeRepository;
+import com.employger.repository.PayrollRepository;
 import com.employger.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,10 +23,13 @@ public class OvertimeService {
 
         private static final BigDecimal ZERO = BigDecimal.ZERO;
 
+        private static final BigDecimal HOURS_PER_DAY = new BigDecimal("24");
+
         private final OvertimeRepository overtimeRepository;
         private final EmployeeRepository employeeRepository;
         private final AttendanceRepository attendanceRepository;
         private final UserRepository userRepository;
+        private final PayrollRepository payrollRepository;
         private final PayrollCalculationService payrollCalculationService;
         private final SystemSettingService systemSettingService;
 
@@ -32,6 +38,7 @@ public class OvertimeService {
                         EmployeeRepository employeeRepository,
                         AttendanceRepository attendanceRepository,
                         UserRepository userRepository,
+                        PayrollRepository payrollRepository,
                         PayrollCalculationService payrollCalculationService,
                         SystemSettingService systemSettingService) {
 
@@ -39,6 +46,7 @@ public class OvertimeService {
                 this.employeeRepository = employeeRepository;
                 this.attendanceRepository = attendanceRepository;
                 this.userRepository = userRepository;
+                this.payrollRepository = payrollRepository;
                 this.payrollCalculationService = payrollCalculationService;
                 this.systemSettingService = systemSettingService;
         }
@@ -58,6 +66,7 @@ public class OvertimeService {
                                 .findByEmployeeEmployeeId(employeeId);
         }
 
+        @Transactional
         public Overtime createOvertime(
                         Integer employeeId,
                         Overtime overtimeDetails) {
@@ -83,6 +92,10 @@ public class OvertimeService {
 
                 overtimeDetails.setAttendance(attendance);
 
+                ensureDateNotLocked(employee, overtimeDetails.getOvertimeDate());
+                ensureWorkedDay(attendance);
+                ensureWithinDailyHours(employee, attendance, overtimeDetails.getHours(), null);
+
                 calculateOvertimeValues(
                                 employee,
                                 overtimeDetails);
@@ -93,6 +106,7 @@ public class OvertimeService {
                 return overtimeRepository.save(overtimeDetails);
         }
 
+        @Transactional
         public Overtime updateOvertime(
                         Integer id,
                         Integer employeeId,
@@ -104,7 +118,7 @@ public class OvertimeService {
                                                 "Overtime not found"));
 
                 if (overtime.getStatus() != Overtime.Status.PENDING) {
-                        throw new IllegalArgumentException(
+                        throw new IllegalStateException(
                                         "Only pending overtime can be edited");
                 }
 
@@ -115,12 +129,17 @@ public class OvertimeService {
 
                 validateOvertimeDetails(overtimeDetails);
 
-                overtime.setEmployee(employee);
-
                 Attendance attendance = resolveAttendance(
                                 employee,
                                 overtimeDetails.getAttendance(),
                                 overtimeDetails.getOvertimeDate());
+
+                ensureDateNotLocked(overtime.getEmployee(), overtime.getOvertimeDate());
+                ensureDateNotLocked(employee, overtimeDetails.getOvertimeDate());
+                ensureWorkedDay(attendance);
+                ensureWithinDailyHours(employee, attendance, overtimeDetails.getHours(), id);
+
+                overtime.setEmployee(employee);
 
                 overtime.setAttendance(attendance);
 
@@ -137,6 +156,7 @@ public class OvertimeService {
                 return overtimeRepository.save(overtime);
         }
 
+        @Transactional
         public Overtime updateOvertimeStatus(
                         Integer overtimeId,
                         Overtime.Status newStatus,
@@ -148,7 +168,7 @@ public class OvertimeService {
                                                 "Overtime not found"));
 
                 if (overtime.getStatus() != Overtime.Status.PENDING) {
-                        throw new IllegalArgumentException(
+                        throw new IllegalStateException(
                                         "Only pending overtime can be approved or rejected");
                 }
 
@@ -164,20 +184,116 @@ public class OvertimeService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "User not found"));
 
+                if (newStatus == Overtime.Status.APPROVED) {
+
+                        // Attendance or other overtime may have changed since the
+                        // request was filed, so check again before approving.
+                        ensureDateNotLocked(overtime.getEmployee(), overtime.getOvertimeDate());
+                        ensureWorkedDay(overtime.getAttendance());
+                        ensureWithinDailyHours(
+                                        overtime.getEmployee(),
+                                        overtime.getAttendance(),
+                                        overtime.getHours(),
+                                        overtime.getOvertimeId());
+
+                        // The approved amount uses the salary and overtime rate in
+                        // effect at approval, not those from when it was requested.
+                        calculateOvertimeValues(overtime.getEmployee(), overtime);
+                }
+
                 overtime.setStatus(newStatus);
                 overtime.setApprovedBy(user);
 
                 return overtimeRepository.save(overtime);
         }
 
+        @Transactional
         public void deleteOvertime(Integer id) {
 
-                if (!overtimeRepository.existsById(id)) {
-                        throw new ResourceNotFoundException(
-                                        "Overtime not found");
+                Overtime overtime = overtimeRepository
+                                .findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Overtime not found"));
+
+                if (overtime.getStatus() == Overtime.Status.APPROVED
+                                && payrollRepository.isDateLockedForEmployee(
+                                                overtime.getEmployee().getEmployeeId(),
+                                                overtime.getOvertimeDate())) {
+
+                        throw new IllegalStateException(
+                                        "This approved overtime is part of a processed or paid payroll "
+                                                        + "and cannot be deleted.");
                 }
 
-                overtimeRepository.deleteById(id);
+                overtimeRepository.delete(overtime);
+        }
+
+        private void ensureDateNotLocked(
+                        Employee employee,
+                        LocalDate date) {
+
+                if (payrollRepository.isDateLockedForEmployee(employee.getEmployeeId(), date)) {
+                        throw new IllegalStateException(
+                                        "Payroll covering " + date
+                                                        + " has already been processed or paid for this employee, "
+                                                        + "so overtime for that day can no longer be changed.");
+                }
+        }
+
+        private void ensureWorkedDay(Attendance attendance) {
+
+                if (attendance == null) {
+                        throw new IllegalArgumentException(
+                                        "This overtime is not linked to an attendance record. "
+                                                        + "Edit it and select the attendance for that day first.");
+                }
+
+                if (attendance.getStatus() == Attendance.Status.ABSENT
+                                || attendance.getStatus() == Attendance.Status.LEAVE) {
+
+                        throw new IllegalArgumentException(
+                                        "Overtime cannot be recorded for a day marked "
+                                                        + attendance.getStatus() + ".");
+                }
+        }
+
+        /*
+         * Regular hours plus all pending and approved overtime for the day
+         * cannot exceed 24 hours. Rejected overtime does not count.
+         */
+        private void ensureWithinDailyHours(
+                        Employee employee,
+                        Attendance attendance,
+                        BigDecimal requestedHours,
+                        Integer excludedOvertimeId) {
+
+                BigDecimal regularHours = attendance.getRegularHours() != null
+                                ? attendance.getRegularHours()
+                                : ZERO;
+
+                BigDecimal otherOvertimeHours = overtimeRepository
+                                .findByEmployeeEmployeeIdAndOvertimeDate(
+                                                employee.getEmployeeId(),
+                                                attendance.getAttendanceDate())
+                                .stream()
+                                .filter(other -> !other.getOvertimeId().equals(excludedOvertimeId))
+                                .filter(other -> other.getStatus() != Overtime.Status.REJECTED)
+                                .map(Overtime::getHours)
+                                .reduce(ZERO, BigDecimal::add);
+
+                BigDecimal total = regularHours
+                                .add(otherOvertimeHours)
+                                .add(requestedHours);
+
+                if (total.compareTo(HOURS_PER_DAY) > 0) {
+                        throw new IllegalArgumentException(
+                                        "Regular hours (" + regularHours.stripTrailingZeros().toPlainString()
+                                                        + ") plus pending and approved overtime ("
+                                                        + otherOvertimeHours.add(requestedHours)
+                                                                        .stripTrailingZeros().toPlainString()
+                                                        + ") would exceed 24 hours on "
+                                                        + attendance.getAttendanceDate() + ".");
+                }
         }
 
         private void validateOvertimeDetails(

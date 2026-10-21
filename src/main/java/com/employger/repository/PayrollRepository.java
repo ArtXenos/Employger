@@ -30,4 +30,13 @@ public interface PayrollRepository
             LocalDate endDate,
             LocalDate startDate
     );
+
+    // A day is locked for an employee once a PROCESSED or PAID payroll
+    // covers it: its attendance and overtime are part of a final payroll.
+    default boolean isDateLockedForEmployee(Integer employeeId, LocalDate date) {
+        return findByEmployeeEmployeeIdAndPayCycleStartDateLessThanEqualAndPayCycleEndDateGreaterThanEqual(
+                employeeId, date, date)
+                .stream()
+                .anyMatch(payroll -> payroll.getStatus() != Payroll.Status.DRAFT);
+    }
 }

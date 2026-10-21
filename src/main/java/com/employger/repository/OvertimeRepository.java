@@ -10,6 +10,13 @@ public interface OvertimeRepository
         extends JpaRepository<Overtime, Integer> {
 
     List<Overtime> findByEmployeeEmployeeId(Integer employeeId);
+
+    List<Overtime> findByAttendanceAttendanceId(Integer attendanceId);
+
+    List<Overtime> findByEmployeeEmployeeIdAndOvertimeDate(
+        Integer employeeId,
+        LocalDate overtimeDate);
+
     List<Overtime> findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
         Integer employeeId,
         LocalDate startDate,

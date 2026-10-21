@@ -510,7 +510,9 @@ async function saveOvertime(event) {
     }
 
     if (!response.ok) {
-      throw new Error("Unable to save overtime.");
+      const errorText = (await response.text()).trim();
+
+      throw new Error(errorText || "Unable to save overtime.");
     }
 
     closeModal();
@@ -572,7 +574,9 @@ async function updateOvertimeStatus(id, status) {
     );
 
     if (!response.ok) {
-      throw new Error(`Unable to ${status.toLowerCase()} overtime.`);
+      const errorText = (await response.text()).trim();
+
+      throw new Error(errorText || `Unable to ${status.toLowerCase()} overtime.`);
     }
 
     await loadOvertimeRecords();
@@ -602,7 +606,9 @@ async function deleteOvertime(id) {
     });
 
     if (!response.ok) {
-      throw new Error("Unable to delete overtime.");
+      const errorText = (await response.text()).trim();
+
+      throw new Error(errorText || "Unable to delete overtime.");
     }
 
     await loadOvertimeRecords();

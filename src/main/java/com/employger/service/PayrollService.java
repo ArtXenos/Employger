@@ -38,6 +38,7 @@ public class PayrollService {
         private final UserRepository userRepository;
         private final SystemSettingService systemSettingService;
         private final PayrollCalculationService payrollCalculationService;
+        private final AuditService auditService;
 
         public PayrollService(
                         PayrollRepository payrollRepository,
@@ -47,7 +48,10 @@ public class PayrollService {
                         AttendanceRepository attendanceRepository,
                         UserRepository userRepository,
                         PayrollCalculationService payrollCalculationService,
-                        SystemSettingService systemSettingService) {
+                        SystemSettingService systemSettingService,
+                        AuditService auditService) {
+
+                this.auditService = auditService;
 
                 this.payrollRepository = payrollRepository;
                 this.employeeRepository = employeeRepository;
@@ -277,7 +281,18 @@ public class PayrollService {
 
                 applyCalculatedAmounts(payroll);
 
-                return payrollRepository.save(payroll);
+                Payroll saved = payrollRepository.save(payroll);
+
+                auditService.record("PAYROLL_CREATED",
+                                "Created DRAFT " + describe(saved) + " with net pay " + saved.getNetPay());
+
+                return saved;
+        }
+
+        private static String describe(Payroll payroll) {
+                return "payroll #" + payroll.getPayrollId()
+                                + " (employee #" + payroll.getEmployee().getEmployeeId()
+                                + ", pay cycle \"" + payroll.getPayCycle().getCycleName() + "\")";
         }
 
         private void ensureEligibleForPayroll(
@@ -550,7 +565,13 @@ public class PayrollService {
                                                         + " payroll is locked.");
                 }
 
+                BigDecimal previousNetPay = payroll.getNetPay();
+
                 applyCalculatedAmounts(payroll);
+
+                auditService.record("PAYROLL_RECALCULATED",
+                                "Recalculated DRAFT " + describe(payroll) + ": net pay "
+                                                + previousNetPay + " -> " + payroll.getNetPay());
 
                 return payrollRepository.save(payroll);
         }
@@ -576,6 +597,9 @@ public class PayrollService {
                 payroll.setStatus(Payroll.Status.PROCESSED);
                 payroll.setProcessedAt(java.time.LocalDateTime.now());
                 payroll.setProcessedBy(user);
+
+                auditService.record("PAYROLL_PROCESSED",
+                                "Processed " + describe(payroll) + " with net pay " + payroll.getNetPay());
 
                 return payrollRepository.save(payroll);
         }
@@ -609,6 +633,13 @@ public class PayrollService {
                 payroll.setPaymentMethod(paymentMethod);
                 payroll.setPaymentReference(paymentReference);
 
+                auditService.record("PAYROLL_PAID",
+                                "Marked " + describe(payroll) + " as PAID: net pay " + payroll.getNetPay()
+                                                + ", method " + paymentMethod
+                                                + (paymentReference != null && !paymentReference.isBlank()
+                                                                ? ", reference " + paymentReference
+                                                                : ""));
+
                 return payrollRepository.save(payroll);
         }
 
@@ -626,6 +657,9 @@ public class PayrollService {
                                                         + payroll.getStatus()
                                                         + " payroll is kept for the payroll history.");
                 }
+
+                auditService.record("PAYROLL_DELETED",
+                                "Deleted DRAFT " + describe(payroll) + " with net pay " + payroll.getNetPay());
 
                 payrollRepository.delete(payroll);
         }

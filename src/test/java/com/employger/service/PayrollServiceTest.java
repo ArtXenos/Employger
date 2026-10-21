@@ -58,6 +58,8 @@ class PayrollServiceTest {
     private UserRepository userRepository;
     @Mock
     private SystemSettingService systemSettingService;
+    @Mock
+    private AuditService auditService;
 
     private PayrollService payrollService;
 
@@ -82,7 +84,8 @@ class PayrollServiceTest {
                 attendanceRepository,
                 userRepository,
                 calculationService,
-                systemSettingService);
+                systemSettingService,
+                auditService);
 
         employee = new Employee();
         employee.setEmployeeId(35);

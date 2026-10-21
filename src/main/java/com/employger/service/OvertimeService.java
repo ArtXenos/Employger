@@ -32,6 +32,7 @@ public class OvertimeService {
         private final PayrollRepository payrollRepository;
         private final PayrollCalculationService payrollCalculationService;
         private final SystemSettingService systemSettingService;
+        private final AuditService auditService;
 
         public OvertimeService(
                         OvertimeRepository overtimeRepository,
@@ -40,8 +41,10 @@ public class OvertimeService {
                         UserRepository userRepository,
                         PayrollRepository payrollRepository,
                         PayrollCalculationService payrollCalculationService,
-                        SystemSettingService systemSettingService) {
+                        SystemSettingService systemSettingService,
+                        AuditService auditService) {
 
+                this.auditService = auditService;
                 this.overtimeRepository = overtimeRepository;
                 this.employeeRepository = employeeRepository;
                 this.attendanceRepository = attendanceRepository;
@@ -204,6 +207,13 @@ public class OvertimeService {
                 overtime.setStatus(newStatus);
                 overtime.setApprovedBy(user);
 
+                auditService.record("OVERTIME_" + newStatus,
+                                newStatus + " overtime #" + overtime.getOvertimeId()
+                                                + " (employee #" + overtime.getEmployee().getEmployeeId()
+                                                + ", " + overtime.getOvertimeDate() + ", "
+                                                + overtime.getHours() + " h, amount "
+                                                + overtime.getOvertimeAmount() + ")");
+
                 return overtimeRepository.save(overtime);
         }
 
@@ -224,6 +234,13 @@ public class OvertimeService {
                                         "This approved overtime is part of a processed or paid payroll "
                                                         + "and cannot be deleted.");
                 }
+
+                auditService.record("OVERTIME_DELETED",
+                                "Deleted " + overtime.getStatus() + " overtime #" + overtime.getOvertimeId()
+                                                + " (employee #" + overtime.getEmployee().getEmployeeId()
+                                                + ", " + overtime.getOvertimeDate() + ", "
+                                                + overtime.getHours() + " h, amount "
+                                                + overtime.getOvertimeAmount() + ")");
 
                 overtimeRepository.delete(overtime);
         }

@@ -5,7 +5,9 @@ import com.employger.entity.Employee;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayrollRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,11 +17,15 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final PayrollRepository payrollRepository;
 
+    private final AuditService auditService;
+
     public EmployeeService(
             EmployeeRepository employeeRepository,
-            PayrollRepository payrollRepository) {
+            PayrollRepository payrollRepository,
+            AuditService auditService) {
         this.employeeRepository = employeeRepository;
         this.payrollRepository = payrollRepository;
+        this.auditService = auditService;
     }
 
     // Get all employees
@@ -42,6 +48,7 @@ public class EmployeeService {
     }
 
     // Update an existing employee
+    @Transactional
     public Employee updateEmployee(Integer id, Employee employeeDetails) {
 
         Employee employee = employeeRepository.findById(id)
@@ -56,7 +63,18 @@ public class EmployeeService {
         employee.setDepartment(employeeDetails.getDepartment());
         employee.setProfileImage(employeeDetails.getProfileImage());
         employee.setGender(employeeDetails.getGender());
-        employee.setBaseSalary(employeeDetails.getBaseSalary());
+        BigDecimal previousSalary = employee.getBaseSalary();
+        BigDecimal newSalary = employeeDetails.getBaseSalary();
+
+        if (previousSalary == null
+                || newSalary == null
+                || previousSalary.compareTo(newSalary) != 0) {
+
+            auditService.record("EMPLOYEE_SALARY_CHANGED",
+                    "Employee #" + id + " base salary: " + previousSalary + " -> " + newSalary);
+        }
+
+        employee.setBaseSalary(newSalary);
         employee.setPostalCode(employeeDetails.getPostalCode());
         employee.setDesignation(employeeDetails.getDesignation());
         employee.setEmploymentStatus(employeeDetails.getEmploymentStatus());
@@ -67,6 +85,7 @@ public class EmployeeService {
     }
 
     // Delete an employee
+    @Transactional
     public void deleteEmployee(Integer id) {
 
         if (!employeeRepository.existsById(id)) {
@@ -81,6 +100,8 @@ public class EmployeeService {
                     "This employee has payroll history and cannot be deleted. "
                             + "Set the employment status to INACTIVE instead.");
         }
+
+        auditService.record("EMPLOYEE_DELETED", "Deleted employee #" + id);
 
         employeeRepository.deleteById(id);
     }

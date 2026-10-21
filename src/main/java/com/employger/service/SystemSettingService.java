@@ -36,9 +36,13 @@ public class SystemSettingService {
             "night_differential_start",
             "night_differential_end");
 
+    private final AuditService auditService;
+
     public SystemSettingService(
-            SystemSettingRepository systemSettingRepository) {
+            SystemSettingRepository systemSettingRepository,
+            AuditService auditService) {
         this.systemSettingRepository = systemSettingRepository;
+        this.auditService = auditService;
     }
 
     public List<SystemSetting> getAllSettings() {
@@ -73,7 +77,13 @@ public class SystemSettingService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Setting not found: " + settingName));
 
+        String previousValue = setting.getSettingValue();
+
         setting.setSettingValue(settingValue.trim());
+        setting.setUpdatedBy(auditService.currentUser().orElse(null));
+
+        auditService.record("SETTING_UPDATED",
+                "Changed " + settingName + ": " + previousValue + " -> " + setting.getSettingValue());
 
         return systemSettingRepository.save(setting);
     }

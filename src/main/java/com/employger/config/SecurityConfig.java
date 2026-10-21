@@ -78,6 +78,10 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/settings/**")
                                                 .hasRole("ADMINISTRATOR")
 
+                                                // Audit trail (read-only)
+                                                .requestMatchers("/api/audit-logs/**")
+                                                .hasRole("ADMINISTRATOR")
+
                                                 // Employee management
                                                 .requestMatchers("/api/employees/**")
                                                 .hasAnyRole(

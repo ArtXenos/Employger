@@ -9,6 +9,28 @@
 
 Every finding below is labelled **Confirmed** (reproduced from code, live data, or a live HTTP request) or **Hypothesis** (needs a business decision or further testing).
 
+## Progress log
+
+| Date | Item | Status | Commit |
+|---|---|---|---|
+| 2026-10-21 | Git repository and baseline commit (L-02) | Done | `10a31da` |
+| 2026-10-21 | Tests isolated on in-memory H2 (H-09, partial) | Done | `db58daf` |
+| 2026-10-21 | C-01 overlap guard (create, process, pay) | Done, tested | `d8b4076` |
+| 2026-10-21 | C-02 payroll update/delete DRAFT-only, recalculated | Done, tested | `d8b4076` |
+| 2026-10-21 | C-03 client IDs/status ignored on create | Done, tested | `d8b4076` |
+| 2026-10-21 | C-04 employee delete blocked when payroll exists (app guard; FK change still pending) | Done, tested | `d8b4076` |
+| 2026-10-21 | C-05 payslips restricted to ADMINISTRATOR/HR_MANAGER | Done, tested | `d8b4076` |
+| 2026-10-21 | H-06 actor from session | Done, tested | `d8b4076` |
+| 2026-10-21 | Backup script and recovery guide (`docs/BACKUP_AND_RECOVERY.md`) | Done (script syntax-checked, not executed) | see git log |
+
+**Decision recorded (2026-10-21):** an employee may never have payroll in two pay cycles whose dates overlap. For a pay-frequency change, the old cycle must end before the new one starts, and any transition adjustment is made explicitly.
+
+**Existing records left untouched by decision:** DRAFT payroll #7 (overlaps PAID #6) can no longer be processed or paid; an HR user may delete it from the Payroll page. The overtime anomalies paid in #6 remain as recorded.
+
+**Tests:** 20 run, 20 pass (`mvnw test`). Run against the pre-fix code, 7 of the 8 new integration tests fail, confirming they detect the original defects.
+
+**API behaviour changes:** duplicate payroll create now returns 409 (was 400). Lifecycle and overlap conflicts return 409 with a plain-text reason. `PUT /api/payroll/{id}` ignores its body and recalculates. `userId` query parameters on process and payslip generation are ignored.
+
 ---
 
 ## 1. Executive summary

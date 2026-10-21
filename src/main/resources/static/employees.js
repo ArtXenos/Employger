@@ -72,7 +72,7 @@ function displayEmployees(employeeList) {
 
   employeeTableBody.innerHTML = employeeList
     .map((employee) => {
-      const fullName = `${employee.firstName} ${employee.lastName}`;
+      const fullName = escapeHtml(`${employee.firstName} ${employee.lastName}`);
 
       const salary = Number(employee.baseSalary || 0).toLocaleString("en-PH", {
         style: "currency",
@@ -92,15 +92,15 @@ function displayEmployees(employeeList) {
                     <td>
                         <strong>${fullName}</strong>
                         <br>
-                        <small>${employee.email}</small>
+                        <small>${escapeHtml(employee.email)}</small>
                     </td>
 
                     <td>
-                        ${employee.department || "-"}
+                        ${escapeHtml(employee.department || "-")}
                     </td>
 
                     <td>
-                        ${employee.jobTitle || "-"}
+                        ${escapeHtml(employee.jobTitle || "-")}
                     </td>
 
                     <td>
@@ -409,6 +409,25 @@ document.getElementById("logoutButton").addEventListener("click", async () => {
 
   window.location.href = "/";
 });
+
+/* =========================
+   HELPERS
+========================= */
+
+// Escape text before inserting it into HTML so stored values such as
+// names cannot inject markup or scripts into the page.
+function escapeHtml(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 /* =========================
    INITIAL LOAD

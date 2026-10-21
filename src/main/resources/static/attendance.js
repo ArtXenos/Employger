@@ -111,7 +111,7 @@ function renderAttendance() {
       const employee = record.employee;
 
       const employeeName = employee
-        ? `${employee.firstName} ${employee.lastName}`
+        ? escapeHtml(`${employee.firstName} ${employee.lastName}`)
         : "Unknown Employee";
 
       const row = document.createElement("tr");
@@ -138,7 +138,7 @@ function renderAttendance() {
                     </span>
                 </td>
 
-                <td>${record.remarks ?? "-"}</td>
+                <td>${escapeHtml(record.remarks ?? "-")}</td>
 
                 <td>
 
@@ -417,6 +417,25 @@ function showMessage(message, type) {
   formMessage.textContent = message;
 
   formMessage.className = `form-message ${type}`;
+}
+
+/* ================================
+   Helpers
+================================ */
+
+// Escape text before inserting it into HTML so stored values such as
+// names and remarks cannot inject markup or scripts into the page.
+function escapeHtml(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 /* ================================

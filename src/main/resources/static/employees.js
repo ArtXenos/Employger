@@ -339,7 +339,9 @@ window.deleteEmployee = async function (employeeId) {
     }
 
     if (!response.ok) {
-      throw new Error("Failed to delete employee.");
+      const errorText = await response.text();
+
+      throw new Error(errorText || "Failed to delete employee.");
     }
 
     await loadEmployees();

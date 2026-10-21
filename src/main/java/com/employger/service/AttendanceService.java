@@ -46,6 +46,9 @@ public class AttendanceService {
                 .orElseThrow(() ->
                         new RuntimeException("Employee not found"));
 
+        // Never trust a client-supplied ID: save() would otherwise
+        // overwrite the existing attendance record with that ID.
+        attendanceDetails.setAttendanceId(null);
         attendanceDetails.setEmployee(employee);
 
         return attendanceRepository.save(attendanceDetails);

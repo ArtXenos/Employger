@@ -68,6 +68,11 @@ public class OvertimeService {
 
                 validateOvertimeDetails(overtimeDetails);
 
+                // Never trust a client-supplied ID or approver: save() would
+                // otherwise overwrite the existing overtime record with that ID.
+                overtimeDetails.setOvertimeId(null);
+                overtimeDetails.setApprovedBy(null);
+
                 overtimeDetails.setEmployee(employee);
 
                 Attendance attendance = resolveAttendance(

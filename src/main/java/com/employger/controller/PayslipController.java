@@ -3,6 +3,7 @@ package com.employger.controller;
 import com.employger.entity.Payslip;
 import com.employger.service.PayslipService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,15 +52,17 @@ public class PayslipController {
         }
     }
 
+    // The generating user is the logged-in user. A userId request
+    // parameter sent by older clients is ignored.
     @PostMapping("/payroll/{payrollId}/generate")
     public ResponseEntity<Payslip> generatePayslip(
             @PathVariable Integer payrollId,
-            @RequestParam Integer userId) {
+            Authentication authentication) {
 
         try {
             Payslip payslip = payslipService.generatePayslip(
                     payrollId,
-                    userId);
+                    authentication.getName());
 
             return ResponseEntity.ok(payslip);
 

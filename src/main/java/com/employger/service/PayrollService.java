@@ -13,6 +13,7 @@ import com.employger.repository.AttendanceRepository;
 import com.employger.repository.UserRepository;
 import com.employger.service.SystemSettingService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -232,10 +233,10 @@ public class PayrollService {
                 return preview;
         }
 
+        @Transactional
         public Payroll createPayroll(
                         Integer employeeId,
-                        Integer payCycleId,
-                        Payroll payrollDetails) {
+                        Integer payCycleId) {
 
                 Employee employee = employeeRepository
                                 .findById(employeeId)
@@ -253,12 +254,70 @@ public class PayrollService {
                                                 payCycleId)
                                 .isPresent()) {
 
-                        throw new IllegalArgumentException(
+                        throw new IllegalStateException(
                                         "Payroll already exists for this employee and pay cycle");
                 }
 
-                payrollDetails.setEmployee(employee);
-                payrollDetails.setPayCycle(payCycle);
+                ensureNoOverlappingPayroll(employee, payCycle, null);
+
+                /*
+                 * Always start from a new record. Identifiers, status,
+                 * and processing/payment fields are never taken from
+                 * the client, so a request cannot create an already
+                 * PAID payroll or overwrite an existing one.
+                 */
+                Payroll payroll = new Payroll();
+
+                payroll.setEmployee(employee);
+                payroll.setPayCycle(payCycle);
+                payroll.setStatus(Payroll.Status.DRAFT);
+
+                applyCalculatedAmounts(payroll);
+
+                return payrollRepository.save(payroll);
+        }
+
+        /*
+         * An employee must never be paid for the same day twice, so
+         * no two payroll records for one employee may belong to pay
+         * cycles whose date ranges overlap.
+         */
+        private void ensureNoOverlappingPayroll(
+                        Employee employee,
+                        PayCycle payCycle,
+                        Integer excludedPayrollId) {
+
+                List<Payroll> overlapping = payrollRepository
+                                .findByEmployeeEmployeeIdAndPayCycleStartDateLessThanEqualAndPayCycleEndDateGreaterThanEqual(
+                                                employee.getEmployeeId(),
+                                                payCycle.getEndDate(),
+                                                payCycle.getStartDate());
+
+                for (Payroll existing : overlapping) {
+
+                        if (existing.getPayrollId().equals(excludedPayrollId)) {
+                                continue;
+                        }
+
+                        PayCycle existingCycle = existing.getPayCycle();
+
+                        throw new IllegalStateException(
+                                        "Employee already has payroll #"
+                                                        + existing.getPayrollId()
+                                                        + " (" + existing.getStatus() + ") in pay cycle \""
+                                                        + existingCycle.getCycleName() + "\" ("
+                                                        + existingCycle.getStartDate() + " to "
+                                                        + existingCycle.getEndDate()
+                                                        + "), which overlaps this pay cycle. "
+                                                        + "An employee cannot be paid twice for the same days.");
+                }
+        }
+
+        private void applyCalculatedAmounts(Payroll payrollDetails) {
+
+                Employee employee = payrollDetails.getEmployee();
+                PayCycle payCycle = payrollDetails.getPayCycle();
+                Integer employeeId = employee.getEmployeeId();
 
                 /*
                  * Calculate the employee's regular pay for the
@@ -348,8 +407,6 @@ public class PayrollService {
                                                 RoundingMode.HALF_UP);
 
                 payrollDetails.setNetPay(netPay);
-
-                return payrollRepository.save(payrollDetails);
         }
 
         private BigDecimal calculateAttendanceDeduction(
@@ -441,60 +498,48 @@ public class PayrollService {
                 return deduction.setScale(2, RoundingMode.HALF_UP);
         }
 
-        public Payroll updatePayroll(
-                        Integer id,
-                        Payroll payrollDetails) {
+        /*
+         * Only DRAFT payroll can change. Amounts are recalculated from
+         * the current attendance, overtime, salary, and settings rather
+         * than accepted from the client, and status/processing fields
+         * can only change through processPayroll and markPayrollAsPaid.
+         */
+        @Transactional
+        public Payroll updatePayroll(Integer id) {
 
                 Payroll payroll = payrollRepository
                                 .findById(id)
                                 .orElseThrow(() -> new RuntimeException(
                                                 "Payroll not found"));
 
-                payroll.setRegularPay(
-                                payrollDetails.getRegularPay());
+                if (payroll.getStatus() != Payroll.Status.DRAFT) {
+                        throw new IllegalStateException(
+                                        "Only DRAFT payroll can be updated. "
+                                                        + payroll.getStatus()
+                                                        + " payroll is locked.");
+                }
 
-                payroll.setOvertimePay(
-                                payrollDetails.getOvertimePay());
-
-                payroll.setBonusAmount(
-                                payrollDetails.getBonusAmount());
-
-                payroll.setGrossPay(
-                                payrollDetails.getGrossPay());
-
-                payroll.setTaxAmount(
-                                payrollDetails.getTaxAmount());
-
-                payroll.setDeductionAmount(
-                                payrollDetails.getDeductionAmount());
-
-                payroll.setNetPay(
-                                payrollDetails.getNetPay());
-
-                payroll.setStatus(
-                                payrollDetails.getStatus());
-
-                payroll.setProcessedAt(
-                                payrollDetails.getProcessedAt());
+                applyCalculatedAmounts(payroll);
 
                 return payrollRepository.save(payroll);
         }
 
-        public Payroll processPayroll(Integer id, Integer userId) {
+        @Transactional
+        public Payroll processPayroll(Integer id, String username) {
                 Payroll payroll = payrollRepository.findById(id)
                                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
 
                 if (payroll.getStatus() != Payroll.Status.DRAFT) {
-                        throw new IllegalArgumentException(
+                        throw new IllegalStateException(
                                         "Only DRAFT payroll can be processed");
                 }
 
-                if (userId == null) {
-                        throw new IllegalArgumentException(
-                                        "Processing user is required");
-                }
+                ensureNoOverlappingPayroll(
+                                payroll.getEmployee(),
+                                payroll.getPayCycle(),
+                                payroll.getPayrollId());
 
-                com.employger.entity.User user = userRepository.findById(userId)
+                com.employger.entity.User user = userRepository.findByUsername(username)
                                 .orElseThrow(() -> new RuntimeException("User not found"));
 
                 payroll.setStatus(Payroll.Status.PROCESSED);
@@ -504,6 +549,7 @@ public class PayrollService {
                 return payrollRepository.save(payroll);
         }
 
+        @Transactional
         public Payroll markPayrollAsPaid(
                         Integer id,
                         String paymentMethod,
@@ -513,7 +559,7 @@ public class PayrollService {
                                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
 
                 if (payroll.getStatus() != Payroll.Status.PROCESSED) {
-                        throw new IllegalArgumentException(
+                        throw new IllegalStateException(
                                         "Only PROCESSED payroll can be marked as paid");
                 }
 
@@ -521,6 +567,11 @@ public class PayrollService {
                         throw new IllegalArgumentException(
                                         "Payment method is required");
                 }
+
+                ensureNoOverlappingPayroll(
+                                payroll.getEmployee(),
+                                payroll.getPayCycle(),
+                                payroll.getPayrollId());
 
                 payroll.setStatus(Payroll.Status.PAID);
                 payroll.setPaymentDate(java.time.LocalDateTime.now());
@@ -530,13 +581,21 @@ public class PayrollService {
                 return payrollRepository.save(payroll);
         }
 
+        @Transactional
         public void deletePayroll(Integer id) {
 
-                if (!payrollRepository.existsById(id)) {
-                        throw new RuntimeException(
-                                        "Payroll not found");
+                Payroll payroll = payrollRepository
+                                .findById(id)
+                                .orElseThrow(() -> new RuntimeException(
+                                                "Payroll not found"));
+
+                if (payroll.getStatus() != Payroll.Status.DRAFT) {
+                        throw new IllegalStateException(
+                                        "Only DRAFT payroll can be deleted. "
+                                                        + payroll.getStatus()
+                                                        + " payroll is kept for the payroll history.");
                 }
 
-                payrollRepository.deleteById(id);
+                payrollRepository.delete(payroll);
         }
 }

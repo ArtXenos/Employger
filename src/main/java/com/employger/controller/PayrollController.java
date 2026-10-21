@@ -2,7 +2,10 @@ package com.employger.controller;
 
 import com.employger.entity.Payroll;
 import com.employger.service.PayrollService;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -83,57 +86,78 @@ public class PayrollController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    // The request body is accepted for compatibility with existing
+    // clients but ignored: every amount is calculated on the server.
     @PostMapping("/employee/{employeeId}/pay-cycle/{payCycleId}")
-    public ResponseEntity<Payroll> createPayroll(
+    public ResponseEntity<?> createPayroll(
             @PathVariable Integer employeeId,
             @PathVariable Integer payCycleId,
-            @RequestBody Payroll payrollDetails) {
+            @RequestBody(required = false) Payroll ignoredPayrollDetails) {
 
         try {
             Payroll savedPayroll = payrollService.createPayroll(
                     employeeId,
-                    payCycleId,
-                    payrollDetails);
+                    payCycleId);
 
             return ResponseEntity.ok(savedPayroll);
 
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Payroll already exists for this employee and pay cycle");
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
 
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
+    // Recalculates a DRAFT payroll from current records. The request
+    // body is ignored so amounts and status cannot be overwritten.
     @PutMapping("/{id}")
-    public ResponseEntity<Payroll> updatePayroll(
+    public ResponseEntity<?> updatePayroll(
             @PathVariable Integer id,
-            @RequestBody Payroll payrollDetails) {
+            @RequestBody(required = false) Payroll ignoredPayrollDetails) {
 
         try {
-            Payroll updatedPayroll = payrollService.updatePayroll(
-                    id,
-                    payrollDetails);
+            Payroll updatedPayroll = payrollService.updatePayroll(id);
 
             return ResponseEntity.ok(updatedPayroll);
 
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
     }
 
+    // The processing user is the logged-in user. A userId request
+    // parameter sent by older clients is ignored.
     @PostMapping("/{id}/process")
-    public ResponseEntity<Payroll> processPayroll(
+    public ResponseEntity<?> processPayroll(
             @PathVariable Integer id,
-            @RequestParam Integer userId) {
+            Authentication authentication) {
 
         try {
-            Payroll processedPayroll = payrollService.processPayroll(id, userId);
+            Payroll processedPayroll = payrollService.processPayroll(
+                    id,
+                    authentication.getName());
 
             return ResponseEntity.ok(processedPayroll);
 
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
 
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -141,7 +165,7 @@ public class PayrollController {
     }
 
     @PostMapping("/{id}/pay")
-    public ResponseEntity<Payroll> markPayrollAsPaid(
+    public ResponseEntity<?> markPayrollAsPaid(
             @PathVariable Integer id,
             @RequestParam String paymentMethod,
             @RequestParam(required = false) String paymentReference) {
@@ -154,8 +178,11 @@ public class PayrollController {
 
             return ResponseEntity.ok(paidPayroll);
 
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
 
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
@@ -163,13 +190,16 @@ public class PayrollController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePayroll(
+    public ResponseEntity<?> deletePayroll(
             @PathVariable Integer id) {
 
         try {
             payrollService.deletePayroll(id);
 
             return ResponseEntity.noContent().build();
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
 
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();

@@ -109,6 +109,13 @@ public class SecurityConfig {
                                                                 "ADMINISTRATOR",
                                                                 "HR_MANAGER")
 
+                                                // Payslips embed payroll and employee details,
+                                                // so they are restricted like payroll itself.
+                                                .requestMatchers("/api/payslips/**")
+                                                .hasAnyRole(
+                                                                "ADMINISTRATOR",
+                                                                "HR_MANAGER")
+
                                                 // Everything else requires login
                                                 .anyRequest().authenticated())
 

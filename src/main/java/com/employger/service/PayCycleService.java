@@ -30,6 +30,10 @@ public class PayCycleService {
 
                 validatePayCycle(payCycle);
 
+                // Never trust a client-supplied ID: save() would otherwise
+                // overwrite the existing pay cycle with that ID.
+                payCycle.setPayCycleId(null);
+
                 return payCycleRepository.save(payCycle);
         }
 

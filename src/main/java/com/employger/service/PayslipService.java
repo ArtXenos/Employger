@@ -46,7 +46,7 @@ public class PayslipService {
 
     public Payslip generatePayslip(
             Integer payrollId,
-            Integer userId) {
+            String username) {
 
         Payroll payroll = payrollRepository.findById(payrollId)
                 .orElseThrow(() -> new RuntimeException("Payroll not found"));
@@ -64,7 +64,7 @@ public class PayslipService {
                     "A payslip already exists for this payroll");
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Payslip payslip = new Payslip();

@@ -2,6 +2,7 @@ package com.employger.controller;
 
 import com.employger.entity.Employee;
 import com.employger.service.EmployeeService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -60,12 +61,15 @@ public class EmployeeController {
 
     // Delete an employee
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEmployee(@PathVariable Integer id) {
+    public ResponseEntity<?> deleteEmployee(@PathVariable Integer id) {
 
         try {
             employeeService.deleteEmployee(id);
 
             return ResponseEntity.noContent().build();
+
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
 
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();

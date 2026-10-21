@@ -71,6 +71,17 @@ public class Employee {
         INACTIVE
     }
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
     public Integer getEmployeeId() {
         return employeeId;
     }

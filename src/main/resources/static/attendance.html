@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Attendance - Em-Ployger</title>
+
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/attendance.css" />
+  </head>
+
+  <body>
+    <div class="app-layout">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">EP</div>
+
+          <div>
+            <h1>Em-Ployger</h1>
+            <p>Payroll Management</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard.html" class="nav-item">
+            <span>▦</span>
+            <span>Dashboard</span>
+          </a>
+
+          <a href="/employees.html" class="nav-item">
+            <span>♙</span>
+            <span>Employees</span>
+          </a>
+
+          <a href="/attendance.html" class="nav-item active">
+            <span>◷</span>
+            <span>Attendance</span>
+          </a>
+
+          <a href="/pay-cycles.html" class="nav-item">
+            <span>□</span>
+            <span>Pay Cycles</span>
+          </a>
+
+          <a href="/overtime.html" class="nav-item">
+            <span>↗</span>
+            <span>Overtime</span>
+          </a>
+
+          <a href="/payroll.html" class="nav-item">
+            <span>₱</span>
+            <span>Payroll</span>
+          </a>
+
+          <a href="/settings.html" class="nav-item">
+            <span>⚙</span>
+            <span>Settings</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <a href="#" id="logoutButton">Logout</a>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="main-content">
+        <header class="page-header">
+          <div>
+            <h2>Attendance</h2>
+            <p>Track and manage employee attendance records.</p>
+          </div>
+
+          <button type="button" class="add-button" id="addAttendanceButton">
+            + Add Attendance
+          </button>
+        </header>
+
+        <!-- SUMMARY CARDS -->
+        <section class="summary-grid">
+          <div class="summary-card">
+            <span>Total Records</span>
+            <strong id="totalRecords">0</strong>
+          </div>
+
+          <div class="summary-card">
+            <span>Present</span>
+            <strong id="presentRecords">0</strong>
+          </div>
+
+          <div class="summary-card">
+            <span>Late</span>
+            <strong id="lateRecords">0</strong>
+          </div>
+
+          <div class="summary-card">
+            <span>Absent</span>
+            <strong id="absentRecords">0</strong>
+          </div>
+        </section>
+
+        <!-- ATTENDANCE RECORDS -->
+        <section class="records-section">
+          <div class="section-header">
+            <div>
+              <h3>Attendance Records</h3>
+              <p>
+                View employee work hours, attendance status, and time records.
+              </p>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Employee</th>
+                  <th>Date</th>
+                  <th>Time In</th>
+                  <th>Time Out</th>
+                  <th>Regular Hours</th>
+                  <th>Status</th>
+                  <th>Remarks</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody id="attendanceTableBody">
+                <tr>
+                  <td colspan="9" class="empty-row">
+                    Loading attendance records...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ADD / EDIT ATTENDANCE MODAL -->
+        <div class="modal" id="attendanceModal" aria-hidden="true">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div>
+                <h3 id="modalTitle">Add Attendance</h3>
+                <p>Enter the employee attendance information.</p>
+              </div>
+
+              <button type="button" class="close-button" id="closeModalButton">
+                &times;
+              </button>
+            </div>
+
+            <form id="attendanceForm">
+              <input type="hidden" id="attendanceId" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="employeeId"> Employee </label>
+
+                  <select id="employeeId" required>
+                    <option value="">Select employee</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="attendanceDate"> Attendance Date </label>
+
+                  <input type="date" id="attendanceDate" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="timeIn"> Time In </label>
+
+                  <input type="time" id="timeIn" />
+                </div>
+
+                <div class="form-group">
+                  <label for="timeOut"> Time Out </label>
+
+                  <input type="time" id="timeOut" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="regularHours"> Regular Hours </label>
+
+                  <input
+                    type="number"
+                    id="regularHours"
+                    min="0"
+                    max="8"
+                    step="0.25"
+                    value="0"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="status"> Status </label>
+
+                  <select id="status" required>
+                    <option value="PRESENT">PRESENT</option>
+
+                    <option value="LATE">LATE</option>
+
+                    <option value="ABSENT">ABSENT</option>
+
+                    <option value="LEAVE">LEAVE</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="remarks"> Remarks </label>
+
+                <input
+                  type="text"
+                  id="remarks"
+                  maxlength="255"
+                  placeholder="Optional remarks"
+                />
+              </div>
+
+              <div id="formMessage" class="form-message"></div>
+
+              <div class="modal-actions">
+                <button type="button" class="cancel-button" id="cancelButton">
+                  Cancel
+                </button>
+
+                <button type="submit" class="save-button">
+                  Save Attendance
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ATTENDANCE JAVASCRIPT -->
+    <script src="/attendance.js"></script>
+  </body>
+</html>

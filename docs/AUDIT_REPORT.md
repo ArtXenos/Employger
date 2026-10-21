@@ -1,0 +1,363 @@
+# Em-Ployger — Initial Audit Report
+
+| | |
+|---|---|
+| Audit date | 2026-10-21 |
+| Scope | Full repository (`src/main/java`, `src/main/resources`, tests, build) and the live `employger_db` schema/data (read-only) |
+| Code changes made during audit | **None** |
+| Database changes made during audit | **None** (only `SELECT`, `SHOW`, `CHECK TABLE`, and a `mysqldump` backup) |
+
+Every finding below is labelled **Confirmed** (reproduced from code, live data, or a live HTTP request) or **Hypothesis** (needs a business decision or further testing).
+
+---
+
+## 1. Executive summary
+
+Em-Ployger has a reasonable foundation: layered Spring Boot code, `BigDecimal` money, `ddl-auto=validate`, BCrypt, role-based URL rules, a DB unique key on employee + pay cycle, and a well-validated pay-cycle and settings module.
+
+But it isn't safe for real payroll yet. The biggest risks:
+
+1. **Double payment is possible today, and the data already shows it.** Pay cycles 1 (semi-monthly, Oct 1–15), 2 (monthly, Oct 1–31) and 4 (weekly, Oct 1–7) overlap. Employee 35 has a **PAID** payroll in cycle 1 and a **DRAFT** payroll in cycle 2. Both contain the same ₱898.00 overtime and the same attendance deductions. Processing payroll 7 would pay Oct 1–15 twice.
+2. **Payroll lifecycle can be bypassed.** `PUT /api/payroll/{id}` overwrites every amount and the status of any payroll, PAID ones included. `DELETE` removes PAID payroll. `POST` accepts `status`, `payrollId`, `processedBy` and `paymentDate` from the client.
+3. **Deleting an employee cascades** (DB `ON DELETE CASCADE`) to all their attendance, overtime, payroll (PAID too) and payslips.
+4. **Any logged-in user, including the EMPLOYEE role, can read, generate and delete every payslip.** Each payslip embeds the full payroll and employee record.
+5. **Stored XSS** on the Employees and Attendance pages. With CSRF disabled, this gives full API access as whoever views the page.
+6. **8 of 16 payroll settings do nothing** (grace period, break, standard times, night differential, late/absent amounts), and attendance hours are typed in by hand instead of derived from time-in/time-out.
+7. **No isolated tests.** The only test loads the context against the real database.
+8. **Database operations are fragile.** The app connects as `root` with an empty password, `sql_mode` isn't strict, and MariaDB 10.4 is end-of-life and unsupported by this Hibernate version. The error log shows InnoDB "LSN in the future" corruption warnings on 2026-10-06 (all tables now pass `CHECK TABLE EXTENDED`). The project isn't under version control.
+
+---
+
+## 2. Architecture and technology stack (verified)
+
+| Item | Value | Source |
+|---|---|---|
+| Spring Boot | 4.1.1 (webmvc, data-jpa, security, validation) | `pom.xml` |
+| Java | target 25; runtime on this machine Java 26.0.2.1 | `pom.xml`, `java -version` |
+| Build | Maven Wrapper 3.9.16 | `.mvn/wrapper` |
+| DB | MariaDB **10.4.32** (XAMPP), DB `employger_db`, port 3306, driver `mysql-connector-j` | live server |
+| Schema management | `ddl-auto=validate`; **no migration tool** (no Flyway/Liquibase) | `application.properties` |
+| Frontend | Static HTML/CSS/vanilla JS per page, served by Spring | `src/main/resources/static` |
+| Auth | Session-based. `/api/auth/login` authenticates manually and stores `SecurityContext` in `HttpSession`. No form login, no HTTP Basic. | `AuthController`, `SecurityConfig` |
+| VCS | **Not a git repository** | `git` not initialised |
+
+**Domain model** (from entities and live FKs):
+
+```
+users ──(employee_id, SET NULL)──> employees
+employees ──< attendance (CASCADE, unique employee+date)
+employees ──< overtime   (CASCADE) ──> attendance (SET NULL), ──> users.approved_by (SET NULL)
+employees ──< payroll    (CASCADE, unique employee+pay_cycle) ──> pay_cycles (RESTRICT), ──> users.processed_by
+payroll ──1 payslips (CASCADE)
+system_settings (key/value, updated_by never written)
+bonuses, deductions, audit_logs — tables exist, NO entity/code uses them
+```
+
+**Roles:** `ADMINISTRATOR`, `HR_MANAGER`, `GENERAL_MANAGER`, `EMPLOYEE`. Only ADMINISTRATOR and HR_MANAGER can reach any business API. GENERAL_MANAGER can reach nothing except payslips. EMPLOYEE has no self-service, but can reach every payslip (see C-05).
+
+**Baseline results**
+
+| Check | Result |
+|---|---|
+| `mvnw test` | BUILD SUCCESS, 1 test, 1 passed (`contextLoads` runs against the **real** DB) |
+| MariaDB reachable | Yes, port 3306, service started 2026-10-21 11:40 (after a crash-recovery start) |
+| `CHECK TABLE … EXTENDED` on all 11 tables | All OK |
+| Logical backup | `mysqldump --single-transaction` of `employger_db` taken 2026-10-21 12:08 (see §7) |
+| Hibernate warning | `HHH000511`: MariaDB 10.4 reported as "MySQL 5.5.5", below the supported minimum |
+
+---
+
+## 3. Feature inventory
+
+| Feature | Status | Notes |
+|---|---|---|
+| Login / logout / `me` | Implemented, needs fixes | Wrong password returns 403, not 401. DB errors look like bad credentials. Session ID not rotated (H-04, M-03). |
+| Role-based access | Partial | URL-level only. No ownership checks. Payslips open to all roles (C-05). |
+| User management (admin) | Partial | No validation. Duplicate username gives a 500 that surfaces as 404/403. Admin can delete the last admin. |
+| Employee CRUD | Implemented, defects | No server validation. Editing wipes `profile_image` (M-05). Delete cascades payroll (C-04). |
+| Attendance CRUD | Partial | `regularHours` is manual. Time-in/out not used. No validation (H-03). |
+| Overtime request / approve / reject | Implemented, defects | Duplicates, OT on ABSENT days, stale amounts, approved OT deletable (H-02). |
+| Pay-cycle CRUD | Implemented | Good date-shape validation. No overlap check (C-01). Status never advanced. Editable after payroll is paid. |
+| Payroll preview | Implemented | Read-only (verified by code). Duplicates the deduction loop (M-07). |
+| Payroll create | Implemented, defects | Mass assignment (C-03). Ignores cycle status, hire date, employment status (H-05). |
+| Process / mark paid | Implemented | Correct transition checks. Actor taken from request param (H-06). No `@Transactional`. |
+| Payroll update / delete | **Broken (unsafe)** | No lifecycle guard (C-02). |
+| Payslips | Partial | DB record only (`file_path` unused). No PDF/print rendering beyond page. Auth broken (C-05). |
+| Bonuses | **Missing** | Table exists. Code hard-codes 0. |
+| Deductions / tax / statutory contributions | **Missing** | Table exists. Tax and deductions hard-coded 0. |
+| System settings | Partial | Validation good. 8 settings unused (H-03). `updated_by` never set. |
+| Audit trail | **Missing** | `audit_logs` table unused. |
+| Dashboard / reports | Implemented (basic) | No payroll register or export. |
+| Employee self-service | **Missing** | EMPLOYEE role exists, but no pages or APIs scoped to the employee. |
+| Automated tests | **Missing** | Only a context-load test. |
+
+---
+
+## 4. Confirmed defects
+
+Severity key: **Critical** = data loss, severe compromise, or materially wrong pay. **High** = major failure or serious weakness. **Medium** = meaningful defect. **Low** = refinement.
+Effort key: S ≈ < ½ day, M ≈ 1–2 days, L ≈ 3+ days.
+
+### Critical
+
+#### C-01 — Overlapping pay cycles cause double payment *(Confirmed, live data)*
+- **Where:** `PayCycleService.validatePayCycle` (no overlap check); `PayrollService.createPayroll` and `previewPayroll` (select attendance and OT by date range only); `Overtime` has no link to the payroll that paid it.
+- **Evidence:** Cycles 1 (Oct 1–15), 2 (Oct 1–31) and 4 (Oct 1–7) all overlap. For employee 35, payroll #6 (cycle 1) is **PAID** at ₱12,212.64, including OT ₱898.00. Payroll #7 (cycle 2) is **DRAFT** at ₱24,712.64 and includes the **same** OT ₱898.00 and the **same** ₱1,185.36 attendance deduction.
+- **Expected:** a given workday or OT record is paid in at most one payroll.
+- **Actual:** paying #7 would pay Oct 1–15 salary and overtime a second time.
+- **Fix:** (a) reject a new payroll when the employee already has a payroll in any **overlapping** cycle. (b) Optionally reject overlapping cycles of different types. (c) Link approved overtime to the payroll that consumed it (`overtime.payroll_id`, nullable, additive migration).
+- **Business decision needed:** whether an organisation may run cycles of different frequencies at the same time (e.g., weekly for some staff, monthly for others). If so, the guard must be per employee, not global.
+- **Tests:** overlapping-cycle payroll is rejected. Non-overlapping consecutive cycles are accepted. An OT record is counted once.
+- **Effort:** M.
+
+#### C-02 — Payroll update/delete bypass the lifecycle *(Confirmed, code)*
+- **Where:** `PayrollService.updatePayroll` (lines 444–481) and `deletePayroll` (533–541); `PayrollController` PUT and DELETE.
+- **Evidence:** `updatePayroll` copies `regularPay … netPay`, `status` and `processedAt` from the request body, with no status check. `deletePayroll` has no status check. The UI hides delete for non-DRAFT payrolls (`payroll.js:1061`), but the API doesn't enforce it.
+- **Impact:** a PAID payroll can be silently rewritten or removed (the payslip cascades with it). `gross ≠ regular + OT + bonus` can be stored. A `null` status in the body causes a DB error that is reported as 404.
+- **Fix:** allow update/delete only in DRAFT. Recalculate rather than accept client amounts. Never accept `status` or `processedAt` in an update. Corrections to PAID payroll go through an explicit adjustment record (future feature).
+- **Tests:** PUT/DELETE on PROCESSED/PAID returns 409. A DRAFT update recomputes totals.
+- **Effort:** S.
+
+#### C-03 — Mass assignment on create endpoints *(Confirmed, code)*
+- **Where:** all `@RequestBody <Entity>` creates. `PayrollController.createPayroll` is the worst.
+- **Evidence:** entities have public `setPayrollId`, `setStatus`, `setProcessedBy` and `setPaymentDate`. `createPayroll` only overwrites amounts, so `{"status":"PAID","paymentDate":…}` creates an already-PAID payroll. A body containing `payrollId` of an existing row makes `save()` **merge** into that row, overwriting another payroll. The same id-merge applies to `POST /api/employees`, `/api/attendance/...`, `/api/overtime/...` and `/api/pay-cycles`.
+- **Fix:** force `id = null` and initial status on create, or better, accept request DTOs instead of entities (incremental, endpoint by endpoint).
+- **Tests:** a POST with an id and status ignores both. An existing record is unchanged.
+- **Effort:** S (null-out guards) / M (DTOs).
+
+#### C-04 — Employee delete cascades to paid payroll history *(Confirmed, schema + code)*
+- **Where:** FKs `fk_payroll_employee`, `fk_attendance_employee`, `fk_overtime_employee` and `fk_payslips_payroll` are `ON DELETE CASCADE`. `EmployeeService.deleteEmployee` is a hard delete available to HR_MANAGER.
+- **Impact:** one click erases an employee's entire payroll and attendance history, including PAID payroll. That's an audit and legal-retention problem.
+- **Fix:** application guard first (refuse delete when payroll exists; recommend setting INACTIVE). Then a reviewed migration changing those FKs to `RESTRICT`, after approval.
+- **Tests:** deleting an employee with payroll returns 409 and all rows remain.
+- **Effort:** S (guard) + S (migration, needs approval).
+
+#### C-05 — Payslip API open to every authenticated role *(Confirmed, code + config)*
+- **Where:** `SecurityConfig` has no matcher for `/api/payslips/**`, so it falls to `anyRequest().authenticated()`. `PayslipController` returns entities.
+- **Impact:** an EMPLOYEE account (one exists) can `GET /api/payslips` and receive every payslip, each with the payroll and full employee record (salary, DOB, address, email, phone). The same account can generate or **delete** payslips. `generatePayslip` also takes `userId` from the request (actor spoofing).
+- **Fix:** restrict `/api/payslips/**` to ADMINISTRATOR/HR_MANAGER now. Later, add an employee-scoped "my payslips" endpoint that derives the employee from the session, never from the URL.
+- **Tests:** EMPLOYEE gets 403 on list/generate/delete. HR gets 200.
+- **Effort:** S.
+
+### High
+
+#### H-01 — Stored XSS in Employees and Attendance tables *(Confirmed, code)*
+- **Where:** `employees.js:73–110` (`firstName`, `lastName`, `email`, `department`, `jobTitle` interpolated into `innerHTML`). `attendance.js:119–141` (`employeeName`, `remarks`). `overtime.js:383` (attendance options). `escapeHtml` exists in `overtime.js`, `pay-cycles.js` and `payroll.js` but isn't used in those places.
+- **Impact:** a name or remark containing markup runs script in an admin's session. Because CSRF is disabled and APIs are session-cookie based, that script can call any API.
+- **Fix:** escape every interpolated value, or build cells with `textContent`. Add a shared `escapeHtml` helper.
+- **Effort:** S.
+
+#### H-02 — Overtime integrity gaps *(Confirmed, live data)*
+- Six OT records exist for employee 35 on 2026-10-03, all linked to the same attendance (#1). Three are APPROVED (5 h total) on a day with 8.00 regular hours. Nothing prevents duplicate or overlapping requests.
+- OT #3 is **APPROVED on 2026-10-05, a day recorded as ABSENT**.
+- OT #1 is **APPROVED with `overtime_rate = 1.25` and `overtime_amount = 0.00`** (legacy formula stored the multiplier as the rate). Two approved hours were paid ₱0 in PAID payroll #6.
+- OT #13 (PENDING) has rate 5.18. Under current settings it would be 4.31 (it was evidently computed with multiplier 1.5). Amounts are frozen at request time and **not recomputed at approval**, so a settings change applies inconsistently.
+- `deleteOvertime` deletes APPROVED overtime, even when it was already paid.
+- `OvertimeController.createOvertime` maps validation errors (`IllegalArgumentException`) to **404**.
+- **Fix:** reject OT on ABSENT/LEAVE days. Reject approval when cumulative approved hours for the day exceed a configured cap. Recompute the amount at approval. Make APPROVED OT immutable. Return 400 for validation errors. Leave historical records as they are, and handle them through the correction decision in §11.
+- **Effort:** M.
+
+#### H-03 — Attendance hours are manual; most attendance settings are unused *(Confirmed)*
+- `regularHours` comes straight from a form field (`attendance.js:297`). The server doesn't check it against `timeIn`/`timeOut`, `status`, or 0–24.
+- Unused by any Java code: `standard_start_time`, `standard_end_time`, `unpaid_break_minutes`, `late_grace_period_minutes`, `night_differential_rate/start/end`, `late_deduction_amount`, `absent_deduction_amount`. The Settings page presents them as if they work.
+- Example inconsistency: attendance #2 is 09:15–17:00, recorded as 7.75 h. With the configured 60-minute unpaid break that is 6.75 h, so the deduction is under-counted by 1 h. *(Whether the break applies to this record is a business rule; see §11.)*
+- Records on Saturday 2026-10-03 and Sunday 2026-10-04 are treated as regular workdays, while factor rate 261 implies a 5-day week. A Sunday "LATE" was deducted.
+- **Fix:** derive hours on the server from time-in/out, break and standard schedule. Validate status vs hours. Show settings that aren't wired up as "not yet applied" until they are.
+- **Effort:** M–L (depends on decisions).
+
+#### H-04 — Login failure handling is misleading and can hang *(Confirmed, live HTTP)*
+- A wrong password returns **403** (`AuthenticationException` reaches the default `Http403ForbiddenEntryPoint`). A malformed body also returns 403, because `/error` isn't permitted.
+- So DB unavailability (500), bad credentials and malformed input all look the same. `script.js` then shows "Invalid username or password."
+- `script.js` has no request timeout (`AbortController`). If the DB pool stalls (Hikari waits 30 s by default), the button stays on "Logging in…" until the browser gives up.
+- **Fix:** catch `AuthenticationException` in `login` and return 401 with a generic message. Return 503 for `DataAccessException`. Permit `/error`. Add a 15 s timeout and a `finally` that always resets the button.
+- **Effort:** S.
+
+#### H-05 — Payroll creation ignores eligibility and cycle state *(Confirmed)*
+- No check of `payCycle.status` (CLOSED cycles accept payroll). Cycle status is never advanced when payroll is processed or paid (all 3 cycles are OPEN although one has PAID payroll).
+- No check of `employmentStatus` (INACTIVE employees get payroll).
+- No proration for `dateHired`. Employee 37 (hired 2026-10-06) received the full weekly base for Oct 1–7.
+- **Fix:** validate cycle OPEN and employee ACTIVE. Prorate by hire date per the policy chosen in §11.
+- **Effort:** S (validation) / M (proration).
+
+#### H-06 — Actor identity taken from the client *(Confirmed)*
+- `POST /api/payroll/{id}/process?userId=` and `POST /api/payslips/payroll/{id}/generate?userId=` record whatever user id the client sends. `payroll.js:833` sends it from `/api/auth/me`.
+- **Fix:** resolve the user from `Authentication` on the server (as `OvertimeController` already does). Keep the parameter optional and ignored for compatibility.
+- **Effort:** S.
+
+#### H-07 — Payroll results aren't auditable *(Confirmed)*
+- The `payroll` row stores the net regular pay, but not the base pay, attendance deduction, hourly rate, factor rate, or the OT records used. Attendance, OT, salary and settings can all change after payment, so a PAID payroll can't be re-explained later.
+- `audit_logs` is unused. `system_settings.updated_by` is never set.
+- **Fix:** additive columns (e.g., `base_pay`, `attendance_deduction`, `hourly_rate`) or a JSON `calculation_snapshot`. Write audit-log entries for create, process, pay and settings changes. Block edits to attendance and OT inside a cycle that has PROCESSED/PAID payroll.
+- **Effort:** M.
+
+#### H-08 — Database security and operations *(Confirmed)*
+- App connects as `root`, and `root` has an **empty password** (localhost only). Fine for a laptop demo; must not be used beyond that.
+- `sql_mode` lacks `STRICT_TRANS_TABLES`, so out-of-range or oversized values are silently truncated instead of rejected.
+- MariaDB 10.4 reached end of life in June 2024, and Hibernate flags it as unsupported (`HHH000511`).
+- Error log: InnoDB "page LSN is in the future… database may be corrupt" errors on 2026-10-06 11:47 and 13:19, affecting the system tablespace and `employger_db/users`. This pattern typically follows copying files from `xampp/mysql/backup` over `data` without consistent redo logs. No errors since. All tables pass `CHECK TABLE EXTENDED` today, but the startup at 11:40 today also needed crash recovery (unclean shutdown).
+- No migration tool and no documented backup procedure.
+- **Fix:** dedicated DB user with least privilege. Credentials from environment variables. Scripted `mysqldump` backups. Always stop MariaDB from the XAMPP panel (never kill it). Plan an upgrade to a supported MariaDB, after backup.
+- **Effort:** S (user/backup) / M (upgrade).
+
+#### H-09 — No isolated automated tests *(Confirmed)*
+- The single test hits the real `employger_db`. No unit tests for any formula, lifecycle rule or authorization rule.
+- **Fix:** unit tests for `PayrollCalculationService` and `PayrollService` with Mockito (no DB). `@WebMvcTest` and security tests with mocked services. Integration tests against an isolated test database (H2 in MariaDB mode, or a separate `employger_test` schema).
+- **Effort:** M (initial suite), ongoing.
+
+### Medium
+
+| ID | Finding | Where | Fix | Effort |
+|---|---|---|---|---|
+| M-01 | Every `RuntimeException` becomes **404** with an empty body. Validation errors, duplicate attendance date (DB constraint) and DB failures all show as "not found", so the UI can't show the reason. | All controllers | `@RestControllerAdvice` with typed exceptions returning `{message}` and 400/404/409/503 | M |
+| M-02 | No `@Transactional` on payroll create/process/pay, OT approval, or attendance writes. Concurrent duplicate create returns a 500 surfaced as 404 (DB unique key does prevent the duplicate row). | Services | Add `@Transactional`, translate `DataIntegrityViolationException` to 409 | S |
+| M-03 | Session fixation: manual login doesn't rotate the session id. CSRF is disabled. Session cookie has no explicit `SameSite`/`Secure`. | `AuthController.login`, `SecurityConfig` | `request.changeSessionId()` after auth. `SameSite=Strict` cookie. Re-enable CSRF with a cookie token later (needs JS changes on every page). | S / M |
+| M-04 | Entities serialised directly. Every payroll/attendance/OT list embeds the full `Employee` (DOB, address, phone, profile-image blob). | Controllers | Response DTOs, starting with payroll lists | M |
+| M-05 | Editing an employee sets `profile_image = null`, because `employees.js` never sends it. No images exist yet, so no data lost so far. | `EmployeeService.updateEmployee` | Only overwrite the image when one is supplied | S |
+| M-06 | No server-side validation for employee (negative salary, future hire date), user (null password returns 500, no password policy, deleting the last admin or yourself) or attendance. | Services/DTOs | Bean Validation plus service checks | M |
+| M-07 | Preview and create duplicate logic. The preview breakdown re-implements the deduction loop, and both load **all** attendance for the employee, then filter in Java. | `PayrollService` | Single `calculate()` method used by preview and create. `findByEmployee…AndAttendanceDateBetween` | S |
+| M-08 | Hourly rate is rounded to 2 dp **before** multiplying by hours (143.678 → 143.68). Drift is about ₱0.02/day. | `PayrollCalculationService.calculateHourlyRate` | Keep 6-dp intermediate, round only the final amount. **Changes future cents, so needs approval.** | S |
+| M-09 | Pay cycles editable or deletable after payroll exists. Deleting one with payroll hits the FK and is reported as 404. | `PayCycleService` | Block when the cycle has payroll | S |
+| M-10 | Tax, statutory contributions, bonuses and deductions hard-coded to 0, even though tables exist. | `PayrollService` | Bonuses/deductions first (from existing tables). PH statutory rules only after verification against current BIR/SSS/PhilHealth/Pag-IBIG sources. | L |
+| M-11 | No brute-force protection on login. | Auth | Simple per-username/IP attempt counter with lockout window | S |
+| M-12 | Config: credentials in `application.properties`; `show-sql=true`; no dev/prod profiles. | `application.properties` | `${DB_PASSWORD}` env placeholders, `application-dev.properties` | S |
+| M-13 | GENERAL_MANAGER role has no access to anything. EMPLOYEE has no self-service. | `SecurityConfig` | Decide intended permissions (§11) | M |
+
+### Low
+
+| ID | Finding | Fix |
+|---|---|---|
+| L-01 | `util/PasswordHashGenerator` (hard-coded sample password) ships in production sources. `test-api.http` contains a login body. If that is the real admin password, change it. | Move to test scope or delete. Use placeholders in `.http`. |
+| L-02 | Project isn't under git, so there's no rollback for any change. | `git init` + initial commit **before** any fix (needs your go-ahead) |
+| L-03 | Static permit list is hand-maintained and inconsistent (`employees.css/js` missing). Works only because users are logged in. | Use `/*.html`, `/*.css`, `/*.js` patterns |
+| L-04 | Currency hard-coded (`PHP`/`en-PH` in 14 places in JS), while `currency_code`/`currency_symbol` settings exist. | Read from settings |
+| L-05 | Unused imports, mixed indentation, unused `previewPayroll` locals. | Tidy alongside related fixes |
+| L-06 | Mockito dynamic-agent warning on JDK 26; runtime JDK 26 vs target 25. | Configure Mockito agent in surefire; pin JDK 25 |
+
+---
+
+## 5. Payroll formula review (current behaviour, verified against stored data)
+
+Input: `employees.base_salary` is treated as a **monthly** salary.
+
+| Quantity | Formula in code | Employee 35 (₱25,000/mo) |
+|---|---|---|
+| Annual salary | `base × 12` | 300,000.00 |
+| Daily rate | `annual ÷ factor_rate` (261), 6 dp | 1,149.425287 |
+| Hourly rate | `daily ÷ regular_hours_per_day` (8), **rounded to 2 dp** | 143.68 |
+| Cycle base pay | `annual ÷ periods` (52/26/24/12) | semi-monthly 12,500.00; monthly 25,000.00 |
+| Unpaid hours/day | ABSENT: 8. PRESENT/LATE: `max(0, 8 − regularHours)`. LEAVE: 0. **No record: 0.** | Oct 4: 0.25 h; Oct 5: 8 h |
+| Attendance deduction | Σ round2(hourly × unpaidHours) | 35.92 + 1,149.44 = 1,185.36 |
+| Regular pay | `max(0, base − deduction)` | 11,314.64 (#6) ✔ / 23,814.64 (#7) ✔ |
+| Overtime pay | Σ stored `overtime_amount` of APPROVED OT in the date range | 0.00 + 179.60 + 359.20 + 359.20 = 898.00 ✔ |
+| OT amount (at request time) | round2(round2(hourly × multiplier) × hours) | 179.60/h at 1.25 ✔ |
+| Gross | regular + OT + bonus (0) | 12,212.64 ✔ |
+| Net | `max(0, gross − tax(0) − deductions(0))` | 12,212.64 ✔ |
+
+The arithmetic is internally consistent: stored payrolls #6, #7 and #8 match the formulas exactly. The defects are in **which inputs are included** (C-01, H-02, H-03, H-05) and **what's recorded** (H-07). Two policy points need your decision rather than a code fix:
+
+- Mixing a period-based base (`annual ÷ 24`) with a daily-rate deduction (`annual ÷ 261`) is a common Philippine practice, but it's a policy. Confirm it.
+- Missing attendance currently means "paid in full". Absence must be recorded explicitly to be deducted.
+
+No double-deduction exists in the current code: a day's lost hours are either an ABSENT full day or `8 − hours`, never both. `late_deduction_amount` and `absent_deduction_amount` are unused, so they don't add a second penalty. If they get wired up later, that design must avoid double-counting.
+
+---
+
+## 6. Payroll preview assessment
+
+| Requirement | Status |
+|---|---|
+| Doesn't create or modify records | ✔ Verified: read-only repository calls, no `save`. Not `@Transactional(readOnly=true)`. |
+| Same rules as create | ✔ Same helper calls today, but the breakdown loop is a separate copy (M-07), which is a drift risk |
+| Validates employee and cycle | Partial: existence only. No cycle-status, eligibility or overlap warnings. |
+| Breakdown traceable to records | Partial: per-day attendance shown, but no attendance or OT ids, and OT records aren't listed |
+| Restricted access | ✔ ADMINISTRATOR/HR_MANAGER |
+| Errors | ✗ Empty 400/404 bodies |
+
+---
+
+## 7. Database integrity and recovery assessment
+
+- **Current state:** service up, all tables InnoDB, `CHECK TABLE EXTENDED` OK on all 11. Row counts: employees 2, attendance 4, overtime 9, payroll 3 (1 PAID, 2 DRAFT), pay_cycles 3, payslips 1, users 2, settings 16.
+- **Backup taken (this audit):** `C:\Users\guada\AppData\Local\Temp\claude\c--Users-guada-Documents-employger\dd377388-110d-42f8-93d7-85944ecc4de2\scratchpad\employger_db_backup_2026-10-21.sql`. That's a temporary folder, so **copy it somewhere permanent** (it contains salary data, so not into a shared or public location).
+- **Restore (into a scratch DB first, never over the live one):**
+  ```
+  C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE employger_restore_test"
+  C:\xampp\mysql\bin\mysql.exe -u root employger_restore_test < employger_db_backup_2026-10-21.sql
+  ```
+- **Risks:** cascade deletes (C-04), non-strict `sql_mode` (H-08), no migrations, EOL server, prior LSN corruption warnings, unclean shutdowns.
+- **If MariaDB fails to start again:** stop. Copy the whole `C:\xampp\mysql\data` folder elsewhere. Read the end of `C:\xampp\mysql\data\mysql_error.log`. **Don't** copy `xampp\mysql\backup` over `data`, and don't delete `ib_logfile*`/`ibdata1`. Then restore from the latest `mysqldump` into a fresh schema, or use `innodb_force_recovery` (read-only, starting at 1) only to export data.
+
+---
+
+## 8. Authentication, authorization and privacy summary
+
+| Control | Status |
+|---|---|
+| Password hashing | ✔ BCrypt; `passwordHash` is `@JsonIgnore` |
+| Disabled users | ✔ `disabled(status != ACTIVE)` |
+| Failure responses | ✗ 403 instead of 401; DB errors indistinguishable (H-04) |
+| Session fixation | ✗ Not rotated (M-03) |
+| CSRF | ✗ Disabled (M-03); XSS makes this exploitable (H-01) |
+| URL authorization | ✔ for most APIs; ✗ payslips (C-05) |
+| Ownership checks | N/A today (no employee self-service); must be designed in when added |
+| Actor spoofing | ✗ `userId` request params (H-06) |
+| SQL injection | ✔ No string-built queries found; all Spring Data derived queries |
+| Security headers | ✔ Spring defaults present (`nosniff`, `X-Frame-Options: DENY`, no-store). No CSP, no HSTS (no HTTPS). |
+| Secrets | ✗ DB credentials in properties; root with empty password (H-08) |
+| Brute force | ✗ None (M-11) |
+
+---
+
+## 9. Frontend and accessibility (summary)
+
+- XSS sinks: H-01.
+- Login can hang and mislabels errors: H-04.
+- The other pages handle 401/403 by redirecting to `/`, and show `response.text()`, but backend bodies are empty (M-01), so the messages are generic.
+- `alert()`-based notifications, no `aria-live` regions, and modal focus isn't trapped. A fuller accessibility pass is scheduled for Phase D.
+- Visual identity is consistent across pages; no redesign needed.
+
+---
+
+## 10. Prioritized roadmap
+
+Each step is a small, separately tested change. Nothing touches existing records. Schema changes are **additive only** and need approval.
+
+**Phase 0: safety net (before any code change)**
+1. `git init` + initial commit of the current state (L-02). *Needs your OK.*
+2. Move the backup to permanent storage. Add `docs/BACKUP_AND_RECOVERY.md` and a backup script.
+3. Add an isolated test setup (test profile, H2 `MODE=MariaDB` or a separate `employger_test` DB) so tests never touch `employger_db`.
+
+**Phase A: Critical (code only, no schema change)**
+4. C-02: lifecycle guards on payroll PUT/DELETE, recalculation instead of client amounts.
+5. C-03: ignore client-supplied ids and status on all creates.
+6. C-05: lock `/api/payslips/**` to ADMINISTRATOR/HR_MANAGER. H-06: actor from session.
+7. C-04: refuse employee delete when payroll exists (UI suggests INACTIVE).
+8. C-01: refuse payroll when the employee already has payroll in an overlapping cycle (after your decision in §11). Show a warning in the preview.
+9. Regression tests for each of the above.
+
+**Phase B: High**
+10. H-01 XSS escaping. H-04 login error codes, timeout and button recovery. M-01 `@RestControllerAdvice` with messages.
+11. H-05 cycle-status and employee-status checks. M-02 `@Transactional`. M-09 cycle edit guards.
+12. H-02 overtime validation (no OT on ABSENT/LEAVE, recompute at approval, immutable once approved, 400 on validation).
+13. H-07 additive schema migration (snapshot columns, `overtime.payroll_id`) plus audit logging. *Needs approval.*
+14. H-08 dedicated DB user, env-based credentials, strict `sql_mode` (test first; it can surface hidden bad data).
+
+**Phase C: Payroll policy (after §11 decisions)**
+15. Server-derived attendance hours (break, grace, schedule), rest days, hire-date proration, M-08 rounding.
+16. Bonuses and deductions from existing tables. Statutory deductions only after verifying current official rates.
+
+**Phase D: Medium/Low**
+17. DTOs (M-04), validation (M-06), brute-force throttling (M-11), roles (M-13), profiles (M-12), currency settings (L-04), accessibility, MariaDB upgrade plan.
+
+---
+
+## 11. Business decisions required (blocking some fixes)
+
+1. **Overlapping cycles:** can one employee ever be in two overlapping cycles? (Recommended: no.)
+2. **Payroll #7 (DRAFT, cycle 2) and #8 (DRAFT, cycle 4):** keep, or have an HR user delete them through the UI after C-01 is fixed? I won't touch them.
+3. **Historical OT anomalies** (OT #1 approved at ₱0; OT #3 approved on an absent day; duplicate approved OT on Oct 3) were paid in PAID payroll #6. Should these get a recorded adjustment in a future cycle, or be left as is? I won't modify them.
+4. **Attendance policy:** is the 60-minute unpaid break already excluded from typed `regularHours`? Should hours be derived from time-in/out? Is Sat/Sun a rest day? Does a missing record mean "paid" or "absent"?
+5. **Hire-date proration:** calendar-day or working-day basis?
+6. **Rounding:** OK to stop rounding the hourly rate before multiplication (affects future amounts by centavos)?
+7. **Roles:** what should GENERAL_MANAGER and EMPLOYEE be able to see and do?
+8. **Statutory compliance:** is BIR withholding / SSS / PhilHealth / Pag-IBIG in scope? If so, I'll verify current rates from official sources before implementing.

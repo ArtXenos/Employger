@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Pay Cycles - Em-Ployger</title>
+
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/pay-cycles.css" />
+  </head>
+
+  <body>
+    <div class="app-layout">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">EP</div>
+
+          <div>
+            <h1>Em-Ployger</h1>
+            <p>Payroll Management</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard.html" class="nav-item">
+            <span>▦</span>
+            <span>Dashboard</span>
+          </a>
+
+          <a href="/employees.html" class="nav-item">
+            <span>♙</span>
+            <span>Employees</span>
+          </a>
+
+          <a href="/attendance.html" class="nav-item">
+            <span>◷</span>
+            <span>Attendance</span>
+          </a>
+
+          <a href="/pay-cycles.html" class="nav-item active">
+            <span>□</span>
+            <span>Pay Cycles</span>
+          </a>
+
+          <a href="/overtime.html" class="nav-item">
+            <span>↗</span>
+            <span>Overtime</span>
+          </a>
+
+          <a href="/payroll.html" class="nav-item">
+            <span>₱</span>
+            <span>Payroll</span>
+          </a>
+
+          <a href="/settings.html" class="nav-item">
+            <span>⚙</span>
+            <span>Settings</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <a href="#" id="logoutButton"> Logout </a>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="main-content">
+        <header class="page-header">
+          <div>
+            <h2>Pay Cycles</h2>
+
+            <p>Manage employee payroll periods and payment dates.</p>
+          </div>
+
+          <button type="button" class="add-button" id="addPayCycleButton">
+            + Add Pay Cycle
+          </button>
+        </header>
+
+        <!-- SUMMARY -->
+        <section class="summary-grid">
+          <div class="summary-card">
+            <span>Total Cycles</span>
+
+            <strong id="totalCycles"> 0 </strong>
+          </div>
+
+          <div class="summary-card">
+            <span>Open</span>
+
+            <strong id="openCycles"> 0 </strong>
+          </div>
+
+          <div class="summary-card">
+            <span>Processing</span>
+
+            <strong id="processingCycles"> 0 </strong>
+          </div>
+
+          <div class="summary-card">
+            <span>Processed</span>
+
+            <strong id="processedCycles"> 0 </strong>
+          </div>
+        </section>
+
+        <!-- PAY CYCLE RECORDS -->
+        <section class="records-section">
+          <div class="section-header">
+            <div>
+              <h3>Pay Cycle Records</h3>
+
+              <p>View and manage payroll periods.</p>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Cycle Name</th>
+                  <th>Type</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Pay Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody id="payCycleTableBody">
+                <tr>
+                  <td colspan="8" class="empty-row">Loading pay cycles...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ADD / EDIT MODAL -->
+        <div class="modal" id="payCycleModal" aria-hidden="true">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div>
+                <h3 id="modalTitle">Add Pay Cycle</h3>
+
+                <p>Enter the payroll period information.</p>
+              </div>
+
+              <button type="button" class="close-button" id="closeModalButton">
+                &times;
+              </button>
+            </div>
+
+            <form id="payCycleForm">
+              <input type="hidden" id="payCycleId" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="cycleName"> Cycle Name </label>
+
+                  <input
+                    type="text"
+                    id="cycleName"
+                    maxlength="100"
+                    placeholder="Example: October 1-15, 2026"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="cycleType"> Cycle Type </label>
+
+                  <select id="cycleType" required>
+                    <option value="WEEKLY">Weekly</option>
+
+                    <option value="BI_WEEKLY">Bi-weekly</option>
+
+                    <option value="SEMI_MONTHLY" selected>Semi-monthly</option>
+
+                    <option value="MONTHLY">Monthly</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="startDate"> Start Date </label>
+
+                  <input type="date" id="startDate" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="endDate"> End Date </label>
+
+                  <input type="date" id="endDate" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="payDate"> Pay Date </label>
+
+                  <input type="date" id="payDate" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="status"> Status </label>
+
+                  <select id="status" required>
+                    <option value="OPEN">OPEN</option>
+
+                    <option value="PROCESSING">PROCESSING</option>
+
+                    <option value="PROCESSED">PROCESSED</option>
+
+                    <option value="CLOSED">CLOSED</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="formMessage" class="form-message"></div>
+
+              <div class="modal-actions">
+                <button type="button" class="cancel-button" id="cancelButton">
+                  Cancel
+                </button>
+
+                <button type="submit" class="save-button">
+                  Save Pay Cycle
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/pay-cycles.js"></script>
+  </body>
+</html>

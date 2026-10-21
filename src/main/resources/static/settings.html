@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings - Em-Ployger</title>
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/settings.css" />
+    <script src="/settings.js" defer></script>
+  </head>
+  <body>
+    <div class="app-layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">EP</div>
+          <div>
+            <h1>Em-Ployger</h1>
+            <span>Payroll Management</span>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard.html" class="nav-item"
+            ><span>▦</span> Dashboard</a
+          >
+          <a href="/employees.html" class="nav-item"
+            ><span>♙</span> Employees</a
+          >
+          <a href="/attendance.html" class="nav-item"
+            ><span>◷</span> Attendance</a
+          >
+          <a href="/pay-cycles.html" class="nav-item"
+            ><span>□</span> Pay Cycles</a
+          >
+          <a href="/overtime.html" class="nav-item"><span>↗</span> Overtime</a>
+          <a href="/payroll.html" class="nav-item"><span>₱</span> Payroll</a>
+          <a href="/settings.html" class="nav-item active"
+            ><span>⚙</span> Settings</a
+          >
+        </nav>
+
+        <div class="sidebar-footer">
+          <button type="button" id="logoutButton" class="logout-button">
+            Logout
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content settings-main">
+        <header class="settings-page-header">
+          <div>
+            <h2>System Settings</h2>
+            <p>
+              Manage company information, payroll configuration, and attendance
+              policies.
+            </p>
+          </div>
+          <div class="settings-header-tag">Administrator</div>
+        </header>
+
+        <div
+          id="settingsMessage"
+          class="settings-message"
+          role="status"
+          aria-live="polite"
+        ></div>
+
+        <form id="settingsForm">
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="settings-icon">▣</div>
+              <div>
+                <h3>Company & Application</h3>
+                <p>Basic information displayed throughout Em-Ployger.</p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <div class="setting-field">
+                <label for="application_name">Application Name</label>
+                <input
+                  id="application_name"
+                  name="application_name"
+                  maxlength="100"
+                  required
+                />
+              </div>
+
+              <div class="setting-field">
+                <label for="company_name">Company Name</label>
+                <input
+                  id="company_name"
+                  name="company_name"
+                  maxlength="100"
+                  required
+                />
+              </div>
+
+              <div class="setting-field">
+                <label for="currency_code">Currency Code</label>
+                <select id="currency_code" name="currency_code" required>
+                  <option value="PHP">PHP — Philippine Peso</option>
+                  <option value="USD">USD — US Dollar</option>
+                  <option value="EUR">EUR — Euro</option>
+                  <option value="GBP">GBP — Pound Sterling</option>
+                  <option value="SGD">SGD — Singapore Dollar</option>
+                </select>
+              </div>
+
+              <div class="setting-field">
+                <label for="currency_symbol">Currency Symbol</label>
+                <input
+                  id="currency_symbol"
+                  name="currency_symbol"
+                  maxlength="10"
+                  required
+                />
+                <small>Example: ₱ for PHP.</small>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="settings-icon">₱</div>
+              <div>
+                <h3>Payroll Configuration</h3>
+                <p>Configure salary calculation and overtime defaults.</p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <div class="setting-field">
+                <label for="default_overtime_rate">Overtime Multiplier</label>
+                <input
+                  id="default_overtime_rate"
+                  name="default_overtime_rate"
+                  type="number"
+                  min="0.01"
+                  max="10"
+                  step="0.01"
+                  required
+                />
+                <small>Example: 1.25 means 125% of the hourly rate.</small>
+              </div>
+
+              <div class="setting-field">
+                <label for="factor_rate">Annual Salary Divisor</label>
+                <input
+                  id="factor_rate"
+                  name="factor_rate"
+                  type="number"
+                  min="1"
+                  max="366"
+                  step="1"
+                  required
+                />
+                <small>Currently 261 in your payroll configuration.</small>
+              </div>
+
+              <div class="setting-field">
+                <label for="late_deduction_amount"
+                  >Legacy Late Deduction Amount (₱)</label
+                >
+                <input
+                  id="late_deduction_amount"
+                  name="late_deduction_amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+                <small
+                  >Retained for compatibility. This is not a per-minute late
+                  calculation.</small
+                >
+              </div>
+
+              <div class="setting-field">
+                <label for="absent_deduction_amount"
+                  >Legacy Absence Deduction Amount (₱)</label
+                >
+                <input
+                  id="absent_deduction_amount"
+                  name="absent_deduction_amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+                <small
+                  >Retained for compatibility with the existing settings.</small
+                >
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="settings-icon">◷</div>
+              <div>
+                <h3>Attendance Policies</h3>
+                <p>Set the default work schedule and attendance thresholds.</p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <div class="setting-field">
+                <label for="standard_start_time">Standard Start Time</label>
+                <input
+                  id="standard_start_time"
+                  name="standard_start_time"
+                  type="time"
+                  required
+                />
+              </div>
+
+              <div class="setting-field">
+                <label for="standard_end_time">Standard End Time</label>
+                <input
+                  id="standard_end_time"
+                  name="standard_end_time"
+                  type="time"
+                  required
+                />
+              </div>
+
+              <div class="setting-field">
+                <label for="unpaid_break_minutes">Unpaid Break (minutes)</label>
+                <input
+                  id="unpaid_break_minutes"
+                  name="unpaid_break_minutes"
+                  type="number"
+                  min="0"
+                  max="360"
+                  step="1"
+                  required
+                />
+              </div>
+
+              <div class="setting-field">
+                <label for="regular_hours_per_day">Regular Hours Per Day</label>
+                <input
+                  id="regular_hours_per_day"
+                  name="regular_hours_per_day"
+                  type="number"
+                  min="1"
+                  max="24"
+                  step="0.25"
+                  required
+                />
+              </div>
+
+              <div class="setting-field">
+                <label for="late_grace_period_minutes"
+                  >Late Grace Period (minutes)</label
+                >
+                <input
+                  id="late_grace_period_minutes"
+                  name="late_grace_period_minutes"
+                  type="number"
+                  min="0"
+                  max="120"
+                  step="1"
+                  required
+                />
+                <small>Set to 0 to disable a grace period.</small>
+              </div>
+            </div>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="settings-icon">☾</div>
+              <div>
+                <h3>Night Differential Defaults</h3>
+                <p>
+                  Configure the default night-work time window and multiplier.
+                </p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <div class="setting-field">
+                <label for="night_differential_rate"
+                  >Night Differential Rate</label
+                >
+                <input
+                  id="night_differential_rate"
+                  name="night_differential_rate"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.01"
+                  required
+                />
+                <small>0.10 represents an additional 10%.</small>
+              </div>
+
+              <div class="setting-field">
+                <label for="night_differential_start"
+                  >Night Differential Starts</label
+                >
+                <input
+                  id="night_differential_start"
+                  name="night_differential_start"
+                  type="time"
+                  required
+                />
+              </div>
+
+              <div class="setting-field">
+                <label for="night_differential_end"
+                  >Night Differential Ends</label
+                >
+                <input
+                  id="night_differential_end"
+                  name="night_differential_end"
+                  type="time"
+                  required
+                />
+              </div>
+            </div>
+
+            <p class="settings-note">
+              These are stored configuration defaults. The payroll calculation
+              service must be connected to each policy before changes affect
+              calculated payroll.
+            </p>
+          </section>
+
+          <div class="settings-actions">
+            <button
+              type="button"
+              id="reloadSettingsButton"
+              class="settings-secondary-button"
+            >
+              Reload Saved Values
+            </button>
+            <button
+              type="submit"
+              id="saveSettingsButton"
+              class="settings-save-button"
+            >
+              Save Settings
+            </button>
+          </div>
+        </form>
+
+        <footer class="settings-footer">
+          Em-Ployger · System Configuration
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

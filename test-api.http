@@ -1,0 +1,35 @@
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "admin123"
+}
+
+### Create Weekly Pay Cycle
+POST http://localhost:8080/api/pay-cycles
+Content-Type: application/json
+
+{
+    "cycleName": "October 1-7, 2026",
+    "startDate": "2026-10-01",
+    "endDate": "2026-10-07",
+    "payDate": "2026-10-10",
+    "cycleType": "WEEKLY",
+    "status": "OPEN"
+}
+
+### Update Pay Cycle #2 to Monthly
+PUT http://localhost:8080/api/pay-cycles/2
+Content-Type: application/json
+
+{
+    "cycleName": "October 2026",
+    "startDate": "2026-10-01",
+    "endDate": "2026-10-31",
+    "payDate": "2026-11-05",
+    "cycleType": "MONTHLY",
+    "status": "OPEN"
+}
+
+http://localhost:8080/api/payroll-calculation/employee/35

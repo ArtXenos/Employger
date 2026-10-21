@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Overtime Management - Em-Ployger</title>
+
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/overtime.css" />
+  </head>
+
+  <body>
+    <div class="app-container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">EP</div>
+
+          <div>
+            <h2>Em-Ployger</h2>
+            <span>Payroll Management</span>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard.html" class="nav-item">
+            <span>▦</span>
+            Dashboard
+          </a>
+
+          <a href="/employees.html" class="nav-item">
+            <span>♙</span>
+            Employees
+          </a>
+
+          <a href="/attendance.html" class="nav-item">
+            <span>◷</span>
+            Attendance
+          </a>
+
+          <a href="/pay-cycles.html" class="nav-item">
+            <span>□</span>
+            Pay Cycles
+          </a>
+
+          <a href="/overtime.html" class="nav-item active">
+            <span>↗</span>
+            Overtime
+          </a>
+
+          <a href="/payroll.html" class="nav-item">
+            <span>₱</span>
+            Payroll
+          </a>
+
+          <a href="/settings.html" class="nav-item">
+            <span>⚙</span>
+            Settings
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="logoutButton" class="logout-button">Logout</button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <header class="page-header">
+          <div>
+            <h1>Overtime Management</h1>
+
+            <p>
+              Manage employee overtime requests, rates, approvals, and overtime
+              payments.
+            </p>
+          </div>
+
+          <button id="addOvertimeButton" class="primary-button">
+            + Add Overtime
+          </button>
+        </header>
+
+                <!-- Summary Cards -->
+        <section class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-label">Total Records</div>
+            <div id="totalRecords" class="summary-value">0</div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-label">Pending</div>
+            <div id="pendingRecords" class="summary-value">0</div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-label">Approved</div>
+            <div id="approvedRecords" class="summary-value">0</div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-label">Rejected</div>
+            <div id="rejectedCount" class="summary-value">0</div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-label">Total OT Hours</div>
+            <div id="totalHours" class="summary-value">0.00</div>
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-label">Approved OT Pay</div>
+            <div id="approvedAmount" class="summary-value">₱0.00</div>
+          </div>
+        </section>
+
+        <!-- Filters -->
+        <section class="filter-card">
+          <div class="filter-group">
+            <label for="employeeFilter"> Employee </label>
+
+            <select id="employeeFilter">
+              <option value="">All Employees</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="statusFilter"> Status </label>
+
+            <select id="statusFilter">
+              <option value="">All Statuses</option>
+
+              <option value="PENDING">Pending</option>
+
+              <option value="APPROVED">Approved</option>
+
+              <option value="REJECTED">Rejected</option>
+            </select>
+          </div>
+
+          <button id="clearFiltersButton" class="secondary-button">
+            Clear Filters
+          </button>
+        </section>
+
+        <!-- Overtime Table -->
+        <section class="table-card">
+          <div class="table-header">
+            <div>
+              <h2>Overtime Records</h2>
+
+              <p>Overtime records and approval status.</p>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Employee</th>
+                  <th>Date</th>
+                  <th>Hours</th>
+                  <th>OT Rate</th>
+                  <th>OT Amount</th>
+                  <th>Status</th>
+                  <th>Approved By</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody id="overtimeTableBody">
+                <tr>
+                  <td colspan="9" class="empty-state">
+                    Loading overtime records...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Overtime Modal -->
+    <div id="overtimeModal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <h2 id="modalTitle">Add Overtime</h2>
+
+            <p>Enter the overtime details below.</p>
+          </div>
+
+          <button id="closeModalButton" class="close-button">×</button>
+        </div>
+
+        <form id="overtimeForm">
+          <input type="hidden" id="overtimeId" />
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="employeeSelect"> Employee </label>
+
+              <select id="employeeSelect" required>
+                <option value="">Select employee</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="attendanceSelect"> Attendance Record </label>
+
+              <select id="attendanceSelect">
+                <option value="">No attendance record</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="overtimeDate"> Overtime Date </label>
+
+              <input type="date" id="overtimeDate" required />
+            </div>
+
+            <div class="form-group">
+              <label for="overtimeHours"> Overtime Hours </label>
+
+              <input
+                type="number"
+                id="overtimeHours"
+                min="0.01"
+                max="24"
+                step="0.01"
+                placeholder="Example: 2.00"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="calculation-preview">
+            <div>
+              <span>Overtime Rate</span>
+              <strong id="previewRate">₱0.00</strong>
+            </div>
+
+            <div>
+              <span>Estimated Overtime Pay</span>
+              <strong id="previewAmount">₱0.00</strong>
+            </div>
+          </div>
+
+          <p class="form-note">
+            The overtime rate and overtime amount are calculated by the backend
+            using the employee's salary and the configured overtime multiplier.
+          </p>
+
+          <div id="formMessage" class="form-message"></div>
+
+          <div class="modal-actions">
+            <button type="button" id="cancelButton" class="secondary-button">
+              Cancel
+            </button>
+
+            <button type="submit" class="primary-button">Save Overtime</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="/overtime.js"></script>
+  </body>
+</html>

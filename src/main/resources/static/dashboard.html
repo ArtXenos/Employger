@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Em-Ployger Dashboard</title>
+    <link rel="stylesheet" href="/dashboard.css" />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <aside class="sidebar">
+        <a
+          class="brand"
+          href="/dashboard.html"
+          aria-label="Em-Ployger dashboard"
+        >
+          <div class="brand-logo">EP</div>
+          <div class="brand-copy">
+            <h1>Em-Ployger</h1>
+            <span>Payroll Management</span>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav" aria-label="Main navigation">
+          <a href="/dashboard.html" class="nav-item active"
+            ><span aria-hidden="true">▦</span>Dashboard</a
+          >
+          <a href="/employees.html" class="nav-item"
+            ><span aria-hidden="true">♙</span>Employees</a
+          >
+          <a href="/attendance.html" class="nav-item"
+            ><span aria-hidden="true">◷</span>Attendance</a
+          >
+          <a href="/pay-cycles.html" class="nav-item"
+            ><span aria-hidden="true">□</span>Pay Cycles</a
+          >
+          <a href="/overtime.html" class="nav-item"
+            ><span aria-hidden="true">↗</span>Overtime</a
+          >
+          <a href="/payroll.html" class="nav-item"
+            ><span aria-hidden="true">₱</span>Payroll</a
+          >
+          <a href="/settings.html" class="nav-item"
+            ><span aria-hidden="true">⚙</span>Settings</a
+          >
+        </nav>
+
+        <button id="logoutButton" class="logout-button" type="button">
+          Logout
+        </button>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <h2>Dashboard</h2>
+            <p>Overview of your employee payroll system</p>
+          </div>
+          <div class="user-info">
+            <div class="user-avatar" id="userAvatar">A</div>
+            <div class="user-copy">
+              <strong id="currentUsername">Admin</strong>
+              <span id="currentUserRole">Administrator</span>
+            </div>
+          </div>
+        </header>
+
+        <div class="dashboard-content">
+          <section class="welcome-card">
+            <div>
+              <p class="eyebrow">EMPLOYEE PAYROLL MANAGEMENT SYSTEM</p>
+              <h2>Welcome to Em-Ployger</h2>
+              <p>
+                Manage employees, attendance, overtime, pay cycles, payroll, and
+                payslips in one place.
+              </p>
+            </div>
+            <a class="welcome-link" href="/payroll.html"
+              >Open Payroll <span aria-hidden="true">→</span></a
+            >
+          </section>
+
+          <section class="summary-grid" aria-label="Dashboard summary">
+            <article class="summary-card">
+              <div class="summary-icon">♙</div>
+              <div>
+                <span>Total Employees</span><strong id="employeeCount">—</strong
+                ><small>Employee records</small>
+              </div>
+            </article>
+            <article class="summary-card">
+              <div class="summary-icon">◷</div>
+              <div>
+                <span>Today's Attendance</span
+                ><strong id="attendanceCount">—</strong
+                ><small>Records for today</small>
+              </div>
+            </article>
+            <article class="summary-card">
+              <div class="summary-icon">₱</div>
+              <div>
+                <span>Current Payroll</span
+                ><strong id="payrollAmount">₱0.00</strong
+                ><small>Total net pay in records</small>
+              </div>
+            </article>
+            <article class="summary-card">
+              <div class="summary-icon">↗</div>
+              <div>
+                <span>Overtime Hours</span
+                ><strong id="overtimeHours">0.00</strong
+                ><small>Approved overtime</small>
+              </div>
+            </article>
+          </section>
+
+          <section class="section-card">
+            <div class="section-header">
+              <div>
+                <h2>Quick Actions</h2>
+                <p>Go directly to a commonly used module.</p>
+              </div>
+            </div>
+            <div class="quick-actions">
+              <a class="action-button" href="/employees.html"
+                ><span>♙</span><strong>Employees</strong
+                ><small>Manage employee records</small
+                ><span class="action-arrow">→</span></a
+              >
+              <a class="action-button" href="/attendance.html"
+                ><span>◷</span><strong>Attendance</strong
+                ><small>Track work hours and attendance</small
+                ><span class="action-arrow">→</span></a
+              >
+              <a class="action-button" href="/payroll.html"
+                ><span>₱</span><strong>Payroll</strong
+                ><small>Review payroll and payments</small
+                ><span class="action-arrow">→</span></a
+              >
+              <a class="action-button" href="/payroll.html"
+                ><span>▣</span><strong>Payslips</strong
+                ><small>Open paid payroll to view payslips</small
+                ><span class="action-arrow">→</span></a
+              >
+            </div>
+          </section>
+
+          <p
+            id="dashboardMessage"
+            class="dashboard-message"
+            role="status"
+            aria-live="polite"
+          ></p>
+        </div>
+      </main>
+    </div>
+    <script src="/dashboard.js" defer></script>
+  </body>
+</html>

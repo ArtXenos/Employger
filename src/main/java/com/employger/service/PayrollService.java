@@ -249,6 +249,8 @@ public class PayrollService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Pay cycle not found"));
 
+                ensureEligibleForPayroll(employee, payCycle);
+
                 if (payrollRepository
                                 .findByEmployeeEmployeeIdAndPayCyclePayCycleId(
                                                 employeeId,
@@ -276,6 +278,34 @@ public class PayrollService {
                 applyCalculatedAmounts(payroll);
 
                 return payrollRepository.save(payroll);
+        }
+
+        private void ensureEligibleForPayroll(
+                        Employee employee,
+                        PayCycle payCycle) {
+
+                if (payCycle.getStatus() == PayCycle.Status.PROCESSED
+                                || payCycle.getStatus() == PayCycle.Status.CLOSED) {
+
+                        throw new IllegalStateException(
+                                        "Pay cycle \"" + payCycle.getCycleName() + "\" is "
+                                                        + payCycle.getStatus()
+                                                        + ". Payroll can only be generated for OPEN or PROCESSING pay cycles.");
+                }
+
+                if (employee.getEmploymentStatus() != Employee.EmploymentStatus.ACTIVE) {
+                        throw new IllegalStateException(
+                                        "Payroll can only be generated for ACTIVE employees.");
+                }
+
+                if (employee.getDateHired() != null
+                                && employee.getDateHired().isAfter(payCycle.getEndDate())) {
+
+                        throw new IllegalStateException(
+                                        "The employee was hired on " + employee.getDateHired()
+                                                        + ", after this pay cycle ends ("
+                                                        + payCycle.getEndDate() + ").");
+                }
         }
 
         /*

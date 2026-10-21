@@ -3,6 +3,7 @@ package com.employger.service;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.PayCycle;
 import com.employger.repository.PayCycleRepository;
+import com.employger.repository.PayrollRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -14,9 +15,13 @@ import java.util.Optional;
 public class PayCycleService {
 
         private final PayCycleRepository payCycleRepository;
+        private final PayrollRepository payrollRepository;
 
-        public PayCycleService(PayCycleRepository payCycleRepository) {
+        public PayCycleService(
+                        PayCycleRepository payCycleRepository,
+                        PayrollRepository payrollRepository) {
                 this.payCycleRepository = payCycleRepository;
+                this.payrollRepository = payrollRepository;
         }
 
         public List<PayCycle> getAllPayCycles() {
@@ -49,6 +54,22 @@ public class PayCycleService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Pay cycle not found"));
 
+                // Dates and type decide which attendance and overtime a
+                // payroll includes and how base pay is computed, so they
+                // are frozen once any payroll belongs to the cycle.
+                boolean calculationInputsChanged =
+                                !payCycle.getStartDate().equals(payCycleDetails.getStartDate())
+                                                || !payCycle.getEndDate().equals(payCycleDetails.getEndDate())
+                                                || payCycle.getCycleType() != payCycleDetails.getCycleType();
+
+                if (calculationInputsChanged
+                                && payrollRepository.existsByPayCyclePayCycleId(id)) {
+
+                        throw new IllegalStateException(
+                                        "This pay cycle already has payroll records, so its dates and "
+                                                        + "cycle type cannot be changed. Create a new pay cycle instead.");
+                }
+
                 payCycle.setCycleName(
                                 payCycleDetails.getCycleName());
 
@@ -61,8 +82,10 @@ public class PayCycleService {
                 payCycle.setPayDate(
                                 payCycleDetails.getPayDate());
 
-                payCycle.setStatus(
-                                payCycleDetails.getStatus());
+                if (payCycleDetails.getStatus() != null) {
+                        payCycle.setStatus(
+                                        payCycleDetails.getStatus());
+                }
 
                 payCycle.setCycleType(
                                 payCycleDetails.getCycleType());
@@ -75,6 +98,11 @@ public class PayCycleService {
                 if (!payCycleRepository.existsById(id)) {
                         throw new ResourceNotFoundException(
                                         "Pay cycle not found");
+                }
+
+                if (payrollRepository.existsByPayCyclePayCycleId(id)) {
+                        throw new IllegalStateException(
+                                        "This pay cycle has payroll records and cannot be deleted.");
                 }
 
                 payCycleRepository.deleteById(id);

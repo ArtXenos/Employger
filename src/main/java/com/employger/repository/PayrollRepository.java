@@ -21,6 +21,8 @@ public interface PayrollRepository
 
     boolean existsByEmployeeEmployeeId(Integer employeeId);
 
+    boolean existsByPayCyclePayCycleId(Integer payCycleId);
+
     // Payroll for the employee whose pay cycle shares at least one day
     // with the range [startDate, endDate].
     List<Payroll> findByEmployeeEmployeeIdAndPayCycleStartDateLessThanEqualAndPayCycleEndDateGreaterThanEqual(

@@ -207,6 +207,47 @@ class PayrollServiceTest {
         assertThat(processed.getProcessedAt()).isNotNull();
     }
 
+    // ---------- eligibility ----------
+
+    @Test
+    void createPayroll_rejectsClosedOrProcessedPayCycle() {
+        firstHalf.setStatus(PayCycle.Status.CLOSED);
+
+        assertThatThrownBy(() -> payrollService.createPayroll(35, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CLOSED");
+
+        firstHalf.setStatus(PayCycle.Status.PROCESSED);
+
+        assertThatThrownBy(() -> payrollService.createPayroll(35, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("PROCESSED");
+
+        verify(payrollRepository, never()).save(any());
+    }
+
+    @Test
+    void createPayroll_rejectsInactiveEmployee() {
+        employee.setEmploymentStatus(Employee.EmploymentStatus.INACTIVE);
+
+        assertThatThrownBy(() -> payrollService.createPayroll(35, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ACTIVE");
+
+        verify(payrollRepository, never()).save(any());
+    }
+
+    @Test
+    void createPayroll_rejectsEmployeeHiredAfterCycleEnds() {
+        employee.setDateHired(LocalDate.of(2026, 10, 16));
+
+        assertThatThrownBy(() -> payrollService.createPayroll(35, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("hired");
+
+        verify(payrollRepository, never()).save(any());
+    }
+
     // ---------- lifecycle ----------
 
     @Test

@@ -345,19 +345,10 @@ async function savePayCycle(event) {
     }
 
     if (!response.ok) {
-      let message = "Unable to save pay cycle.";
+      // The server explains validation and conflict errors in plain text.
+      const errorText = (await response.text()).trim();
 
-      try {
-        const errorData = await response.json();
-
-        if (errorData.message) {
-          message = errorData.message;
-        }
-      } catch (error) {
-        // Use default message.
-      }
-
-      throw new Error(message);
+      throw new Error(errorText || "Unable to save pay cycle.");
     }
 
     showMessage(
@@ -481,7 +472,9 @@ async function deletePayCycle(id) {
     }
 
     if (!response.ok) {
-      throw new Error("Unable to delete pay cycle.");
+      const errorText = (await response.text()).trim();
+
+      throw new Error(errorText || "Unable to delete pay cycle.");
     }
 
     await loadPayCycles();

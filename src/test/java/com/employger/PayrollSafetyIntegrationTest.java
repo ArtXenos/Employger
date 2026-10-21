@@ -184,6 +184,45 @@ class PayrollSafetyIntegrationTest {
                 .andExpect(jsonPath("$.processedBy.username").value("hr"));
     }
 
+    // ---------- pay cycles with payroll ----------
+
+    @Test
+    @WithMockUser(username = "hr", roles = "HR_MANAGER")
+    void payCycleWithPayrollCannotChangeDatesOrBeDeleted() throws Exception {
+        Integer id = firstHalf.getPayCycleId();
+
+        mockMvc.perform(put("/api/pay-cycles/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"cycleName": "October 16-31, 2026", "startDate": "2026-10-16",
+                                 "endDate": "2026-10-31", "payDate": "2026-10-31",
+                                 "cycleType": "SEMI_MONTHLY", "status": "OPEN"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(content().string(containsString("cannot be changed")));
+
+        mockMvc.perform(delete("/api/pay-cycles/{id}", id))
+                .andExpect(status().isConflict());
+
+        PayCycle stored = payCycleRepository.findById(id).orElseThrow();
+        assertThat(stored.getStartDate()).isEqualTo(LocalDate.of(2026, 10, 1));
+    }
+
+    @Test
+    @WithMockUser(username = "hr", roles = "HR_MANAGER")
+    void payCycleWithPayrollCanStillBeRenamed() throws Exception {
+        mockMvc.perform(put("/api/pay-cycles/{id}", firstHalf.getPayCycleId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"cycleName": "Oct 1-15 (renamed)", "startDate": "2026-10-01",
+                                 "endDate": "2026-10-15", "payDate": "2026-10-15",
+                                 "cycleType": "SEMI_MONTHLY", "status": "PROCESSED"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cycleName").value("Oct 1-15 (renamed)"))
+                .andExpect(jsonPath("$.status").value("PROCESSED"));
+    }
+
     // ---------- employee deletion ----------
 
     @Test

@@ -21,15 +21,26 @@ Every finding below is labelled **Confirmed** (reproduced from code, live data, 
 | 2026-10-21 | C-04 employee delete blocked when payroll exists (app guard; FK change still pending) | Done, tested | `d8b4076` |
 | 2026-10-21 | C-05 payslips restricted to ADMINISTRATOR/HR_MANAGER | Done, tested | `d8b4076` |
 | 2026-10-21 | H-06 actor from session | Done, tested | `d8b4076` |
-| 2026-10-21 | Backup script and recovery guide (`docs/BACKUP_AND_RECOVERY.md`) | Done (script syntax-checked, not executed) | see git log |
+| 2026-10-21 | Backup script and recovery guide (`docs/BACKUP_AND_RECOVERY.md`) | Done (script syntax-checked, not executed) | `a096ac0` |
+| 2026-10-21 | H-01 stored XSS escaped on Employees/Attendance | Done (helper unit-checked with Node; no browser test) | `9ab6ec4` |
+| 2026-10-21 | H-04 login 401/503/400, timeout, button recovery; M-01 error handler; M-03 session ID rotation | Done, tested; 401/400 verified live | `d68b781` |
+| 2026-10-21 | H-05 eligibility (cycle status, ACTIVE, hire date); M-09 pay-cycle guards | Done, tested | `86357e2` |
+| 2026-10-21 | H-02 overtime rules; locked days for PROCESSED/PAID payroll; attendance validation | Done, tested | `209cba4` |
+| 2026-10-21 | H-07 audit trail (existing `audit_logs` table) | Done, tested; mapping validated against `employger_db` | `e6bf403` |
+| 2026-10-21 | H-08 env-based DB credentials, least-privilege account script, 10 s connection timeout | Done (defaults unchanged; account not created; needs your password) | see git log |
+| — | H-07 payroll calculation snapshot columns, `overtime.payroll_id` | **Pending approval** (schema change) | — |
+| — | C-04 change cascade FKs to RESTRICT | **Pending approval** (schema change) | — |
+| — | Strict `sql_mode` | Pending (test on restored copy first) | — |
+
+**Behaviour now in effect (after restart):** days covered by a PROCESSED or PAID payroll are locked for that employee. For employee 35, attendance and overtime for Oct 1–15 can no longer change, and pending overtime #12 (Oct 3) can only be rejected, since #6 already paid those days. Overtime amounts are recalculated at approval. Pending overtime #13 (₱5.18/h, computed under an older 1.5 multiplier) will be approved at the current 1.25 rate.
 
 **Decision recorded (2026-10-21):** an employee may never have payroll in two pay cycles whose dates overlap. For a pay-frequency change, the old cycle must end before the new one starts, and any transition adjustment is made explicitly.
 
 **Existing records left untouched by decision:** DRAFT payroll #7 (overlaps PAID #6) can no longer be processed or paid; an HR user may delete it from the Payroll page. The overtime anomalies paid in #6 remain as recorded.
 
-**Tests:** 20 run, 20 pass (`mvnw test`). Run against the pre-fix code, 7 of the 8 new integration tests fail, confirming they detect the original defects.
+**Tests:** 46 run, 46 pass (`mvnw test`, in-memory H2). Run against the pre-fix code, 7 of the first 8 integration tests fail, confirming they detect the original defects.
 
-**API behaviour changes:** duplicate payroll create now returns 409 (was 400). Lifecycle and overlap conflicts return 409 with a plain-text reason. `PUT /api/payroll/{id}` ignores its body and recalculates. `userId` query parameters on process and payslip generation are ignored.
+**API behaviour changes:** errors are now plain text with accurate codes: 400 invalid input, 401 bad login, 404 missing record, 409 lifecycle/overlap/locked-day/duplicate conflicts, 503 database unavailable (previously 403/404 with empty bodies). `PUT /api/payroll/{id}` ignores its body and recalculates. `userId` query parameters on process and payslip generation are ignored. New `GET /api/audit-logs` (ADMINISTRATOR).
 
 ---
 

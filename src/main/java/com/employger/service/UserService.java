@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.dto.CreateUserRequest;
 import com.employger.entity.Employee;
 import com.employger.entity.User;
@@ -62,7 +63,7 @@ public class UserService {
 
             Employee employee = employeeRepository
                     .findById(request.getEmployeeId())
-                    .orElseThrow(() -> new RuntimeException(
+                    .orElseThrow(() -> new ResourceNotFoundException(
                             "Employee not found"));
 
             user.setEmployee(employee);
@@ -75,7 +76,7 @@ public class UserService {
 
     User user = userRepository.findById(id)
             .orElseThrow(() ->
-                    new RuntimeException("User not found")
+                    new ResourceNotFoundException("User not found")
             );
 
     if (request.getEmployeeId() != null) {
@@ -83,7 +84,7 @@ public class UserService {
         Employee employee = employeeRepository
                 .findById(request.getEmployeeId())
                 .orElseThrow(() ->
-                        new RuntimeException("Employee not found")
+                        new ResourceNotFoundException("Employee not found")
                 );
 
         user.setEmployee(employee);
@@ -114,7 +115,7 @@ public class UserService {
     public void deleteUser(Integer id) {
 
         if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found");
+            throw new ResourceNotFoundException("User not found");
         }
 
         userRepository.deleteById(id);
@@ -123,7 +124,7 @@ public class UserService {
     public void updateLastLogin(String username) {
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         user.setLastLogin(java.time.LocalDateTime.now());
 

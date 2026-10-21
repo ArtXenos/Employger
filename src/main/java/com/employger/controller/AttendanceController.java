@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Attendance;
 import com.employger.service.AttendanceService;
 import org.springframework.http.ResponseEntity;
@@ -54,7 +55,7 @@ public class AttendanceController {
 
             return ResponseEntity.ok(savedAttendance);
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -74,7 +75,7 @@ public class AttendanceController {
 
             return ResponseEntity.ok(updatedAttendance);
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -87,7 +88,7 @@ public class AttendanceController {
             attendanceService.deleteAttendance(id);
             return ResponseEntity.noContent().build();
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

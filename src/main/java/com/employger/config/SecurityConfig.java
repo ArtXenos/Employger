@@ -65,6 +65,11 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/auth/**")
                                                 .permitAll()
 
+                                                // Spring Boot's error page. Without this, any server
+                                                // error is replaced by an empty 403 response.
+                                                .requestMatchers("/error")
+                                                .permitAll()
+
                                                 // User account management
                                                 .requestMatchers("/api/users/**")
                                                 .hasRole("ADMINISTRATOR")

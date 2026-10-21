@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Payslip;
 import com.employger.service.PayslipService;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +34,7 @@ public class PayslipController {
             return ResponseEntity.ok(
                     payslipService.getPayslipById(id));
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -47,7 +48,7 @@ public class PayslipController {
                     payslipService
                             .getPayslipByPayrollId(payrollId));
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -66,10 +67,7 @@ public class PayslipController {
 
             return ResponseEntity.ok(payslip);
 
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -83,7 +81,7 @@ public class PayslipController {
 
             return ResponseEntity.noContent().build();
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

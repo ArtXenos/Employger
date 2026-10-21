@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.PayCycle;
 import com.employger.service.PayCycleService;
 import org.springframework.http.ResponseEntity;
@@ -37,14 +38,11 @@ public class PayCycleController {
     public ResponseEntity<PayCycle> createPayCycle(
             @RequestBody PayCycle payCycle) {
 
-        try {
-            PayCycle savedPayCycle = payCycleService.createPayCycle(payCycle);
+        // Validation errors are returned as 400 with their message by
+        // ApiExceptionHandler.
+        PayCycle savedPayCycle = payCycleService.createPayCycle(payCycle);
 
-            return ResponseEntity.ok(savedPayCycle);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        return ResponseEntity.ok(savedPayCycle);
     }
 
     @PutMapping("/{id}")
@@ -59,10 +57,7 @@ public class PayCycleController {
 
             return ResponseEntity.ok(updatedPayCycle);
 
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -76,7 +71,7 @@ public class PayCycleController {
 
             return ResponseEntity.noContent().build();
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

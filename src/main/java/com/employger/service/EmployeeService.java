@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Employee;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayrollRepository;
@@ -44,7 +45,7 @@ public class EmployeeService {
     public Employee updateEmployee(Integer id, Employee employeeDetails) {
 
         Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
         employee.setFirstName(employeeDetails.getFirstName());
         employee.setLastName(employeeDetails.getLastName());
@@ -69,7 +70,7 @@ public class EmployeeService {
     public void deleteEmployee(Integer id) {
 
         if (!employeeRepository.existsById(id)) {
-            throw new RuntimeException("Employee not found");
+            throw new ResourceNotFoundException("Employee not found");
         }
 
         // The database cascades an employee delete to attendance,

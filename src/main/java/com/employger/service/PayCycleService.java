@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.PayCycle;
 import com.employger.repository.PayCycleRepository;
 import org.springframework.stereotype.Service;
@@ -45,7 +46,7 @@ public class PayCycleService {
 
                 PayCycle payCycle = payCycleRepository
                                 .findById(id)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Pay cycle not found"));
 
                 payCycle.setCycleName(
@@ -72,7 +73,7 @@ public class PayCycleService {
         public void deletePayCycle(Integer id) {
 
                 if (!payCycleRepository.existsById(id)) {
-                        throw new RuntimeException(
+                        throw new ResourceNotFoundException(
                                         "Pay cycle not found");
                 }
 

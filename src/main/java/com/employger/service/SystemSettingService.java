@@ -1,6 +1,7 @@
 
 package com.employger.service;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.SystemSetting;
 import com.employger.repository.SystemSettingRepository;
 import org.springframework.stereotype.Service;
@@ -69,7 +70,7 @@ public class SystemSettingService {
 
         SystemSetting setting = systemSettingRepository
                 .findBySettingName(settingName)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Setting not found: " + settingName));
 
         setting.setSettingValue(settingValue.trim());
@@ -81,8 +82,8 @@ public class SystemSettingService {
         return systemSettingRepository
                 .findBySettingName(settingName)
                 .map(SystemSetting::getSettingValue)
-                .orElseThrow(() -> new RuntimeException(
-                        "System setting not found: " + settingName));
+                .orElseThrow(() -> new IllegalStateException(
+                        "System setting is not configured: " + settingName));
     }
 
     private void validateSetting(String name, String value) {

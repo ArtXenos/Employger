@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Employee;
 import com.employger.repository.EmployeeRepository;
 import com.employger.service.PayrollCalculationService;
@@ -31,7 +32,7 @@ public class PayrollCalculationController {
 
                 Employee employee = employeeRepository
                                 .findById(employeeId)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Employee not found"));
 
                 BigDecimal annualSalary = payrollCalculationService

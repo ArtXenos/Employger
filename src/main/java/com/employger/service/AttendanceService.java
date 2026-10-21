@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.repository.AttendanceRepository;
@@ -44,7 +45,7 @@ public class AttendanceService {
         Employee employee = employeeRepository
                 .findById(employeeId)
                 .orElseThrow(() ->
-                        new RuntimeException("Employee not found"));
+                        new ResourceNotFoundException("Employee not found"));
 
         // Never trust a client-supplied ID: save() would otherwise
         // overwrite the existing attendance record with that ID.
@@ -62,12 +63,12 @@ public class AttendanceService {
         Attendance attendance = attendanceRepository
                 .findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Attendance not found"));
+                        new ResourceNotFoundException("Attendance not found"));
 
         Employee employee = employeeRepository
                 .findById(employeeId)
                 .orElseThrow(() ->
-                        new RuntimeException("Employee not found"));
+                        new ResourceNotFoundException("Employee not found"));
 
         attendance.setEmployee(employee);
         attendance.setAttendanceDate(
@@ -89,7 +90,7 @@ public class AttendanceService {
     public void deleteAttendance(Integer id) {
 
         if (!attendanceRepository.existsById(id)) {
-            throw new RuntimeException("Attendance not found");
+            throw new ResourceNotFoundException("Attendance not found");
         }
 
         attendanceRepository.deleteById(id);

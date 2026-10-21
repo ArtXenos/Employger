@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Payroll;
 import com.employger.entity.Payslip;
 import com.employger.entity.User;
@@ -34,13 +35,13 @@ public class PayslipService {
 
     public Payslip getPayslipById(Integer id) {
         return payslipRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Payslip not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Payslip not found"));
     }
 
     public Payslip getPayslipByPayrollId(Integer payrollId) {
         return payslipRepository
                 .findByPayrollPayrollId(payrollId)
-                .orElseThrow(() -> new RuntimeException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Payslip not found for payroll"));
     }
 
@@ -49,10 +50,10 @@ public class PayslipService {
             String username) {
 
         Payroll payroll = payrollRepository.findById(payrollId)
-                .orElseThrow(() -> new RuntimeException("Payroll not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
 
         if (payroll.getStatus() != Payroll.Status.PAID) {
-            throw new IllegalArgumentException(
+            throw new IllegalStateException(
                     "Payslip can only be generated for PAID payroll");
         }
 
@@ -60,12 +61,12 @@ public class PayslipService {
                 .findByPayrollPayrollId(payrollId)
                 .isPresent()) {
 
-            throw new IllegalArgumentException(
+            throw new IllegalStateException(
                     "A payslip already exists for this payroll");
         }
 
         User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Payslip payslip = new Payslip();
 
@@ -79,7 +80,7 @@ public class PayslipService {
     public void deletePayslip(Integer id) {
 
         if (!payslipRepository.existsById(id)) {
-            throw new RuntimeException("Payslip not found");
+            throw new ResourceNotFoundException("Payslip not found");
         }
 
         payslipRepository.deleteById(id);

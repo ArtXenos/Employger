@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Employee;
 import com.employger.service.EmployeeService;
 import org.springframework.http.HttpStatus;
@@ -54,7 +55,7 @@ public class EmployeeController {
 
             return ResponseEntity.ok(updatedEmployee);
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -71,7 +72,7 @@ public class EmployeeController {
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

@@ -2,6 +2,10 @@ const loginForm = document.getElementById("loginForm");
 const loginButton = document.getElementById("loginButton");
 const loginMessage = document.getElementById("loginMessage");
 
+// Give up on a login request that has not answered within this time, so
+// the button can never stay stuck on "Logging in...".
+const LOGIN_TIMEOUT_MS = 15000;
+
 loginForm.addEventListener("submit", async function (event) {
 
     event.preventDefault();
@@ -17,6 +21,11 @@ loginForm.addEventListener("submit", async function (event) {
 
     loginMessage.textContent = "";
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LOGIN_TIMEOUT_MS);
+
+    let redirecting = false;
+
     try {
 
         const response = await fetch("/api/auth/login", {
@@ -29,6 +38,8 @@ loginForm.addEventListener("submit", async function (event) {
 
             credentials: "same-origin",
 
+            signal: controller.signal,
+
             body: JSON.stringify({
                 username: username,
                 password: password
@@ -36,39 +47,69 @@ loginForm.addEventListener("submit", async function (event) {
 
         });
 
-        const message = await response.text();
-
         if (response.ok) {
 
-            loginMessage.textContent =
-                "Login successful. Redirecting...";
+            showLoginMessage("Login successful. Redirecting...", "#16a34a");
 
-            loginMessage.style.color = "#16a34a";
+            redirecting = true;
 
             window.location.href = "dashboard.html";
 
-        } else {
-
-            loginMessage.textContent =
-                message || "Invalid username or password.";
-
-            loginMessage.style.color = "#dc2626";
-
-            loginButton.disabled = false;
-            loginButton.textContent = "Login";
+            return;
         }
+
+        showLoginMessage(await describeLoginFailure(response), "#dc2626");
 
     } catch (error) {
 
         console.error("Login error:", error);
 
-        loginMessage.textContent =
-            "Unable to connect to the server.";
+        if (error.name === "AbortError") {
+            showLoginMessage(
+                "The server took too long to respond. Please try again.",
+                "#dc2626");
+        } else {
+            showLoginMessage(
+                "Unable to connect to the server. Check that Em-Ployger is running.",
+                "#dc2626");
+        }
 
-        loginMessage.style.color = "#dc2626";
+    } finally {
 
-        loginButton.disabled = false;
-        loginButton.textContent = "Login";
+        clearTimeout(timeoutId);
+
+        if (!redirecting) {
+            loginButton.disabled = false;
+            loginButton.textContent = "Login";
+        }
     }
 
 });
+
+async function describeLoginFailure(response) {
+
+    // 401 and 503 carry a short, user-safe plain-text message from the server.
+    if (response.status === 401 || response.status === 503) {
+        const message = (await response.text()).trim();
+
+        if (message) {
+            return message;
+        }
+    }
+
+    if (response.status === 401) {
+        return "Invalid username or password.";
+    }
+
+    if (response.status === 503) {
+        return "Login is temporarily unavailable. Please try again later.";
+    }
+
+    return "Login failed because of a server error (HTTP "
+        + response.status + "). Please try again or contact the administrator.";
+}
+
+function showLoginMessage(text, color) {
+    loginMessage.textContent = text;
+    loginMessage.style.color = color;
+}

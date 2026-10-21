@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Employee;
 import com.employger.entity.PayCycle;
 import com.employger.entity.Payroll;
@@ -95,10 +96,10 @@ public class PayrollService {
                         Integer payCycleId) {
 
                 Employee employee = employeeRepository.findById(employeeId)
-                                .orElseThrow(() -> new RuntimeException("Employee not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
 
                 PayCycle payCycle = payCycleRepository.findById(payCycleId)
-                                .orElseThrow(() -> new RuntimeException("Pay cycle not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Pay cycle not found"));
 
                 // Calculate regular pay without creating a payroll record.
                 BigDecimal baseRegularPay = payrollCalculationService.calculateCycleBasePay(
@@ -240,12 +241,12 @@ public class PayrollService {
 
                 Employee employee = employeeRepository
                                 .findById(employeeId)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Employee not found"));
 
                 PayCycle payCycle = payCycleRepository
                                 .findById(payCycleId)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Pay cycle not found"));
 
                 if (payrollRepository
@@ -509,7 +510,7 @@ public class PayrollService {
 
                 Payroll payroll = payrollRepository
                                 .findById(id)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Payroll not found"));
 
                 if (payroll.getStatus() != Payroll.Status.DRAFT) {
@@ -527,7 +528,7 @@ public class PayrollService {
         @Transactional
         public Payroll processPayroll(Integer id, String username) {
                 Payroll payroll = payrollRepository.findById(id)
-                                .orElseThrow(() -> new RuntimeException("Payroll not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
 
                 if (payroll.getStatus() != Payroll.Status.DRAFT) {
                         throw new IllegalStateException(
@@ -540,7 +541,7 @@ public class PayrollService {
                                 payroll.getPayrollId());
 
                 com.employger.entity.User user = userRepository.findByUsername(username)
-                                .orElseThrow(() -> new RuntimeException("User not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
                 payroll.setStatus(Payroll.Status.PROCESSED);
                 payroll.setProcessedAt(java.time.LocalDateTime.now());
@@ -556,7 +557,7 @@ public class PayrollService {
                         String paymentReference) {
 
                 Payroll payroll = payrollRepository.findById(id)
-                                .orElseThrow(() -> new RuntimeException("Payroll not found"));
+                                .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
 
                 if (payroll.getStatus() != Payroll.Status.PROCESSED) {
                         throw new IllegalStateException(
@@ -586,7 +587,7 @@ public class PayrollService {
 
                 Payroll payroll = payrollRepository
                                 .findById(id)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Payroll not found"));
 
                 if (payroll.getStatus() != Payroll.Status.DRAFT) {

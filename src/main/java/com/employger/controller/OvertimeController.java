@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Overtime;
 import com.employger.service.OvertimeService;
 import org.springframework.http.ResponseEntity;
@@ -63,7 +64,7 @@ public class OvertimeController {
             return ResponseEntity.ok(
                     new OvertimeResponse(savedOvertime));
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -83,7 +84,7 @@ public class OvertimeController {
             return ResponseEntity.ok(
                     new OvertimeResponse(updatedOvertime));
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -103,10 +104,7 @@ public class OvertimeController {
             return ResponseEntity.ok(
         new OvertimeResponse(updatedOvertime));
 
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }
@@ -120,7 +118,7 @@ public class OvertimeController {
 
             return ResponseEntity.noContent().build();
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

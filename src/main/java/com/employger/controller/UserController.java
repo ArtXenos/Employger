@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.dto.CreateUserRequest;
 import com.employger.dto.UserResponse;
 import com.employger.entity.User;
@@ -61,7 +62,7 @@ public class UserController {
             return ResponseEntity.ok(
                     new UserResponse(updatedUser));
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
 
             return ResponseEntity.notFound().build();
         }
@@ -77,7 +78,7 @@ public class UserController {
 
             return ResponseEntity.noContent().build();
 
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
 
             return ResponseEntity.notFound().build();
         }

@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.SystemSetting;
 import com.employger.service.SystemSettingService;
 import org.springframework.http.ResponseEntity;
@@ -46,10 +47,7 @@ public class SystemSettingController {
 
             return ResponseEntity.ok(updatedSetting);
 
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

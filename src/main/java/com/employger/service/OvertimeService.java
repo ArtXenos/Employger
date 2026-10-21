@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
@@ -63,7 +64,7 @@ public class OvertimeService {
 
                 Employee employee = employeeRepository
                                 .findById(employeeId)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Employee not found"));
 
                 validateOvertimeDetails(overtimeDetails);
@@ -99,7 +100,7 @@ public class OvertimeService {
 
                 Overtime overtime = overtimeRepository
                                 .findById(id)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Overtime not found"));
 
                 if (overtime.getStatus() != Overtime.Status.PENDING) {
@@ -109,7 +110,7 @@ public class OvertimeService {
 
                 Employee employee = employeeRepository
                                 .findById(employeeId)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Employee not found"));
 
                 validateOvertimeDetails(overtimeDetails);
@@ -143,7 +144,7 @@ public class OvertimeService {
 
                 Overtime overtime = overtimeRepository
                                 .findById(overtimeId)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Overtime not found"));
 
                 if (overtime.getStatus() != Overtime.Status.PENDING) {
@@ -160,7 +161,7 @@ public class OvertimeService {
 
                 User user = userRepository
                                 .findByUsername(username)
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "User not found"));
 
                 overtime.setStatus(newStatus);
@@ -172,7 +173,7 @@ public class OvertimeService {
         public void deleteOvertime(Integer id) {
 
                 if (!overtimeRepository.existsById(id)) {
-                        throw new RuntimeException(
+                        throw new ResourceNotFoundException(
                                         "Overtime not found");
                 }
 
@@ -218,7 +219,7 @@ public class OvertimeService {
                 Attendance attendance = attendanceRepository
                                 .findById(
                                                 attendanceDetails.getAttendanceId())
-                                .orElseThrow(() -> new RuntimeException(
+                                .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Attendance not found"));
 
                 if (attendance.getEmployee() == null

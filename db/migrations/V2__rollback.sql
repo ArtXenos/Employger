@@ -25,7 +25,9 @@ ALTER TABLE payroll
     DROP COLUMN calculated_at;
 
 ALTER TABLE payroll
-    DROP FOREIGN KEY fk_payroll_employee,
+    DROP FOREIGN KEY fk_payroll_employee;
+
+ALTER TABLE payroll
     ADD CONSTRAINT fk_payroll_employee
         FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
         ON DELETE CASCADE ON UPDATE CASCADE;

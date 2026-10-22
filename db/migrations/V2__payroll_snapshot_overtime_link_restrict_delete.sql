@@ -11,8 +11,12 @@
 -- Undo: V2__rollback.sql
 
 -- 1. Deleting an employee must never delete their payroll history.
+--    Two statements: MariaDB 10.4 cannot drop and re-add a foreign key of
+--    the same name in one ALTER TABLE (errno 121).
 ALTER TABLE payroll
-    DROP FOREIGN KEY fk_payroll_employee,
+    DROP FOREIGN KEY fk_payroll_employee;
+
+ALTER TABLE payroll
     ADD CONSTRAINT fk_payroll_employee
         FOREIGN KEY (employee_id) REFERENCES employees (employee_id)
         ON DELETE RESTRICT ON UPDATE CASCADE;

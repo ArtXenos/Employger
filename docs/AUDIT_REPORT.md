@@ -49,11 +49,11 @@ Every finding below is labelled **Confirmed** (reproduced from code, live data, 
 - **Crash (23:13:04):** re-granting `pma` (`GRANT … ON phpmyadmin.* TO pma@localhost; FLUSH PRIVILEGES`) crashed `mysqld.exe`. The Windows Application log records an access violation `0xc0000005` in `VCRUNTIME140.dll`. MariaDB's own error log has no entry. This is a crash inside MariaDB's privilege code, most likely from inconsistent privilege data left by the corrupt system tables.
 - **Preserved:** a full copy of `C:\xampp\mysql\data` taken **after the crash, with the server stopped** (195 files, 105 MB): `Documents\employger-backups\mysql-data-copy-2026-10-22-after-stop`.
 - **State at handover:** MariaDB stopped. V2 and V3 had been committed (DDL is durable in InnoDB) about 4 minutes before the crash. Verify after restart. Nothing has been retried.
+- **Restart verified (23:19):** InnoDB and Aria crash recovery completed cleanly, with no errors in the log. `CHECK TABLE` is OK for all 11 `employger_db` tables (EXTENDED) and for `mysql.db`, `user`, `global_priv`, `proxies_priv` and `tables_priv`. Record counts are unchanged: employees 2, attendance 4, overtime 9, payroll 3, payslips 1, settings 30, users 2. Payroll #6/#7/#8 amounts are unchanged. All 14 V2/V3 columns are present, and the foreign keys are `fk_payroll_employee` RESTRICT and `fk_overtime_payroll` SET NULL.
+- **Data note:** the owner confirmed that all `employger_db` records are test data (employees Juan and "Art the Fart"). That makes the MariaDB upgrade below low-risk.
 - **Recommended next steps:**
-  1. Start MySQL from the XAMPP panel.
-  2. Run `CHECK TABLE` on `employger_db` and the `mysql` schema, and confirm the V2/V3 columns and the record counts.
-  3. **Don't retry GRANT** on this installation. The safest durable fix is a clean, supported MariaDB (10.11 LTS or newer) with `employger_db` restored from the logical backup, which also clears H-08 (EOL 10.4).
-  4. Until then, the app keeps working on root.
+  1. **Don't retry GRANT** on this installation. The safest durable fix is a clean, supported MariaDB (10.11 LTS or newer) with `employger_db` restored from the logical backup, which also clears H-08 (EOL 10.4).
+  2. Until then, the app keeps working on root.
 
 **Behaviour now in effect (after restart):** days covered by a PROCESSED or PAID payroll are locked for that employee. For employee 35, attendance and overtime for Oct 1–15 can no longer change, and pending overtime #12 (Oct 3) can only be rejected, since #6 already paid those days. Overtime amounts are recalculated at approval. Pending overtime #13 (₱5.18/h, computed under an older 1.5 multiplier) will be approved at the current 1.25 rate.
 

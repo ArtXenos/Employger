@@ -21,7 +21,8 @@ In the PowerShell window you start the app from:
 
 ```powershell
 $env:DB_USERNAME = "employger_app"
-$env:DB_PASSWORD = Read-Host "DB password"    # typed, not stored in history as plain text
+$pw = Read-Host "employger_app password" -AsSecureString   # shows * while typing
+$env:DB_PASSWORD = [Net.NetworkCredential]::new("", $pw).Password
 .\mvnw.cmd spring-boot:run
 ```
 

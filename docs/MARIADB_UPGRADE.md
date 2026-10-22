@@ -113,9 +113,12 @@ In the PowerShell window you start the app from:
 ```powershell
 $env:DB_URL      = "jdbc:mysql://127.0.0.1:3307/employger_db"
 $env:DB_USERNAME = "employger_app"
-$env:DB_PASSWORD = Read-Host "DB password"
+$pw = Read-Host "employger_app password" -AsSecureString
+$env:DB_PASSWORD = [Net.NetworkCredential]::new("", $pw).Password
 .\mvnw.cmd spring-boot:run
 ```
+
+Type the **`employger_app`** password, not root's. `-AsSecureString` shows `*` instead of the characters, so the password doesn't appear in the terminal or in anything you copy from it.
 
 These variables last only for that window. No password is written to any file.
 

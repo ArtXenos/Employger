@@ -38,6 +38,8 @@ Every finding below is labelled **Confirmed** (reproduced from code, live data, 
 | 2026-10-22 | Dedicated DB account (H-08) | **Done** on MariaDB 10.11.19 (port 3307, localhost only). Blocked on XAMPP 10.4 by the system-table incident. See `MARIADB_UPGRADE.md`. | see git log |
 | 2026-10-22 | Supported server (H-08, EOL 10.4) | **Done**: data moved to MariaDB 10.11.19; verify-db.sql matched; app runs as `employger_app`. XAMPP 10.4 kept as a fallback. | see git log |
 | 2026-10-22 | Strict `sql_mode` | **On** (10.11 default). App starts and validates; watch for new data errors. | — |
+| 2026-10-23 | Hibernate dialect warning | **Done**: switched to MariaDB Connector/J; Hibernate detects MariaDB 10.11.19 and MariaDBDialect. | see git log |
+| 2026-10-23 | Login brute-force protection (M-11) | **Done**: in-memory counter per username (5) and per client address (20) in a 15-minute window, then a 15-minute lock checked before the password. Same response for real and unknown usernames. Locks are written to audit_logs as `LOGIN_LOCKED`. Counters reset on restart. | see git log |
 
 ### Database incident 2026-10-22: corrupt MariaDB system tables
 
@@ -361,7 +363,7 @@ No double-deduction exists in the current code: a day's lost hours are either an
 | SQL injection | ✔ No string-built queries found; all Spring Data derived queries |
 | Security headers | ✔ Spring defaults present (`nosniff`, `X-Frame-Options: DENY`, no-store). No CSP, no HSTS (no HTTPS). |
 | Secrets | ✗ DB credentials in properties; root with empty password (H-08) |
-| Brute force | ✗ None (M-11) |
+| Brute force | ✓ 5 failures per username or 20 per address in 15 min → 15-min lock, audited as LOGIN_LOCKED (M-11, 2026-10-23) |
 
 ---
 

@@ -2,8 +2,10 @@ package com.employger;
 
 import com.employger.entity.Employee;
 import com.employger.entity.User;
+import com.employger.repository.AuditLogRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.UserRepository;
+import com.employger.service.LoginAttemptService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +24,11 @@ import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -44,8 +48,15 @@ class AuthAndErrorHandlingIntegrationTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private LoginAttemptService loginAttemptService;
+    @Autowired
+    private AuditLogRepository auditLogRepository;
+
     @BeforeEach
     void setUp() {
+        // Failure counts live in a singleton shared by every test in this context.
+        loginAttemptService.reset();
         user("active.admin", User.Status.ACTIVE);
         user("inactive.admin", User.Status.INACTIVE);
     }
@@ -92,6 +103,70 @@ class AuthAndErrorHandlingIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ---------- password-guessing limit ----------
+
+    @Test
+    void fiveFailuresLockTheAccountEvenForTheCorrectPassword() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            login("active.admin", "guess-" + i).andExpect(status().isUnauthorized());
+        }
+
+        login("active.admin", "correct-horse")
+                .andExpect(status().isTooManyRequests())
+                // 900 s at the moment of locking, a little less by now.
+                .andExpect(header().string("Retry-After", matchesPattern("8\\d\\d|900")))
+                .andExpect(content().string(
+                        "Too many failed login attempts. Please try again in 15 minutes."));
+    }
+
+    @Test
+    void unknownUsernameIsLockedTheSameWaySoNothingIsRevealed() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            login("no.such.user", "guess-" + i).andExpect(status().isUnauthorized());
+        }
+
+        login("no.such.user", "guess-5")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(content().string(
+                        "Too many failed login attempts. Please try again in 15 minutes."));
+    }
+
+    @Test
+    void lockOfOneUsernameDoesNotBlockAnother() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            login("no.such.user", "guess-" + i);
+        }
+
+        login("active.admin", "correct-horse").andExpect(status().isOk());
+    }
+
+    @Test
+    void successfulLoginResetsTheUsernameCount() throws Exception {
+        for (int i = 0; i < 4; i++) {
+            login("active.admin", "guess-" + i).andExpect(status().isUnauthorized());
+        }
+        login("active.admin", "correct-horse").andExpect(status().isOk());
+
+        for (int i = 0; i < 4; i++) {
+            login("active.admin", "guess-" + i).andExpect(status().isUnauthorized());
+        }
+        login("active.admin", "correct-horse").andExpect(status().isOk());
+    }
+
+    @Test
+    void lockIsRecordedInTheAuditTrail() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            login("active.admin", "guess-" + i);
+        }
+
+        assertThat(auditLogRepository.findTop200ByOrderByAuditIdDesc())
+                .anySatisfy(entry -> {
+                    assertThat(entry.getAction()).isEqualTo("LOGIN_LOCKED");
+                    assertThat(entry.getDescription()).contains("'active.admin'");
+                    assertThat(entry.getUser()).isNull();
+                });
     }
 
     // ---------- API error mapping ----------

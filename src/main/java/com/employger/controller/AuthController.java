@@ -4,6 +4,8 @@ import com.employger.exception.ResourceNotFoundException;
 import com.employger.dto.LoginRequest;
 import com.employger.entity.User;
 import com.employger.repository.UserRepository;
+import com.employger.service.AuditService;
+import com.employger.service.LoginAttemptService;
 import com.employger.service.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -36,23 +39,42 @@ public class AuthController {
         private final AuthenticationManager authenticationManager;
         private final UserService userService;
         private final UserRepository userRepository;
+        private final LoginAttemptService loginAttemptService;
+        private final AuditService auditService;
 
         private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
         public AuthController(
                         AuthenticationManager authenticationManager,
                         UserService userService,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        LoginAttemptService loginAttemptService,
+                        AuditService auditService) {
 
                 this.authenticationManager = authenticationManager;
                 this.userService = userService;
                 this.userRepository = userRepository;
+                this.loginAttemptService = loginAttemptService;
+                this.auditService = auditService;
         }
 
         @PostMapping("/login")
         public ResponseEntity<String> login(
                         @RequestBody LoginRequest loginRequest,
                         HttpServletRequest request) {
+
+                // The direct peer address. X-Forwarded-For is not trusted,
+                // because any client can set it to dodge the limit.
+                String address = request.getRemoteAddr();
+                String username = loginRequest.getUsername();
+
+                // Refuse before checking the password, so a locked account
+                // cannot be guessed at all while the lock lasts.
+                Optional<LoginAttemptService.Lock> lock = loginAttemptService.checkLocked(username, address);
+
+                if (lock.isPresent()) {
+                        return tooManyAttempts(lock.get());
+                }
 
                 Authentication authentication;
 
@@ -73,6 +95,12 @@ public class AuthController {
                                                         + "cannot be reached. Please try again later.");
 
                 } catch (AuthenticationException e) {
+                        log.warn("Failed login for username '{}' from {}", abbreviate(username), address);
+
+                        if (loginAttemptService.recordFailure(username, address)) {
+                                recordLockout(username, address);
+                        }
+
                         // One message for unknown users, wrong passwords, and
                         // inactive accounts, so usernames cannot be probed.
                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -81,6 +109,8 @@ public class AuthController {
                 }
 
                 if (authentication.isAuthenticated()) {
+
+                        loginAttemptService.recordSuccess(username);
 
                         // Issue a new session ID on login so a session ID obtained
                         // before authentication cannot be reused (session fixation).
@@ -107,6 +137,48 @@ public class AuthController {
 
                 return ResponseEntity.status(401)
                                 .body("Login failed");
+        }
+
+        private static ResponseEntity<String> tooManyAttempts(LoginAttemptService.Lock lock) {
+
+                long minutes = lock.minutesRemaining();
+
+                // Same message for username and address locks, and for
+                // usernames that do not exist, so nothing can be probed.
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                                .header("Retry-After", String.valueOf(lock.remaining().toSeconds()))
+                                .contentType(MediaType.TEXT_PLAIN)
+                                .body("Too many failed login attempts. Please try again in "
+                                                + minutes + (minutes == 1 ? " minute." : " minutes."));
+        }
+
+        private void recordLockout(String username, String address) {
+
+                String description = "Login locked for " + LoginAttemptService.LOCK_DURATION.toMinutes()
+                                + " minutes after repeated failed attempts "
+                                + "(username '" + abbreviate(username) + "', address " + address + ")";
+
+                log.warn(description);
+
+                // The lock already applies; failing to write the audit entry
+                // (for example, database down) must not change the response.
+                try {
+                        auditService.record("LOGIN_LOCKED", description);
+                } catch (RuntimeException e) {
+                        log.error("Could not write LOGIN_LOCKED audit entry", e);
+                }
+        }
+
+        // The username is typed by the client; keep log and audit lines short.
+        private static String abbreviate(String username) {
+
+                if (username == null) {
+                        return "";
+                }
+
+                String clean = username.replaceAll("\\p{Cntrl}", "?");
+
+                return clean.length() > 50 ? clean.substring(0, 50) + "..." : clean;
         }
 
         @GetMapping("/me")

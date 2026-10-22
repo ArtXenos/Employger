@@ -109,7 +109,7 @@ async function landingPageForCurrentUser() {
 async function describeLoginFailure(response) {
 
     // 401 and 503 carry a short, user-safe plain-text message from the server.
-    if (response.status === 401 || response.status === 503) {
+    if (response.status === 401 || response.status === 429 || response.status === 503) {
         const message = (await response.text()).trim();
 
         if (message) {

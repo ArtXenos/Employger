@@ -4,6 +4,7 @@
 # Usage (from the project folder, in PowerShell):
 #   .\scripts\backup-db.ps1
 #   .\scripts\backup-db.ps1 -BackupDir "D:\employger-backups"
+#   .\scripts\backup-db.ps1 -MysqlBin "C:\Program Files\MariaDB 10.11\bin" -Port 3307
 #
 # Backups contain salary and personal data. Keep them out of this
 # repository and out of shared folders.
@@ -12,7 +13,8 @@ param(
     [string]$BackupDir = "$env:USERPROFILE\Documents\employger-backups",
     [string]$Database = "employger_db",
     [string]$User = "root",
-    [string]$MysqlBin = "C:\xampp\mysql\bin"
+    [string]$MysqlBin = "C:\xampp\mysql\bin",
+    [int]$Port = 3306
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,7 +32,7 @@ $file = Join-Path $BackupDir "${Database}_$stamp.sql"
 # Prompts for the password if the account has one (-p with no value).
 # For an account with no password, remove "-p" from the argument list.
 $arguments = @(
-    "-u", $User, "-p", "-h", "127.0.0.1",
+    "-u", $User, "-p", "-h", "127.0.0.1", "-P", $Port,
     "--single-transaction", "--routines", "--triggers",
     "--default-character-set=utf8mb4",
     "--result-file=$file",

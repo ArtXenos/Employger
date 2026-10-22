@@ -53,7 +53,7 @@ loginForm.addEventListener("submit", async function (event) {
 
             redirecting = true;
 
-            window.location.href = "dashboard.html";
+            window.location.href = await landingPageForCurrentUser();
 
             return;
         }
@@ -85,6 +85,26 @@ loginForm.addEventListener("submit", async function (event) {
     }
 
 });
+
+// Employees go to their own payroll page; staff roles to the dashboard.
+async function landingPageForCurrentUser() {
+
+    try {
+        const response = await fetch("/api/auth/me", { credentials: "same-origin" });
+
+        if (response.ok) {
+            const user = await response.json();
+
+            if (user.role === "EMPLOYEE") {
+                return "my-payroll.html";
+            }
+        }
+    } catch (error) {
+        // Fall through to the dashboard, which routes by role again.
+    }
+
+    return "dashboard.html";
+}
 
 async function describeLoginFailure(response) {
 

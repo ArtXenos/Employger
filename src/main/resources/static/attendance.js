@@ -29,7 +29,7 @@ async function loadEmployees() {
   try {
     const response = await fetch("/api/employees");
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/index.html";
       return;
     }
@@ -66,7 +66,7 @@ async function loadAttendance() {
   try {
     const response = await fetch("/api/attendance");
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/index.html";
       return;
     }
@@ -349,7 +349,7 @@ form.addEventListener("submit", async (event) => {
       });
     }
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/index.html";
 
       return;
@@ -389,7 +389,7 @@ async function deleteAttendance(attendanceId) {
       method: "DELETE",
     });
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/index.html";
 
       return;

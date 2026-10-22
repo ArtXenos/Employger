@@ -1,7 +1,9 @@
 package com.employger.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -11,8 +13,31 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
+import java.io.IOException;
+
 @Configuration
 public class SecurityConfig {
+
+        // Employee, attendance, overtime, pay-cycle, payroll, and payslip data.
+        private static final String[] PAYROLL_DATA_APIS = {
+                        "/api/employees/**",
+                        "/api/attendance/**",
+                        "/api/overtime/**",
+                        "/api/pay-cycles/**",
+                        "/api/payroll/**",
+                        "/api/payroll-calculation/**",
+                        "/api/payslips/**"
+        };
+
+        private static void writePlainText(
+                        HttpServletResponse response,
+                        int status,
+                        String message) throws IOException {
+
+                response.setStatus(status);
+                response.setContentType("text/plain;charset=UTF-8");
+                response.getWriter().write(message);
+        }
 
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http)
@@ -23,42 +48,9 @@ public class SecurityConfig {
 
                                 .authorizeHttpRequests(auth -> auth
 
-                                                // Public frontend files
-                                                .requestMatchers(
-                                                                "/",
-                                                                "/index.html",
-                                                                "/script.js",
-                                                                "/style.css",
-
-                                                                "/dashboard.html",
-                                                                "/dashboard.css",
-                                                                "/dashboard.js",
-
-                                                                "/employees.html",
-
-                                                                "/attendance.html",
-                                                                "/attendance.css",
-                                                                "/attendance.js",
-
-                                                                "/pay-cycles.html",
-                                                                "/pay-cycles.css",
-                                                                "/pay-cycles.js",
-
-                                                                "/overtime.html",
-                                                                "/overtime.css",
-                                                                "/overtime.js",
-
-                                                                "/payroll.html",
-                                                                "/payroll.css",
-                                                                "/payroll.js",
-
-                                                                "/payslip.html",
-                                                                "/payslip.css",
-                                                                "/payslip.js",
-
-                                                                "/settings.html",
-                                                                "/settings.css",
-                                                                "/settings.js")
+                                                // Static frontend files contain no data; every
+                                                // page loads its data from the protected APIs below.
+                                                .requestMatchers("/", "/*.html", "/*.css", "/*.js")
                                                 .permitAll()
 
                                                 // Login, logout, and current-user information
@@ -82,51 +74,38 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/audit-logs/**")
                                                 .hasRole("ADMINISTRATOR")
 
-                                                // Employee management
-                                                .requestMatchers("/api/employees/**")
+                                                // Self-service: any logged-in user, limited by
+                                                // the service to the employee linked to that login.
+                                                .requestMatchers("/api/me/**")
+                                                .authenticated()
+
+                                                // Payroll data: general managers may read it;
+                                                // only administrators and HR managers may change it.
+                                                .requestMatchers(HttpMethod.GET, PAYROLL_DATA_APIS)
                                                 .hasAnyRole(
                                                                 "ADMINISTRATOR",
-                                                                "HR_MANAGER")
+                                                                "HR_MANAGER",
+                                                                "GENERAL_MANAGER")
 
-                                                // Attendance management
-                                                .requestMatchers("/api/attendance/**")
-                                                .hasAnyRole(
-                                                                "ADMINISTRATOR",
-                                                                "HR_MANAGER")
-
-                                                // Pay cycle management
-                                                .requestMatchers("/api/pay-cycles/**")
-                                                .hasAnyRole(
-                                                                "ADMINISTRATOR",
-                                                                "HR_MANAGER")
-
-                                                // Payroll management
-                                                .requestMatchers("/api/payroll/**")
-                                                .hasAnyRole(
-                                                                "ADMINISTRATOR",
-                                                                "HR_MANAGER")
-
-                                                // Payroll calculation testing
-                                                .requestMatchers("/api/payroll-calculation/**")
-                                                .hasAnyRole(
-                                                                "ADMINISTRATOR",
-                                                                "HR_MANAGER")
-
-                                                // Overtime management
-                                                .requestMatchers("/api/overtime/**")
-                                                .hasAnyRole(
-                                                                "ADMINISTRATOR",
-                                                                "HR_MANAGER")
-
-                                                // Payslips embed payroll and employee details,
-                                                // so they are restricted like payroll itself.
-                                                .requestMatchers("/api/payslips/**")
+                                                .requestMatchers(PAYROLL_DATA_APIS)
                                                 .hasAnyRole(
                                                                 "ADMINISTRATOR",
                                                                 "HR_MANAGER")
 
                                                 // Everything else requires login
                                                 .anyRequest().authenticated())
+
+                                // Readable plain-text answers the pages can show:
+                                // 401 = log in again, 403 = logged in but not allowed.
+                                .exceptionHandling(exceptions -> exceptions
+                                                .authenticationEntryPoint((request, response, e) -> writePlainText(
+                                                                response,
+                                                                HttpServletResponse.SC_UNAUTHORIZED,
+                                                                "Please log in."))
+                                                .accessDeniedHandler((request, response, e) -> writePlainText(
+                                                                response,
+                                                                HttpServletResponse.SC_FORBIDDEN,
+                                                                "You do not have permission to perform this action.")))
 
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(

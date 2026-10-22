@@ -224,7 +224,7 @@ async function loadEmployees() {
   try {
     const response = await fetch("/api/employees");
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/index.html";
       return;
     }
@@ -268,7 +268,7 @@ async function loadPayCycles() {
   try {
     const response = await fetch("/api/pay-cycles");
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/index.html";
       return;
     }
@@ -332,7 +332,7 @@ async function loadPayrollRecords() {
   try {
     const response = await fetch("/api/payroll");
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/index.html";
       return;
     }

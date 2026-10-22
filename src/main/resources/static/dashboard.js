@@ -13,7 +13,7 @@ async function fetchJson(url) {
     headers: { Accept: "application/json" },
   });
 
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
     window.location.href = "/";
     throw new Error("Your session has expired. Please sign in again.");
   }

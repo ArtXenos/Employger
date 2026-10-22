@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Em-Ployger | My Payroll</title>
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/my-payroll.css" />
+  </head>
+  <body>
+    <div class="dashboard-container">
+      <aside class="sidebar">
+        <a class="brand" href="/my-payroll.html" aria-label="Em-Ployger, my payroll">
+          <div class="brand-logo">EP</div>
+          <div class="brand-copy">
+            <h1>Em-Ployger</h1>
+            <span>Employee Self-Service</span>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav" aria-label="My records">
+          <a href="#payrollSection" class="nav-item active"
+            ><span aria-hidden="true">₱</span>My Payroll</a
+          >
+          <a href="#attendanceSection" class="nav-item"
+            ><span aria-hidden="true">◷</span>My Attendance</a
+          >
+          <a href="#overtimeSection" class="nav-item"
+            ><span aria-hidden="true">↗</span>My Overtime</a
+          >
+        </nav>
+
+        <button id="logoutButton" class="logout-button" type="button">
+          Logout
+        </button>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <h2>My Payroll</h2>
+            <p id="profileSummary">Your payslips, attendance, and overtime</p>
+          </div>
+        </header>
+
+        <div class="dashboard-content">
+          <p id="pageMessage" class="page-message" role="status" aria-live="polite"></p>
+
+          <section class="section-card" id="payrollSection" aria-labelledby="payrollHeading">
+            <div class="section-header">
+              <div>
+                <h2 id="payrollHeading">Payslips</h2>
+                <p>Processed and paid payroll. Select one to see the breakdown.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <caption class="visually-hidden">Your processed and paid payroll</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Pay Cycle</th>
+                    <th scope="col">Pay Date</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="amount">Gross Pay</th>
+                    <th scope="col" class="amount">Net Pay</th>
+                    <th scope="col"><span class="visually-hidden">Details</span></th>
+                  </tr>
+                </thead>
+                <tbody id="payrollTableBody">
+                  <tr><td colspan="6" class="empty">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <article id="payslipDetail" class="payslip-detail" hidden tabindex="-1"
+              aria-labelledby="payslipTitle">
+              <h3 id="payslipTitle">Payslip</h3>
+              <dl id="payslipLines" class="payslip-lines"></dl>
+            </article>
+          </section>
+
+          <section class="section-card" id="attendanceSection" aria-labelledby="attendanceHeading">
+            <div class="section-header">
+              <div>
+                <h2 id="attendanceHeading">Attendance</h2>
+                <p>Your recorded attendance, newest first.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <caption class="visually-hidden">Your attendance records</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Time In</th>
+                    <th scope="col">Time Out</th>
+                    <th scope="col" class="amount">Hours</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody id="attendanceTableBody">
+                  <tr><td colspan="6" class="empty">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="section-card" id="overtimeSection" aria-labelledby="overtimeHeading">
+            <div class="section-header">
+              <div>
+                <h2 id="overtimeHeading">Overtime</h2>
+                <p>Your overtime requests and their status.</p>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table>
+                <caption class="visually-hidden">Your overtime records</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col" class="amount">Hours</th>
+                    <th scope="col" class="amount">Amount</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="overtimeTableBody">
+                  <tr><td colspan="4" class="empty">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="/my-payroll.js"></script>
+  </body>
+</html>

@@ -50,7 +50,7 @@ async function loadPayCycles() {
   try {
     const response = await fetch("/api/pay-cycles");
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/";
       return;
     }
@@ -235,7 +235,7 @@ async function editPayCycle(id) {
   try {
     const response = await fetch(`/api/pay-cycles/${id}`);
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/";
       return;
     }
@@ -338,7 +338,7 @@ async function savePayCycle(event) {
       body: JSON.stringify(data),
     });
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/";
 
       return;
@@ -465,7 +465,7 @@ async function deletePayCycle(id) {
       method: "DELETE",
     });
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       window.location.href = "/";
 
       return;

@@ -1,6 +1,7 @@
 package com.employger.service;
 
 import com.employger.entity.Employee;
+import com.employger.entity.Holiday;
 import com.employger.entity.PayCycle;
 import org.springframework.stereotype.Service;
 
@@ -213,6 +214,89 @@ public class PayrollCalculationService {
                                 .setScale(
                                                 FINAL_MONETARY_SCALE,
                                                 RoundingMode.HALF_UP);
+        }
+
+        // ---------- holiday, rest-day and night premiums ----------
+
+        /**
+         * Multipliers of the hourly basic rate for one day (migration V6,
+         * rules in docs/STATUTORY_DEDUCTIONS.md):
+         *  - worked: pay for each regular hour worked that day,
+         *  - unworked: pay for each regular hour NOT worked (non-rest days
+         *    only; base pay already covers 1.00 of it),
+         *  - overtime: pay for each overtime hour.
+         * Base pay (factor 261) already pays 1.00 for every non-rest day, so
+         * only the part above 1.00 is added there; rest days are not covered
+         * by base pay and are paid in full.
+         */
+        public record DayRates(BigDecimal worked, BigDecimal unworked, BigDecimal overtime) {
+        }
+
+        public DayRates dayRates(Holiday.Type holidayType, boolean restDay) {
+
+                BigDecimal premiumFactor = decimalSetting("overtime_premium_factor", "1.30");
+
+                if (holidayType == null) {
+
+                        if (!restDay) {
+                                return new DayRates(BigDecimal.ONE, BigDecimal.ONE, calculateOvertimeMultiplier());
+                        }
+
+                        BigDecimal rest = decimalSetting("rate_rest_day", "1.30");
+                        return new DayRates(rest, BigDecimal.ZERO, rest.multiply(premiumFactor));
+                }
+
+                BigDecimal worked = switch (holidayType) {
+                        case REGULAR -> restDay
+                                        ? decimalSetting("rate_regular_holiday_rest_day", "2.60")
+                                        : decimalSetting("rate_regular_holiday", "2.00");
+                        case SPECIAL -> restDay
+                                        ? decimalSetting("rate_special_day_rest_day", "1.50")
+                                        : decimalSetting("rate_special_day", "1.30");
+                        case DOUBLE -> restDay
+                                        ? decimalSetting("rate_double_holiday_rest_day", "3.90")
+                                        : decimalSetting("rate_double_holiday", "3.00");
+                };
+
+                // An unworked special day is not deducted (policy 2026-10-23):
+                // factor 261 already pays for it. An unworked holiday on a rest
+                // day is not paid: base pay does not cover rest days.
+                BigDecimal unworked = restDay
+                                ? BigDecimal.ZERO
+                                : holidayType == Holiday.Type.DOUBLE
+                                                ? decimalSetting("rate_double_holiday_unworked", "2.00")
+                                                : BigDecimal.ONE;
+
+                return new DayRates(worked, unworked, worked.multiply(premiumFactor));
+        }
+
+        public BigDecimal getNightDifferentialRate() {
+                return decimalSetting("night_differential_rate", "0.10");
+        }
+
+        public LocalTime getNightDifferentialStart() {
+                return systemSettingService.findSettingValue("night_differential_start")
+                                .map(LocalTime::parse).orElse(LocalTime.of(22, 0));
+        }
+
+        public LocalTime getNightDifferentialEnd() {
+                return systemSettingService.findSettingValue("night_differential_end")
+                                .map(LocalTime::parse).orElse(LocalTime.of(6, 0));
+        }
+
+        /**
+         * A numeric setting added by migration V6 or used by the night
+         * differential. The default is the value the migration seeds, so a
+         * missing row cannot break payroll.
+         */
+        public BigDecimal decimalSetting(String settingName, String defaultValue) {
+                String value = systemSettingService.findSettingValue(settingName).orElse(defaultValue);
+                try {
+                        return new BigDecimal(value.trim());
+                } catch (NumberFormatException e) {
+                        throw new IllegalStateException(
+                                        "Invalid " + settingName + " setting; expected a number");
+                }
         }
 
         // ---------- work schedule ----------

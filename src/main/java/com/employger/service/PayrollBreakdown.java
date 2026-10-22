@@ -1,6 +1,7 @@
 package com.employger.service;
 
 import com.employger.entity.Attendance;
+import com.employger.entity.Holiday;
 import com.employger.entity.Overtime;
 
 import java.math.BigDecimal;
@@ -27,25 +28,34 @@ public record PayrollBreakdown(
         BigDecimal regularPay,
         List<Overtime> overtime,
         BigDecimal overtimePay,
+        BigDecimal premiumPay,
+        BigDecimal nightDifferentialPay,
+        EarningsCalculator.Result earnings,
         BigDecimal bonusAmount,
         BigDecimal grossPay,
+        BigDecimal mweExemptPay,
         StatutoryDeductionService.StatutoryDeductions statutory,
         BigDecimal taxAmount,
+        BigDecimal taxRefund,
+        YearEndTaxService.Result yearEnd,
         BigDecimal deductionAmount,
         BigDecimal netPay,
         List<String> notes) {
 
     /**
-     * One attendance record's effect on pay. The per-day deduction is rounded
-     * for display; the total deduction is rounded once from the unrounded sum.
+     * One attendance record's effect on pay. The per-day amounts are rounded
+     * for display; totals are rounded once from the unrounded sums.
      */
     public record AttendanceDay(
             Integer attendanceId,
             LocalDate date,
             Attendance.Status status,
             boolean restDay,
+            Holiday.Type holidayType,
             BigDecimal recordedHours,
             BigDecimal unpaidHours,
-            BigDecimal deduction) {
+            BigDecimal deduction,
+            BigDecimal premium,
+            BigDecimal nightDifferential) {
     }
 }

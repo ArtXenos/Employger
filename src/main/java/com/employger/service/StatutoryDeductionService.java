@@ -113,6 +113,22 @@ public class StatutoryDeductionService {
             boolean minimumWageEarner,
             BigDecimal mweExemptPay) {
 
+        return calculate(monthlyBasicSalary, cycleType, grossPay, BigDecimal.ZERO, minimumWageEarner, mweExemptPay);
+    }
+
+    /**
+     * @param nonTaxableEarnings part of gross pay exempt for everyone: de
+     *                           minimis within limits and 13th month / other
+     *                           benefits within the 90,000 cap
+     */
+    public StatutoryDeductions calculate(
+            BigDecimal monthlyBasicSalary,
+            PayCycle.CycleType cycleType,
+            BigDecimal grossPay,
+            BigDecimal nonTaxableEarnings,
+            boolean minimumWageEarner,
+            BigDecimal mweExemptPay) {
+
         if (!isEnabled()) {
             return StatutoryDeductions.none(grossPay);
         }
@@ -133,15 +149,16 @@ public class StatutoryDeductionService {
         List<String> notes = new ArrayList<>();
 
         BigDecimal taxable;
+        BigDecimal nonTaxable = nonTaxableEarnings != null ? nonTaxableEarnings : BigDecimal.ZERO;
 
         if (minimumWageEarner) {
             BigDecimal exempt = mweExemptPay != null ? mweExemptPay : BigDecimal.ZERO;
-            taxable = grossPay.subtract(exempt).max(BigDecimal.ZERO);
-            notes.add("Minimum wage earner: regular and overtime pay (" + money(exempt.min(grossPay))
-                    + ") exempt from withholding tax under RR 11-2018; "
+            taxable = grossPay.subtract(nonTaxable).subtract(exempt).max(BigDecimal.ZERO);
+            notes.add("Minimum wage earner: regular, overtime, holiday, night differential and hazard pay ("
+                    + money(exempt.min(grossPay)) + ") exempt from withholding tax under RR 11-2018; "
                     + "only other compensation (" + money(taxable) + ") is taxed.");
         } else {
-            taxable = grossPay.subtract(contributions).max(BigDecimal.ZERO);
+            taxable = grossPay.subtract(nonTaxable).subtract(contributions).max(BigDecimal.ZERO);
         }
 
         BigDecimal tax = PhilippineWithholdingTax.forPeriod(cycleType, taxable);

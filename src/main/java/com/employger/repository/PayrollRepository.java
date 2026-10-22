@@ -31,6 +31,17 @@ public interface PayrollRepository
             LocalDate startDate
     );
 
+    // Payroll whose pay cycle ends within [start, end]: one employee's
+    // payroll for a calendar year, used by the 90,000 cap and annualization.
+    List<Payroll> findByEmployeeEmployeeIdAndPayCycleEndDateBetween(
+            Integer employeeId,
+            LocalDate start,
+            LocalDate end
+    );
+
+    // All payroll whose pay cycle ends within [start, end], for reports.
+    List<Payroll> findByPayCycleEndDateBetween(LocalDate start, LocalDate end);
+
     // A day is locked for an employee once a PROCESSED or PAID payroll
     // covers it: its attendance and overtime are part of a final payroll.
     default boolean isDateLockedForEmployee(Integer employeeId, LocalDate date) {

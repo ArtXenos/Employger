@@ -27,7 +27,10 @@ public class SecurityConfig {
                         "/api/pay-cycles/**",
                         "/api/payroll/**",
                         "/api/payroll-calculation/**",
-                        "/api/payslips/**"
+                        "/api/payslips/**",
+                        "/api/holidays/**",
+                        "/api/earnings/**",
+                        "/api/prior-employers/**"
         };
 
         private static void writePlainText(
@@ -78,6 +81,11 @@ public class SecurityConfig {
                                                 // Audit trail (read-only)
                                                 .requestMatchers("/api/audit-logs/**")
                                                 .hasRole("ADMINISTRATOR")
+
+                                                // Remittance reports and BIR 2316: they list
+                                                // government ID numbers, so not general managers.
+                                                .requestMatchers("/api/reports/**")
+                                                .hasAnyRole("ADMINISTRATOR", "HR_MANAGER")
 
                                                 // Self-service: any logged-in user, limited by
                                                 // the service to the employee linked to that login.

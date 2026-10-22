@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -56,6 +57,27 @@ public class EmployeeRequest {
 
     // Optional: new employees default to false, updates keep the current value.
     private Boolean minimumWageEarner;
+
+    // Optional: new employees default to false (rank and file), updates keep
+    // the current value. Managerial employees get no mandatory 13th month.
+    private Boolean managerial;
+
+    // Government numbers: digits and dashes only. Blank clears the number.
+    @Size(max = 20, message = "SSS number must be at most 20 characters.")
+    @Pattern(regexp = "[0-9-]*", message = "SSS number may contain only digits and dashes.")
+    private String sssNumber;
+
+    @Size(max = 20, message = "PhilHealth number must be at most 20 characters.")
+    @Pattern(regexp = "[0-9-]*", message = "PhilHealth number may contain only digits and dashes.")
+    private String philHealthNumber;
+
+    @Size(max = 20, message = "Pag-IBIG number must be at most 20 characters.")
+    @Pattern(regexp = "[0-9-]*", message = "Pag-IBIG number may contain only digits and dashes.")
+    private String pagIbigNumber;
+
+    @Size(max = 20, message = "TIN must be at most 20 characters.")
+    @Pattern(regexp = "[0-9-]*", message = "TIN may contain only digits and dashes.")
+    private String tin;
 
     @Size(max = 20, message = "Postal code must be at most 20 characters.")
     private String postalCode;
@@ -150,6 +172,46 @@ public class EmployeeRequest {
 
     public void setMinimumWageEarner(Boolean minimumWageEarner) {
         this.minimumWageEarner = minimumWageEarner;
+    }
+
+    public Boolean getManagerial() {
+        return managerial;
+    }
+
+    public void setManagerial(Boolean managerial) {
+        this.managerial = managerial;
+    }
+
+    public String getSssNumber() {
+        return sssNumber;
+    }
+
+    public void setSssNumber(String sssNumber) {
+        this.sssNumber = sssNumber;
+    }
+
+    public String getPhilHealthNumber() {
+        return philHealthNumber;
+    }
+
+    public void setPhilHealthNumber(String philHealthNumber) {
+        this.philHealthNumber = philHealthNumber;
+    }
+
+    public String getPagIbigNumber() {
+        return pagIbigNumber;
+    }
+
+    public void setPagIbigNumber(String pagIbigNumber) {
+        this.pagIbigNumber = pagIbigNumber;
+    }
+
+    public String getTin() {
+        return tin;
+    }
+
+    public void setTin(String tin) {
+        this.tin = tin;
     }
 
     public String getPostalCode() {

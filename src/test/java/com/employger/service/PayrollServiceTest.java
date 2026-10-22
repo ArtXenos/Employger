@@ -7,10 +7,13 @@ import com.employger.entity.PayCycle;
 import com.employger.entity.Payroll;
 import com.employger.entity.User;
 import com.employger.repository.AttendanceRepository;
+import com.employger.repository.EarningRepository;
+import com.employger.repository.HolidayRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.OvertimeRepository;
 import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollRepository;
+import com.employger.repository.PriorEmployerCompensationRepository;
 import com.employger.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -61,6 +65,12 @@ class PayrollServiceTest {
     private SystemSettingService systemSettingService;
     @Mock
     private AuditService auditService;
+    @Mock
+    private HolidayRepository holidayRepository;
+    @Mock
+    private EarningRepository earningRepository;
+    @Mock
+    private PriorEmployerCompensationRepository priorEmployerRepository;
 
     private PayrollService payrollService;
 
@@ -88,7 +98,11 @@ class PayrollServiceTest {
                 userRepository,
                 calculationService,
                 auditService,
-                new StatutoryDeductionService(systemSettingService, calculationService));
+                new StatutoryDeductionService(systemSettingService, calculationService),
+                new HolidayService(holidayRepository, auditService),
+                new EarningsCalculator(earningRepository, payrollRepository, priorEmployerRepository, calculationService),
+                earningRepository,
+                new YearEndTaxService(payrollRepository, priorEmployerRepository));
 
         employee = new Employee();
         employee.setEmployeeId(35);
@@ -118,11 +132,14 @@ class PayrollServiceTest {
         //   Oct 3 (Sat) and Oct 4 (Sun) are rest days: no deduction
         //   Oct 5 ABSENT: 8 h x 143.678161 = 1,149.43
         //   regular pay = 12,500.00 - 1,149.43 = 11,350.57
+        // Since 2026-10-23, work on a rest day is paid at 130%: Oct 3 (8 h)
+        // and Oct 4 (7.75 h) = 15.75 h x 143.678161 x 1.30 = 2,941.81.
         assertThat(payroll.getAttendanceDeduction()).isEqualByComparingTo("1149.43");
         assertThat(payroll.getRegularPay()).isEqualByComparingTo("11350.57");
+        assertThat(payroll.getHolidayPremiumPay()).isEqualByComparingTo("2941.81");
         assertThat(payroll.getOvertimePay()).isEqualByComparingTo("898.00");
-        assertThat(payroll.getGrossPay()).isEqualByComparingTo("12248.57");
-        assertThat(payroll.getNetPay()).isEqualByComparingTo("12248.57");
+        assertThat(payroll.getGrossPay()).isEqualByComparingTo("15190.38");
+        assertThat(payroll.getNetPay()).isEqualByComparingTo("15190.38");
         assertThat(payroll.getStatus()).isEqualTo(Payroll.Status.DRAFT);
         assertThat(payroll.getProcessedBy()).isNull();
         assertThat(payroll.getPaymentDate()).isNull();
@@ -215,7 +232,7 @@ class PayrollServiceTest {
     }
 
     private void enableStatutoryDeductions() {
-        when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
+        lenient().when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
                 .thenReturn(Optional.of("true"));
         Map.ofEntries(
                 Map.entry("sss_employee_rate", "0.05"),
@@ -411,7 +428,7 @@ class PayrollServiceTest {
 
         Payroll updated = payrollService.updatePayroll(6);
 
-        assertThat(updated.getNetPay()).isEqualByComparingTo("12248.57");
+        assertThat(updated.getNetPay()).isEqualByComparingTo("15190.38");
         assertThat(updated.getStatus()).isEqualTo(Payroll.Status.DRAFT);
     }
 
@@ -455,7 +472,8 @@ class PayrollServiceTest {
     // ---------- helpers ----------
 
     private List<Overtime> stubOctoberAttendanceAndOvertime() {
-        when(attendanceRepository.findByEmployeeEmployeeIdAndAttendanceDateBetween(35, OCT_1, OCT_15)).thenReturn(List.of(
+        // The calculation also reads two weeks back (the day-before-holiday rule).
+        when(attendanceRepository.findByEmployeeEmployeeIdAndAttendanceDateBetween(eq(35), any(), eq(OCT_15))).thenReturn(List.of(
                 attendance(LocalDate.of(2026, 10, 3), Attendance.Status.PRESENT, "8.00"),
                 attendance(LocalDate.of(2026, 10, 4), Attendance.Status.LATE, "7.75"),
                 attendance(LocalDate.of(2026, 10, 5), Attendance.Status.ABSENT, "0.00")));

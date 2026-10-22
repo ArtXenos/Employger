@@ -57,6 +57,7 @@ public class EmployeeService {
                 ? request.getEmploymentStatus()
                 : Employee.EmploymentStatus.ACTIVE);
         employee.setMinimumWageEarner(Boolean.TRUE.equals(request.getMinimumWageEarner()));
+        employee.setManagerial(Boolean.TRUE.equals(request.getManagerial()));
 
         Employee saved = employeeRepository.save(employee);
 
@@ -114,6 +115,16 @@ public class EmployeeService {
                             + " -> " + request.getMinimumWageEarner());
         }
 
+        // Changes 13th month eligibility, so it is audited.
+        if (request.getManagerial() != null && request.getManagerial() != employee.isManagerial()) {
+
+            employee.setManagerial(request.getManagerial());
+
+            auditService.record("EMPLOYEE_MANAGERIAL_CHANGED",
+                    "Employee #" + id + " managerial: " + !request.getManagerial()
+                            + " -> " + request.getManagerial());
+        }
+
         return employeeRepository.save(employee);
     }
 
@@ -142,6 +153,19 @@ public class EmployeeService {
         employee.setDesignation(blankToNull(request.getDesignation()));
         employee.setDateHired(request.getDateHired());
         employee.setJobTitle(blankToNull(request.getJobTitle()));
+        // Government numbers: left out = keep, empty = clear.
+        if (request.getSssNumber() != null) {
+            employee.setSssNumber(blankToNull(request.getSssNumber()));
+        }
+        if (request.getPhilHealthNumber() != null) {
+            employee.setPhilHealthNumber(blankToNull(request.getPhilHealthNumber()));
+        }
+        if (request.getPagIbigNumber() != null) {
+            employee.setPagIbigNumber(blankToNull(request.getPagIbigNumber()));
+        }
+        if (request.getTin() != null) {
+            employee.setTin(blankToNull(request.getTin()));
+        }
     }
 
     // Optional text fields: store "not given" as NULL, not as "".

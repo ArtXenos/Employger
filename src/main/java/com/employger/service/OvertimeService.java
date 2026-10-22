@@ -3,6 +3,7 @@ package com.employger.service;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
+import com.employger.entity.Holiday;
 import com.employger.entity.Overtime;
 import com.employger.entity.User;
 import com.employger.repository.AttendanceRepository;
@@ -33,6 +34,7 @@ public class OvertimeService {
         private final PayrollCalculationService payrollCalculationService;
         private final SystemSettingService systemSettingService;
         private final AuditService auditService;
+        private final HolidayService holidayService;
 
         public OvertimeService(
                         OvertimeRepository overtimeRepository,
@@ -42,9 +44,11 @@ public class OvertimeService {
                         PayrollRepository payrollRepository,
                         PayrollCalculationService payrollCalculationService,
                         SystemSettingService systemSettingService,
-                        AuditService auditService) {
+                        AuditService auditService,
+                        HolidayService holidayService) {
 
                 this.auditService = auditService;
+                this.holidayService = holidayService;
                 this.overtimeRepository = overtimeRepository;
                 this.employeeRepository = employeeRepository;
                 this.attendanceRepository = attendanceRepository;
@@ -374,11 +378,26 @@ public class OvertimeService {
                 return attendance;
         }
 
+        /*
+         * Overtime pay = hourly rate x multiplier x hours. The multiplier
+         * depends on the day (migration V6): default_overtime_rate (1.25) on
+         * an ordinary working day; on a rest day or holiday, that day's rate
+         * x overtime_premium_factor (1.30), e.g. 2.00 x 1.30 = 2.60 on a
+         * regular holiday. Set when the overtime is created or approved.
+         */
         private void calculateOvertimeValues(
                         Employee employee,
                         Overtime overtime) {
 
-                BigDecimal overtimeMultiplier = getOvertimeMultiplier();
+                boolean restDay = !payrollCalculationService.isWorkingDay(
+                                overtime.getOvertimeDate(),
+                                payrollCalculationService.getRestDays());
+
+                Holiday.Type holidayType = holidayService.typeOn(overtime.getOvertimeDate());
+
+                BigDecimal overtimeMultiplier = holidayType == null && !restDay
+                                ? getOvertimeMultiplier()
+                                : payrollCalculationService.dayRates(holidayType, restDay).overtime();
 
                 BigDecimal overtimeRate = payrollCalculationService
                                 .calculateOvertimeRate(

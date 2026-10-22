@@ -23,6 +23,11 @@ public class EmployeeResponse {
     private final String gender;
     private final BigDecimal baseSalary;
     private final boolean minimumWageEarner;
+    private final boolean managerial;
+    private final String sssNumber;
+    private final String philHealthNumber;
+    private final String pagIbigNumber;
+    private final String tin;
     private final String postalCode;
     private final String designation;
     private final String employmentStatus;
@@ -32,6 +37,15 @@ public class EmployeeResponse {
     private final LocalDateTime updatedAt;
 
     public EmployeeResponse(Employee employee) {
+        this(employee, false);
+    }
+
+    /**
+     * @param includeGovernmentIds true only for administrators and HR
+     *                             managers; otherwise the SSS, PhilHealth,
+     *                             Pag-IBIG and TIN numbers are null
+     */
+    public EmployeeResponse(Employee employee, boolean includeGovernmentIds) {
         this.employeeId = employee.getEmployeeId();
         this.firstName = employee.getFirstName();
         this.lastName = employee.getLastName();
@@ -43,6 +57,11 @@ public class EmployeeResponse {
         this.gender = employee.getGender();
         this.baseSalary = employee.getBaseSalary();
         this.minimumWageEarner = employee.isMinimumWageEarner();
+        this.managerial = employee.isManagerial();
+        this.sssNumber = includeGovernmentIds ? employee.getSssNumber() : null;
+        this.philHealthNumber = includeGovernmentIds ? employee.getPhilHealthNumber() : null;
+        this.pagIbigNumber = includeGovernmentIds ? employee.getPagIbigNumber() : null;
+        this.tin = includeGovernmentIds ? employee.getTin() : null;
         this.postalCode = employee.getPostalCode();
         this.designation = employee.getDesignation();
         this.employmentStatus = employee.getEmploymentStatus() != null
@@ -96,6 +115,26 @@ public class EmployeeResponse {
 
     public boolean isMinimumWageEarner() {
         return minimumWageEarner;
+    }
+
+    public boolean isManagerial() {
+        return managerial;
+    }
+
+    public String getSssNumber() {
+        return sssNumber;
+    }
+
+    public String getPhilHealthNumber() {
+        return philHealthNumber;
+    }
+
+    public String getPagIbigNumber() {
+        return pagIbigNumber;
+    }
+
+    public String getTin() {
+        return tin;
     }
 
     public String getPostalCode() {

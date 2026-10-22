@@ -168,6 +168,43 @@ class StatutoryDeductionServiceTest {
                 new BigDecimal("25000.00")).employer().total()).isEqualByComparingTo("0");
     }
 
+    // RR 11-2018 annual table for 2023 onwards (year-end annualization).
+    @ParameterizedTest(name = "Annual tax: {0} -> {1}")
+    @CsvSource({
+            "250000.00, 0.00",
+            "400000.00, 22500.00",
+            "800000.00, 102500.00",
+            "2000000.00, 402500.00",
+            "8000000.00, 2202500.00",
+            "273947.50, 3592.13",       // 15% x 23,947.50 = 3,592.125
+            "9000000.00, 2552500.00",   // 2,202,500 + 35% x 1,000,000
+    })
+    void annualTaxFollowsTheGraduatedTable(String taxable, String expected) {
+        assertThat(PhilippineWithholdingTax.forYear(new BigDecimal(taxable))).isEqualByComparingTo(expected);
+    }
+
+    // Overtime multipliers by day (guide reviewed 2026-10-23).
+    @ParameterizedTest(name = "Overtime {0}, rest day {1} -> {2}")
+    @CsvSource({
+            "NONE, false, 1.25",
+            "NONE, true, 1.69",         // 130% x 130%
+            "SPECIAL, false, 1.69",     // 130% x 130%
+            "SPECIAL, true, 1.95",      // 150% x 130%
+            "REGULAR, false, 2.60",     // 200% x 130%
+            "REGULAR, true, 3.38",      // 260% x 130%
+            "DOUBLE, false, 3.90",      // 300% x 130%
+            "DOUBLE, true, 5.07",       // 390% x 130%
+    })
+    void overtimeMultiplierDependsOnTheDay(String type, boolean restDay, String expected) {
+        lenient().when(systemSettingService.getSettingValue("default_overtime_rate")).thenReturn("1.25");
+        PayrollCalculationService rates = new PayrollCalculationService(systemSettingService);
+
+        com.employger.entity.Holiday.Type holidayType =
+                type.equals("NONE") ? null : com.employger.entity.Holiday.Type.valueOf(type);
+
+        assertThat(rates.dayRates(holidayType, restDay).overtime()).isEqualByComparingTo(expected);
+    }
+
     // BIR RR 11-2018 Annex E bracket boundaries.
     @ParameterizedTest(name = "Tax {0}: {1} -> {2}")
     @CsvSource({

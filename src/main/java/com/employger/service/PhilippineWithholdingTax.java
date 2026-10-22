@@ -47,7 +47,29 @@ final class PhilippineWithholdingTax {
             Bracket.of("166667", "33541.80", "0.30"),
             Bracket.of("666667", "183541.80", "0.35"));
 
+    /**
+     * Annual graduated rates for compensation earned in 2023 and onwards
+     * (RR 11-2018 Sec. 2.79(B)(5)(b), schedule b), verified 2026-10-23 in
+     * the BIR digest of RR 11-2018. Used for year-end annualization.
+     */
+    static final List<Bracket> ANNUAL = List.of(
+            Bracket.of("250000", "0.00", "0.15"),
+            Bracket.of("400000", "22500.00", "0.20"),
+            Bracket.of("800000", "102500.00", "0.25"),
+            Bracket.of("2000000", "402500.00", "0.30"),
+            Bracket.of("8000000", "2202500.00", "0.35"));
+
     private PhilippineWithholdingTax() {
+    }
+
+    /** Income tax due on a whole year's taxable compensation. */
+    static BigDecimal forYear(BigDecimal annualTaxableCompensation) {
+
+        if (annualTaxableCompensation == null || annualTaxableCompensation.signum() <= 0) {
+            return BigDecimal.ZERO.setScale(2);
+        }
+
+        return apply(ANNUAL, annualTaxableCompensation).setScale(2, RoundingMode.HALF_UP);
     }
 
     /**

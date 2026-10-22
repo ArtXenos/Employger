@@ -53,7 +53,21 @@ public class SystemSettingService {
             "sss_ec_msc_threshold",
             "sss_ec_amount_low",
             "sss_ec_amount_high",
-            "pagibig_employer_rate");
+            "pagibig_employer_rate",
+            "rate_regular_holiday",
+            "rate_regular_holiday_rest_day",
+            "rate_special_day",
+            "rate_special_day_rest_day",
+            "rate_double_holiday",
+            "rate_double_holiday_rest_day",
+            "rate_double_holiday_unworked",
+            "rate_rest_day",
+            "overtime_premium_factor",
+            "benefits_exemption_cap",
+            "de_minimis_rice_monthly",
+            "de_minimis_clothing_annual",
+            "de_minimis_medical_semester",
+            "de_minimis_leave_days");
 
     private final AuditService auditService;
 
@@ -229,6 +243,31 @@ public class SystemSettingService {
             case "sss_ec_amount_high":
                 validateDecimal(name, value,
                         BigDecimal.ZERO, new BigDecimal("10000"));
+                break;
+
+            case "rate_regular_holiday":
+            case "rate_regular_holiday_rest_day":
+            case "rate_special_day":
+            case "rate_special_day_rest_day":
+            case "rate_double_holiday":
+            case "rate_double_holiday_rest_day":
+            case "rate_double_holiday_unworked":
+            case "rate_rest_day":
+            case "overtime_premium_factor":
+                validateDecimal(name, value,
+                        BigDecimal.ONE, new BigDecimal("10"));
+                break;
+
+            case "benefits_exemption_cap":
+            case "de_minimis_rice_monthly":
+            case "de_minimis_clothing_annual":
+            case "de_minimis_medical_semester":
+                validateDecimal(name, value,
+                        BigDecimal.ZERO, new BigDecimal("10000000"));
+                break;
+
+            case "de_minimis_leave_days":
+                validateInteger(name, value, 0, 366);
                 break;
 
             case "rest_days":

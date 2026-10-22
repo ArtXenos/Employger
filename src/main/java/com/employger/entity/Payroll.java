@@ -128,6 +128,44 @@ public class Payroll {
     @Column(name = "pagibig_employer_contribution", precision = 12, scale = 2)
     private BigDecimal pagIbigEmployerContribution;
 
+    // Breakdown added by migration V6 (holidays, benefits, annualization).
+    // NULL on payroll calculated before V6.
+    @Column(name = "holiday_premium_pay", precision = 12, scale = 2)
+    private BigDecimal holidayPremiumPay;
+
+    @Column(name = "night_differential_pay", precision = 12, scale = 2)
+    private BigDecimal nightDifferentialPay;
+
+    @Column(name = "hazard_pay", precision = 12, scale = 2)
+    private BigDecimal hazardPay;
+
+    @Column(name = "thirteenth_month_pay", precision = 12, scale = 2)
+    private BigDecimal thirteenthMonthPay;
+
+    @Column(name = "other_benefits_pay", precision = 12, scale = 2)
+    private BigDecimal otherBenefitsPay;
+
+    @Column(name = "de_minimis_pay", precision = 12, scale = 2)
+    private BigDecimal deMinimisPay;
+
+    @Column(name = "taxable_allowance_pay", precision = 12, scale = 2)
+    private BigDecimal taxableAllowancePay;
+
+    @Column(name = "de_minimis_exempt", precision = 12, scale = 2)
+    private BigDecimal deMinimisExempt;
+
+    @Column(name = "exempt_benefits", precision = 12, scale = 2)
+    private BigDecimal exemptBenefits;
+
+    @Column(name = "mwe_exempt_pay", precision = 12, scale = 2)
+    private BigDecimal mweExemptPay;
+
+    @Column(name = "tax_refund", precision = 12, scale = 2)
+    private BigDecimal taxRefund;
+
+    @Column(name = "annualized_tax_due", precision = 12, scale = 2)
+    private BigDecimal annualizedTaxDue;
+
     public enum Status {
         DRAFT,
         PROCESSED,
@@ -397,5 +435,101 @@ public class Payroll {
 
     public void setPagIbigEmployerContribution(BigDecimal pagIbigEmployerContribution) {
         this.pagIbigEmployerContribution = pagIbigEmployerContribution;
+    }
+
+    public BigDecimal getHolidayPremiumPay() {
+        return holidayPremiumPay;
+    }
+
+    public void setHolidayPremiumPay(BigDecimal holidayPremiumPay) {
+        this.holidayPremiumPay = holidayPremiumPay;
+    }
+
+    public BigDecimal getNightDifferentialPay() {
+        return nightDifferentialPay;
+    }
+
+    public void setNightDifferentialPay(BigDecimal nightDifferentialPay) {
+        this.nightDifferentialPay = nightDifferentialPay;
+    }
+
+    public BigDecimal getHazardPay() {
+        return hazardPay;
+    }
+
+    public void setHazardPay(BigDecimal hazardPay) {
+        this.hazardPay = hazardPay;
+    }
+
+    public BigDecimal getThirteenthMonthPay() {
+        return thirteenthMonthPay;
+    }
+
+    public void setThirteenthMonthPay(BigDecimal thirteenthMonthPay) {
+        this.thirteenthMonthPay = thirteenthMonthPay;
+    }
+
+    public BigDecimal getOtherBenefitsPay() {
+        return otherBenefitsPay;
+    }
+
+    public void setOtherBenefitsPay(BigDecimal otherBenefitsPay) {
+        this.otherBenefitsPay = otherBenefitsPay;
+    }
+
+    public BigDecimal getDeMinimisPay() {
+        return deMinimisPay;
+    }
+
+    public void setDeMinimisPay(BigDecimal deMinimisPay) {
+        this.deMinimisPay = deMinimisPay;
+    }
+
+    public BigDecimal getTaxableAllowancePay() {
+        return taxableAllowancePay;
+    }
+
+    public void setTaxableAllowancePay(BigDecimal taxableAllowancePay) {
+        this.taxableAllowancePay = taxableAllowancePay;
+    }
+
+    public BigDecimal getDeMinimisExempt() {
+        return deMinimisExempt;
+    }
+
+    public void setDeMinimisExempt(BigDecimal deMinimisExempt) {
+        this.deMinimisExempt = deMinimisExempt;
+    }
+
+    public BigDecimal getExemptBenefits() {
+        return exemptBenefits;
+    }
+
+    public void setExemptBenefits(BigDecimal exemptBenefits) {
+        this.exemptBenefits = exemptBenefits;
+    }
+
+    public BigDecimal getMweExemptPay() {
+        return mweExemptPay;
+    }
+
+    public void setMweExemptPay(BigDecimal mweExemptPay) {
+        this.mweExemptPay = mweExemptPay;
+    }
+
+    public BigDecimal getTaxRefund() {
+        return taxRefund;
+    }
+
+    public void setTaxRefund(BigDecimal taxRefund) {
+        this.taxRefund = taxRefund;
+    }
+
+    public BigDecimal getAnnualizedTaxDue() {
+        return annualizedTaxDue;
+    }
+
+    public void setAnnualizedTaxDue(BigDecimal annualizedTaxDue) {
+        this.annualizedTaxDue = annualizedTaxDue;
     }
 }

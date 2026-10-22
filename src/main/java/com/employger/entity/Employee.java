@@ -54,6 +54,25 @@ public class Employee {
     @Column(name = "minimum_wage_earner", nullable = false)
     private boolean minimumWageEarner = false;
 
+    // Managerial employees are not entitled to mandatory 13th month pay
+    // (PD 851). Migration V6.
+    @Column(nullable = false)
+    private boolean managerial = false;
+
+    // Government numbers for remittance reports and BIR Form 2316. Only
+    // administrators and HR managers see them (EmployeeResponse).
+    @Column(name = "sss_number", length = 20)
+    private String sssNumber;
+
+    @Column(name = "philhealth_number", length = 20)
+    private String philHealthNumber;
+
+    @Column(name = "pagibig_number", length = 20)
+    private String pagIbigNumber;
+
+    @Column(length = 20)
+    private String tin;
+
     @Column(name = "postal_code", length = 20)
     private String postalCode;
 
@@ -186,6 +205,46 @@ public class Employee {
 
     public void setMinimumWageEarner(boolean minimumWageEarner) {
         this.minimumWageEarner = minimumWageEarner;
+    }
+
+    public boolean isManagerial() {
+        return managerial;
+    }
+
+    public void setManagerial(boolean managerial) {
+        this.managerial = managerial;
+    }
+
+    public String getSssNumber() {
+        return sssNumber;
+    }
+
+    public void setSssNumber(String sssNumber) {
+        this.sssNumber = sssNumber;
+    }
+
+    public String getPhilHealthNumber() {
+        return philHealthNumber;
+    }
+
+    public void setPhilHealthNumber(String philHealthNumber) {
+        this.philHealthNumber = philHealthNumber;
+    }
+
+    public String getPagIbigNumber() {
+        return pagIbigNumber;
+    }
+
+    public void setPagIbigNumber(String pagIbigNumber) {
+        this.pagIbigNumber = pagIbigNumber;
+    }
+
+    public String getTin() {
+        return tin;
+    }
+
+    public void setTin(String tin) {
+        this.tin = tin;
     }
 
     public String getPostalCode() {

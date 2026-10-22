@@ -29,6 +29,7 @@ public record PayrollBreakdown(
         BigDecimal overtimePay,
         BigDecimal bonusAmount,
         BigDecimal grossPay,
+        StatutoryDeductionService.StatutoryDeductions statutory,
         BigDecimal taxAmount,
         BigDecimal deductionAmount,
         BigDecimal netPay,

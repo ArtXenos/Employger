@@ -87,7 +87,8 @@ class PayrollServiceTest {
                 attendanceRepository,
                 userRepository,
                 calculationService,
-                auditService);
+                auditService,
+                new StatutoryDeductionService(systemSettingService, calculationService));
 
         employee = new Employee();
         employee.setEmployeeId(35);
@@ -171,6 +172,39 @@ class PayrollServiceTest {
         assertThat(payroll.getWorkingDaysEmployed()).isEqualTo(8);
         assertThat(payroll.getBasePay()).isEqualByComparingTo("9090.91");
         assertThat(payroll.getCalculationNotes()).contains("prorated");
+    }
+
+    @Test
+    void createPayroll_appliesStatutoryDeductionsWhenEnabled() {
+        when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
+                .thenReturn(Optional.of("true"));
+        Map.ofEntries(
+                Map.entry("sss_employee_rate", "0.05"),
+                Map.entry("sss_msc_minimum", "5000"),
+                Map.entry("sss_msc_maximum", "35000"),
+                Map.entry("sss_msc_step", "500"),
+                Map.entry("philhealth_premium_rate", "0.05"),
+                Map.entry("philhealth_salary_floor", "10000"),
+                Map.entry("philhealth_salary_ceiling", "100000"),
+                Map.entry("philhealth_employee_share", "0.50"),
+                Map.entry("pagibig_employee_rate", "0.02"),
+                Map.entry("pagibig_low_salary_rate", "0.01"),
+                Map.entry("pagibig_low_salary_threshold", "1500"),
+                Map.entry("pagibig_max_fund_salary", "10000"))
+                .forEach((name, value) -> lenient().when(systemSettingService.getSettingValue(name)).thenReturn(value));
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        // Gross 12,500.00 (no attendance or overtime recorded).
+        // Contributions 625.00 + 312.50 + 100.00 = 1,037.50; tax 156.83.
+        assertThat(payroll.getGrossPay()).isEqualByComparingTo("12500.00");
+        assertThat(payroll.getSssContribution()).isEqualByComparingTo("625.00");
+        assertThat(payroll.getPhilHealthContribution()).isEqualByComparingTo("312.50");
+        assertThat(payroll.getPagIbigContribution()).isEqualByComparingTo("100.00");
+        assertThat(payroll.getDeductionAmount()).isEqualByComparingTo("1037.50");
+        assertThat(payroll.getTaxableCompensation()).isEqualByComparingTo("11462.50");
+        assertThat(payroll.getTaxAmount()).isEqualByComparingTo("156.83");
+        assertThat(payroll.getNetPay()).isEqualByComparingTo("11305.67");
     }
 
     @Test

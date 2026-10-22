@@ -35,7 +35,20 @@ public class SystemSettingService {
             "night_differential_rate",
             "night_differential_start",
             "night_differential_end",
-            "rest_days");
+            "rest_days",
+            "statutory_deductions_enabled",
+            "sss_employee_rate",
+            "sss_msc_minimum",
+            "sss_msc_maximum",
+            "sss_msc_step",
+            "philhealth_premium_rate",
+            "philhealth_salary_floor",
+            "philhealth_salary_ceiling",
+            "philhealth_employee_share",
+            "pagibig_employee_rate",
+            "pagibig_low_salary_rate",
+            "pagibig_low_salary_threshold",
+            "pagibig_max_fund_salary");
 
     private final AuditService auditService;
 
@@ -171,6 +184,37 @@ public class SystemSettingService {
                     throw new IllegalArgumentException(
                             name + " must use HH:mm time format");
                 }
+                break;
+
+            case "statutory_deductions_enabled":
+                if (!value.equals("true") && !value.equals("false")) {
+                    throw new IllegalArgumentException(
+                            name + " must be true or false");
+                }
+                break;
+
+            case "sss_employee_rate":
+            case "philhealth_premium_rate":
+            case "pagibig_employee_rate":
+            case "pagibig_low_salary_rate":
+                validateDecimal(name, value,
+                        BigDecimal.ZERO, new BigDecimal("0.5"));
+                break;
+
+            case "philhealth_employee_share":
+                validateDecimal(name, value,
+                        BigDecimal.ZERO, BigDecimal.ONE);
+                break;
+
+            case "sss_msc_minimum":
+            case "sss_msc_maximum":
+            case "sss_msc_step":
+            case "philhealth_salary_floor":
+            case "philhealth_salary_ceiling":
+            case "pagibig_low_salary_threshold":
+            case "pagibig_max_fund_salary":
+                validateDecimal(name, value,
+                        BigDecimal.ONE, new BigDecimal("10000000"));
                 break;
 
             case "rest_days":

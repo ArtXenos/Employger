@@ -99,6 +99,21 @@ public class Payroll {
     @Column(name = "calculated_at")
     private LocalDateTime calculatedAt;
 
+    // Employee statutory contributions and tax basis (migration V3).
+    // deduction_amount is their sum; tax_amount is the withholding tax.
+
+    @Column(name = "sss_contribution", precision = 12, scale = 2)
+    private BigDecimal sssContribution;
+
+    @Column(name = "philhealth_contribution", precision = 12, scale = 2)
+    private BigDecimal philHealthContribution;
+
+    @Column(name = "pagibig_contribution", precision = 12, scale = 2)
+    private BigDecimal pagIbigContribution;
+
+    @Column(name = "taxable_compensation", precision = 12, scale = 2)
+    private BigDecimal taxableCompensation;
+
     public enum Status {
         DRAFT,
         PROCESSED,
@@ -304,5 +319,37 @@ public class Payroll {
 
     public void setCalculatedAt(LocalDateTime calculatedAt) {
         this.calculatedAt = calculatedAt;
+    }
+
+    public BigDecimal getSssContribution() {
+        return sssContribution;
+    }
+
+    public void setSssContribution(BigDecimal sssContribution) {
+        this.sssContribution = sssContribution;
+    }
+
+    public BigDecimal getPhilHealthContribution() {
+        return philHealthContribution;
+    }
+
+    public void setPhilHealthContribution(BigDecimal philHealthContribution) {
+        this.philHealthContribution = philHealthContribution;
+    }
+
+    public BigDecimal getPagIbigContribution() {
+        return pagIbigContribution;
+    }
+
+    public void setPagIbigContribution(BigDecimal pagIbigContribution) {
+        this.pagIbigContribution = pagIbigContribution;
+    }
+
+    public BigDecimal getTaxableCompensation() {
+        return taxableCompensation;
+    }
+
+    public void setTaxableCompensation(BigDecimal taxableCompensation) {
+        this.taxableCompensation = taxableCompensation;
     }
 }

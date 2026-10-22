@@ -42,6 +42,7 @@ public class PayrollService {
         private final UserRepository userRepository;
         private final PayrollCalculationService payrollCalculationService;
         private final AuditService auditService;
+        private final StatutoryDeductionService statutoryDeductionService;
 
         public PayrollService(
                         PayrollRepository payrollRepository,
@@ -51,7 +52,10 @@ public class PayrollService {
                         AttendanceRepository attendanceRepository,
                         UserRepository userRepository,
                         PayrollCalculationService payrollCalculationService,
-                        AuditService auditService) {
+                        AuditService auditService,
+                        StatutoryDeductionService statutoryDeductionService) {
+
+                this.statutoryDeductionService = statutoryDeductionService;
 
                 this.auditService = auditService;
 
@@ -168,6 +172,10 @@ public class PayrollService {
                 preview.put("overtimePay", breakdown.overtimePay());
                 preview.put("bonusAmount", breakdown.bonusAmount());
                 preview.put("grossPay", breakdown.grossPay());
+                preview.put("sssContribution", breakdown.statutory().sss());
+                preview.put("philHealthContribution", breakdown.statutory().philHealth());
+                preview.put("pagIbigContribution", breakdown.statutory().pagIbig());
+                preview.put("taxableCompensation", breakdown.statutory().taxableCompensation());
                 preview.put("taxAmount", breakdown.taxAmount());
                 preview.put("otherDeductions", breakdown.deductionAmount());
                 preview.put("netPay", breakdown.netPay());
@@ -458,12 +466,20 @@ public class PayrollService {
 
                 // ---------- totals ----------
 
-                // Bonuses, tax, and statutory deductions are not calculated yet.
+                // Bonuses are not recorded yet.
                 BigDecimal bonusAmount = ZERO;
-                BigDecimal taxAmount = ZERO;
-                BigDecimal deductionAmount = ZERO;
 
                 BigDecimal grossPay = regularPay.add(overtimePay).add(bonusAmount);
+
+                // Employee SSS, PhilHealth, and Pag-IBIG shares are the
+                // deductions; withholding tax applies to gross pay less them.
+                StatutoryDeductionService.StatutoryDeductions statutory = statutoryDeductionService
+                                .calculate(employee.getBaseSalary(), payCycle.getCycleType(), grossPay);
+
+                notes.addAll(statutory.notes());
+
+                BigDecimal taxAmount = statutory.withholdingTax();
+                BigDecimal deductionAmount = statutory.totalContributions();
 
                 BigDecimal netPay = grossPay
                                 .subtract(taxAmount)
@@ -487,6 +503,7 @@ public class PayrollService {
                                 overtimePay,
                                 bonusAmount,
                                 grossPay,
+                                statutory,
                                 taxAmount,
                                 deductionAmount,
                                 netPay,
@@ -554,6 +571,11 @@ public class PayrollService {
                                 ? null
                                 : String.join("\n", breakdown.notes()));
                 payroll.setCalculatedAt(LocalDateTime.now());
+
+                payroll.setSssContribution(breakdown.statutory().sss());
+                payroll.setPhilHealthContribution(breakdown.statutory().philHealth());
+                payroll.setPagIbigContribution(breakdown.statutory().pagIbig());
+                payroll.setTaxableCompensation(breakdown.statutory().taxableCompensation());
 
                 // Release overtime no longer included, then link what is.
                 for (Overtime linked : overtimeRepository.findByPayrollPayrollId(payroll.getPayrollId())) {

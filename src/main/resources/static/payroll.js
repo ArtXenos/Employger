@@ -634,6 +634,8 @@ const PREVIEW_AMOUNT_FIELDS = {
   previewRegularPay: "regularPay",
   previewOvertimePay: "overtimePay",
   previewGrossPay: "grossPay",
+  previewContributions: "otherDeductions",
+  previewTax: "taxAmount",
   previewNetPay: "netPay",
 };
 

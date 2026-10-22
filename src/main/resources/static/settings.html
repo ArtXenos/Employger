@@ -172,8 +172,8 @@
                   required
                 />
                 <small
-                  >Retained for compatibility. This is not a per-minute late
-                  calculation.</small
+                  >Not used in payroll calculations. Late time is deducted at the
+                  hourly rate from the hours worked.</small
                 >
               </div>
 
@@ -190,7 +190,8 @@
                   required
                 />
                 <small
-                  >Retained for compatibility with the existing settings.</small
+                  >Not used in payroll calculations. An ABSENT working day is
+                  deducted at the daily rate.</small
                 >
               </div>
             </div>
@@ -267,7 +268,142 @@
                 />
                 <small>Set to 0 to disable a grace period.</small>
               </div>
+
+              <div class="setting-field">
+                <label for="rest_days">Rest Days</label>
+                <input
+                  id="rest_days"
+                  name="rest_days"
+                  type="text"
+                  required
+                  pattern="(NONE|((MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)(,\s*(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY))*))"
+                  aria-describedby="restDaysHint"
+                />
+                <small id="restDaysHint"
+                  >Comma-separated, e.g. SATURDAY,SUNDAY, or NONE. Rest days are
+                  never deducted and are not counted as working days.</small
+                >
+              </div>
             </div>
+
+            <p class="settings-note">
+              Regular hours are calculated from Time In and Time Out using these
+              settings: arrivals within the grace period count as on time, and
+              the unpaid break is subtracted when the shift spans the middle of
+              the standard day.
+            </p>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-card-header">
+              <div class="settings-icon">₱</div>
+              <div>
+                <h3>Statutory Deductions (Employee Share)</h3>
+                <p>
+                  SSS, PhilHealth, Pag-IBIG, and BIR withholding tax. Defaults
+                  were verified on 2026-10-22 against the agencies' published
+                  schedules; update them when a new circular is issued.
+                </p>
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <div class="setting-field">
+                <label for="statutory_deductions_enabled">Apply Statutory Deductions</label>
+                <select
+                  id="statutory_deductions_enabled"
+                  name="statutory_deductions_enabled"
+                  required
+                >
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+                <small>Affects payroll calculated from now on, not paid payroll.</small>
+              </div>
+
+              <div class="setting-field">
+                <label for="sss_employee_rate">SSS Employee Rate</label>
+                <input id="sss_employee_rate" name="sss_employee_rate"
+                  type="number" min="0" max="0.5" step="0.0001" required />
+                <small>Of the Monthly Salary Credit. Circular 2024-006: 0.05.</small>
+              </div>
+
+              <div class="setting-field">
+                <label for="sss_msc_minimum">SSS Minimum Salary Credit (₱)</label>
+                <input id="sss_msc_minimum" name="sss_msc_minimum"
+                  type="number" min="1" step="0.01" required />
+              </div>
+
+              <div class="setting-field">
+                <label for="sss_msc_maximum">SSS Maximum Salary Credit (₱)</label>
+                <input id="sss_msc_maximum" name="sss_msc_maximum"
+                  type="number" min="1" step="0.01" required />
+              </div>
+
+              <div class="setting-field">
+                <label for="sss_msc_step">SSS Salary Credit Step (₱)</label>
+                <input id="sss_msc_step" name="sss_msc_step"
+                  type="number" min="1" step="0.01" required />
+              </div>
+
+              <div class="setting-field">
+                <label for="philhealth_premium_rate">PhilHealth Premium Rate</label>
+                <input id="philhealth_premium_rate" name="philhealth_premium_rate"
+                  type="number" min="0" max="0.5" step="0.0001" required />
+                <small>Total premium on monthly basic salary. 2026: 0.05.</small>
+              </div>
+
+              <div class="setting-field">
+                <label for="philhealth_salary_floor">PhilHealth Salary Floor (₱)</label>
+                <input id="philhealth_salary_floor" name="philhealth_salary_floor"
+                  type="number" min="1" step="0.01" required />
+              </div>
+
+              <div class="setting-field">
+                <label for="philhealth_salary_ceiling">PhilHealth Salary Ceiling (₱)</label>
+                <input id="philhealth_salary_ceiling" name="philhealth_salary_ceiling"
+                  type="number" min="1" step="0.01" required />
+              </div>
+
+              <div class="setting-field">
+                <label for="philhealth_employee_share">PhilHealth Employee Share</label>
+                <input id="philhealth_employee_share" name="philhealth_employee_share"
+                  type="number" min="0" max="1" step="0.01" required />
+                <small>Fraction of the premium paid by the employee. 0.50 = equal sharing.</small>
+              </div>
+
+              <div class="setting-field">
+                <label for="pagibig_employee_rate">Pag-IBIG Employee Rate</label>
+                <input id="pagibig_employee_rate" name="pagibig_employee_rate"
+                  type="number" min="0" max="0.5" step="0.0001" required />
+              </div>
+
+              <div class="setting-field">
+                <label for="pagibig_low_salary_rate">Pag-IBIG Rate at or Below Threshold</label>
+                <input id="pagibig_low_salary_rate" name="pagibig_low_salary_rate"
+                  type="number" min="0" max="0.5" step="0.0001" required />
+              </div>
+
+              <div class="setting-field">
+                <label for="pagibig_low_salary_threshold">Pag-IBIG Low-Salary Threshold (₱)</label>
+                <input id="pagibig_low_salary_threshold" name="pagibig_low_salary_threshold"
+                  type="number" min="1" step="0.01" required />
+              </div>
+
+              <div class="setting-field">
+                <label for="pagibig_max_fund_salary">Pag-IBIG Maximum Fund Salary (₱)</label>
+                <input id="pagibig_max_fund_salary" name="pagibig_max_fund_salary"
+                  type="number" min="1" step="0.01" required />
+                <small>Circular 460 (Feb 2024): ₱10,000.</small>
+              </div>
+            </div>
+
+            <p class="settings-note">
+              Withholding tax uses the BIR table in RR 11-2018 Annex E
+              (effective January 1, 2023), applied to gross pay less these
+              contributions. Monthly contributions are spread evenly across
+              pay cycles (half per semi-monthly cycle).
+            </p>
           </section>
 
           <section class="settings-card">

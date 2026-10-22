@@ -1,0 +1,168 @@
+package com.employger.service;
+
+import com.employger.entity.PayCycle;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
+
+/**
+ * Expected values are taken from the official schedules (verified
+ * 2026-10-22): SSS Circular 2024-006, PhilHealth Advisory 2026-0042,
+ * Pag-IBIG Circular 460, and BIR RR 11-2018 Annex E.
+ */
+@ExtendWith(MockitoExtension.class)
+class StatutoryDeductionServiceTest {
+
+    private static final Map<String, String> V3_SETTINGS = Map.ofEntries(
+            Map.entry("sss_employee_rate", "0.05"),
+            Map.entry("sss_msc_minimum", "5000"),
+            Map.entry("sss_msc_maximum", "35000"),
+            Map.entry("sss_msc_step", "500"),
+            Map.entry("philhealth_premium_rate", "0.05"),
+            Map.entry("philhealth_salary_floor", "10000"),
+            Map.entry("philhealth_salary_ceiling", "100000"),
+            Map.entry("philhealth_employee_share", "0.50"),
+            Map.entry("pagibig_employee_rate", "0.02"),
+            Map.entry("pagibig_low_salary_rate", "0.01"),
+            Map.entry("pagibig_low_salary_threshold", "1500"),
+            Map.entry("pagibig_max_fund_salary", "10000"));
+
+    @Mock
+    private SystemSettingService systemSettingService;
+
+    private StatutoryDeductionService service;
+
+    @BeforeEach
+    void setUp() {
+        V3_SETTINGS.forEach((name, value) ->
+                lenient().when(systemSettingService.getSettingValue(name)).thenReturn(value));
+        lenient().when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
+                .thenReturn(Optional.of("true"));
+
+        service = new StatutoryDeductionService(
+                systemSettingService,
+                new PayrollCalculationService(systemSettingService));
+    }
+
+    // Rows of the SSS Circular 2024-006 table: compensation -> employee total.
+    @ParameterizedTest(name = "SSS: salary {0} -> employee {1}")
+    @CsvSource({
+            "4000.00, 250.00",      // below 5,250 -> MSC 5,000
+            "5249.99, 250.00",
+            "5250.00, 275.00",      // 5,250 - 5,749.99 -> MSC 5,500
+            "5749.99, 275.00",
+            "20249.99, 1000.00",    // MSC 20,000 (regular SS only)
+            "20250.00, 1025.00",    // MSC 20,500 (20,000 SS + 500 MPF)
+            "25000.00, 1250.00",
+            "34749.99, 1725.00",
+            "34750.00, 1750.00",    // 34,750 and over -> MSC 35,000
+            "250000.00, 1750.00",
+    })
+    void sssEmployeeShareMatchesOfficialTable(String salary, String expected) {
+        assertThat(service.monthlySss(new BigDecimal(salary))).isEqualByComparingTo(expected);
+    }
+
+    @ParameterizedTest(name = "PhilHealth: salary {0} -> employee {1}")
+    @CsvSource({
+            "8000.00, 250.00",      // floor 10,000 -> 500 premium, half
+            "10000.00, 250.00",
+            "25000.00, 625.00",
+            "100000.00, 2500.00",
+            "150000.00, 2500.00",   // ceiling 100,000 -> 5,000 premium, half
+    })
+    void philHealthEmployeeShare(String salary, String expected) {
+        assertThat(service.monthlyPhilHealth(new BigDecimal(salary))).isEqualByComparingTo(expected);
+    }
+
+    @ParameterizedTest(name = "Pag-IBIG: salary {0} -> employee {1}")
+    @CsvSource({
+            "1500.00, 15.00",       // 1% at or below 1,500
+            "1500.01, 30.0002",     // 2% above 1,500 (rounded per period later)
+            "10000.00, 200.00",
+            "25000.00, 200.00",     // maximum fund salary 10,000
+    })
+    void pagIbigEmployeeShare(String salary, String expected) {
+        assertThat(service.monthlyPagIbig(new BigDecimal(salary))).isEqualByComparingTo(expected);
+    }
+
+    // BIR RR 11-2018 Annex E bracket boundaries.
+    @ParameterizedTest(name = "Tax {0}: {1} -> {2}")
+    @CsvSource({
+            "SEMI_MONTHLY, 10417.00, 0.00",
+            "SEMI_MONTHLY, 16667.00, 937.50",
+            "SEMI_MONTHLY, 20000.00, 1604.10",
+            "SEMI_MONTHLY, 33333.00, 4270.70",
+            "MONTHLY, 20833.00, 0.00",
+            "MONTHLY, 33333.00, 1875.00",
+            "MONTHLY, 66667.00, 8541.80",
+            "MONTHLY, 700000.00, 195208.35",  // 183,541.80 + 35% x 33,333
+            "WEEKLY, 4808.00, 0.00",
+            "WEEKLY, 7692.00, 432.60",
+            "BI_WEEKLY, 15384.00, 865.20",   // two weekly periods of 7,692
+    })
+    void withholdingTaxFollowsAnnexE(String cycleType, String compensation, String expected) {
+        assertThat(PhilippineWithholdingTax.forPeriod(
+                PayCycle.CycleType.valueOf(cycleType), new BigDecimal(compensation)))
+                .isEqualByComparingTo(expected);
+    }
+
+    @Test
+    void semiMonthlyPayrollForMonthlySalaryOf25000() {
+        StatutoryDeductionService.StatutoryDeductions result = service.calculate(
+                new BigDecimal("25000.00"), PayCycle.CycleType.SEMI_MONTHLY, new BigDecimal("12500.00"));
+
+        // Half of each monthly employee share.
+        assertThat(result.sss()).isEqualByComparingTo("625.00");
+        assertThat(result.philHealth()).isEqualByComparingTo("312.50");
+        assertThat(result.pagIbig()).isEqualByComparingTo("100.00");
+        assertThat(result.totalContributions()).isEqualByComparingTo("1037.50");
+        // 12,500 - 1,037.50 = 11,462.50; 15% over 10,417 = 156.825 -> 156.83
+        assertThat(result.taxableCompensation()).isEqualByComparingTo("11462.50");
+        assertThat(result.withholdingTax()).isEqualByComparingTo("156.83");
+    }
+
+    @Test
+    void monthlyPayrollForMonthlySalaryOf25000() {
+        StatutoryDeductionService.StatutoryDeductions result = service.calculate(
+                new BigDecimal("25000.00"), PayCycle.CycleType.MONTHLY, new BigDecimal("25000.00"));
+
+        assertThat(result.totalContributions()).isEqualByComparingTo("2075.00");
+        // 25,000 - 2,075 = 22,925; 15% over 20,833 = 313.80
+        assertThat(result.withholdingTax()).isEqualByComparingTo("313.80");
+    }
+
+    @Test
+    void deductionsAboveGrossPayAreFlagged() {
+        StatutoryDeductionService.StatutoryDeductions result = service.calculate(
+                new BigDecimal("600.00"), PayCycle.CycleType.WEEKLY, new BigDecimal("100.00"));
+
+        // Weekly shares on a 600 monthly salary: SSS 57.69 + PhilHealth 57.69
+        // + Pag-IBIG 1.38 = 116.76, more than the 100.00 gross pay.
+
+        assertThat(result.notes()).anySatisfy(note -> assertThat(note).contains("exceed gross pay"));
+    }
+
+    @Test
+    void nothingIsDeductedWhenDisabled() {
+        lenient().when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
+                .thenReturn(Optional.of("false"));
+
+        StatutoryDeductionService.StatutoryDeductions result = service.calculate(
+                new BigDecimal("25000.00"), PayCycle.CycleType.MONTHLY, new BigDecimal("25000.00"));
+
+        assertThat(result.totalContributions()).isEqualByComparingTo("0");
+        assertThat(result.withholdingTax()).isEqualByComparingTo("0");
+        assertThat(result.taxableCompensation()).isEqualByComparingTo("25000.00");
+    }
+}

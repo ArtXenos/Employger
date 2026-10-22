@@ -17,6 +17,20 @@ const DEFAULT_SETTINGS = {
   night_differential_rate: "0.10",
   night_differential_start: "22:00",
   night_differential_end: "06:00",
+  rest_days: "SATURDAY,SUNDAY",
+  statutory_deductions_enabled: "true",
+  sss_employee_rate: "0.05",
+  sss_msc_minimum: "5000",
+  sss_msc_maximum: "35000",
+  sss_msc_step: "500",
+  philhealth_premium_rate: "0.05",
+  philhealth_salary_floor: "10000",
+  philhealth_salary_ceiling: "100000",
+  philhealth_employee_share: "0.50",
+  pagibig_employee_rate: "0.02",
+  pagibig_low_salary_rate: "0.01",
+  pagibig_low_salary_threshold: "1500",
+  pagibig_max_fund_salary: "10000",
 };
 
 const settingsForm = document.getElementById("settingsForm");

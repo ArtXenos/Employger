@@ -48,6 +48,12 @@ public class Employee {
     @Column(name = "base_salary", nullable = false)
     private BigDecimal baseSalary = BigDecimal.ZERO;
 
+    // Paid the regional statutory minimum wage (RR 11-2018): regular and
+    // overtime pay are exempt from withholding tax. Set by HR; the system
+    // does not know regional wage rates. Migration V4.
+    @Column(name = "minimum_wage_earner", nullable = false)
+    private boolean minimumWageEarner = false;
+
     @Column(name = "postal_code", length = 20)
     private String postalCode;
 
@@ -172,6 +178,14 @@ public class Employee {
 
     public void setBaseSalary(BigDecimal baseSalary) {
         this.baseSalary = baseSalary;
+    }
+
+    public boolean isMinimumWageEarner() {
+        return minimumWageEarner;
+    }
+
+    public void setMinimumWageEarner(boolean minimumWageEarner) {
+        this.minimumWageEarner = minimumWageEarner;
     }
 
     public String getPostalCode() {

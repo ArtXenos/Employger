@@ -22,6 +22,7 @@ public class EmployeeResponse {
     private final String department;
     private final String gender;
     private final BigDecimal baseSalary;
+    private final boolean minimumWageEarner;
     private final String postalCode;
     private final String designation;
     private final String employmentStatus;
@@ -41,6 +42,7 @@ public class EmployeeResponse {
         this.department = employee.getDepartment();
         this.gender = employee.getGender();
         this.baseSalary = employee.getBaseSalary();
+        this.minimumWageEarner = employee.isMinimumWageEarner();
         this.postalCode = employee.getPostalCode();
         this.designation = employee.getDesignation();
         this.employmentStatus = employee.getEmploymentStatus() != null
@@ -90,6 +92,10 @@ public class EmployeeResponse {
 
     public BigDecimal getBaseSalary() {
         return baseSalary;
+    }
+
+    public boolean isMinimumWageEarner() {
+        return minimumWageEarner;
     }
 
     public String getPostalCode() {

@@ -176,6 +176,39 @@ class PayrollServiceTest {
 
     @Test
     void createPayroll_appliesStatutoryDeductionsWhenEnabled() {
+        enableStatutoryDeductions();
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        // Gross 12,500.00 (no attendance or overtime recorded).
+        // Contributions 625.00 + 312.50 + 100.00 = 1,037.50; tax 156.83.
+        assertThat(payroll.getGrossPay()).isEqualByComparingTo("12500.00");
+        assertThat(payroll.getSssContribution()).isEqualByComparingTo("625.00");
+        assertThat(payroll.getPhilHealthContribution()).isEqualByComparingTo("312.50");
+        assertThat(payroll.getPagIbigContribution()).isEqualByComparingTo("100.00");
+        assertThat(payroll.getDeductionAmount()).isEqualByComparingTo("1037.50");
+        assertThat(payroll.getTaxableCompensation()).isEqualByComparingTo("11462.50");
+        assertThat(payroll.getTaxAmount()).isEqualByComparingTo("156.83");
+        assertThat(payroll.getNetPay()).isEqualByComparingTo("11305.67");
+    }
+
+    @Test
+    void createPayroll_minimumWageEarnerHasContributionsButNoWithholdingTax() {
+        enableStatutoryDeductions();
+        employee.setMinimumWageEarner(true);
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        // Same pay as above; regular pay is exempt from withholding tax.
+        assertThat(payroll.getGrossPay()).isEqualByComparingTo("12500.00");
+        assertThat(payroll.getDeductionAmount()).isEqualByComparingTo("1037.50");
+        assertThat(payroll.getTaxableCompensation()).isEqualByComparingTo("0.00");
+        assertThat(payroll.getTaxAmount()).isEqualByComparingTo("0.00");
+        assertThat(payroll.getNetPay()).isEqualByComparingTo("11462.50");
+        assertThat(payroll.getCalculationNotes()).contains("Minimum wage earner");
+    }
+
+    private void enableStatutoryDeductions() {
         when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
                 .thenReturn(Optional.of("true"));
         Map.ofEntries(
@@ -192,19 +225,6 @@ class PayrollServiceTest {
                 Map.entry("pagibig_low_salary_threshold", "1500"),
                 Map.entry("pagibig_max_fund_salary", "10000"))
                 .forEach((name, value) -> lenient().when(systemSettingService.getSettingValue(name)).thenReturn(value));
-
-        Payroll payroll = payrollService.createPayroll(35, 1);
-
-        // Gross 12,500.00 (no attendance or overtime recorded).
-        // Contributions 625.00 + 312.50 + 100.00 = 1,037.50; tax 156.83.
-        assertThat(payroll.getGrossPay()).isEqualByComparingTo("12500.00");
-        assertThat(payroll.getSssContribution()).isEqualByComparingTo("625.00");
-        assertThat(payroll.getPhilHealthContribution()).isEqualByComparingTo("312.50");
-        assertThat(payroll.getPagIbigContribution()).isEqualByComparingTo("100.00");
-        assertThat(payroll.getDeductionAmount()).isEqualByComparingTo("1037.50");
-        assertThat(payroll.getTaxableCompensation()).isEqualByComparingTo("11462.50");
-        assertThat(payroll.getTaxAmount()).isEqualByComparingTo("156.83");
-        assertThat(payroll.getNetPay()).isEqualByComparingTo("11305.67");
     }
 
     @Test

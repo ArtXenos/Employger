@@ -28,10 +28,20 @@ Em-Ployger deducts the **employee share** of SSS, PhilHealth and Pag-IBIG contri
 3. **Taxable compensation** = gross pay (regular + overtime + bonus) − the three employee contributions.
 4. **Net pay** = gross pay − contributions − withholding tax. If deductions exceed gross pay, net pay is set to ₱0 and the payroll shows a warning.
 5. Each payroll stores the SSS, PhilHealth and Pag-IBIG amounts, the taxable compensation, and the tax. Paid payroll is never recalculated when rates change.
+6. **Minimum wage earners (MWE).** Tick *Minimum wage earner* on the employee's form. For those employees:
+   - regular pay and overtime pay are exempt from withholding tax;
+   - only other compensation (gross pay minus regular and overtime pay, i.e. bonuses once they're recorded) goes through the withholding table, and contributions aren't subtracted from it again;
+   - SSS, PhilHealth and Pag-IBIG still apply as usual.
+
+   The payroll's calculation notes record that the exemption was applied. Changing the flag is written to the audit trail (`EMPLOYEE_MWE_CHANGED`).
+
+   Source: [RR 11-2018](https://bir-cdn.bir.gov.ph/local/pdf/Digest%20RR%2011-2018.pdf), amending RR 2-98 §2.78.1(B)(13) and §2.79(A), read from the BIR's own digest on 2026-10-23. It covers the statutory minimum wage (SMW) plus holiday pay, overtime pay, night shift differential and hazard pay of private-sector workers paid the regional SMW fixed by the RTWPB. Additional compensation from the same employer "shall be taxable only on such additional compensation received."
+
+   **HR decides who is an MWE.** Em-Ployger doesn't know regional wage orders, so it can't check that the salary really equals the SMW. Under the same regulation, reducing wages to obtain the exemption is misrepresentation.
 
 ## Not covered (review with your accountant)
 
-- **Minimum wage earner** tax exemption: there's no per-employee flag yet.
+- Holiday pay, night shift differential and hazard pay aren't computed, so the MWE exemption covers only regular and overtime pay.
 - Non-taxable benefits: 13th-month pay and other benefits up to ₱90,000, de minimis benefits.
 - Employer shares and EC contributions, and remittance reports (SSS R-3, PhilHealth RF-1, HDMF MCRF, BIR 1601-C, 2316).
 - Year-end tax annualization.

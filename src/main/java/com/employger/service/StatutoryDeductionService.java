@@ -20,8 +20,14 @@ import java.util.List;
  *  - Monthly contributions are spread evenly over the cycles of a year:
  *    per cycle = monthly x 12 / periods per year (half per semi-monthly
  *    cycle).
- *  - Taxable compensation = gross pay - employee contributions. Minimum
- *    wage earner exemption and non-taxable benefits are not modelled.
+ *  - Taxable compensation = gross pay - employee contributions.
+ *  - Minimum wage earners (RR 11-2018, RR 2-98 Sec. 2.78.1(B)(13) and
+ *    2.79(A)): the pay passed in as exempt (regular and overtime pay) is not
+ *    taxed; only the rest of gross pay, i.e. other compensation such as
+ *    bonuses, is run through the withholding table. Contributions still
+ *    apply and are not subtracted again from that other compensation.
+ *  - Non-taxable benefits (13th month and others up to 90,000) are not
+ *    modelled.
  *  - Employer shares are not part of employee pay and are not computed.
  */
 @Service
@@ -68,6 +74,22 @@ public class StatutoryDeductionService {
             PayCycle.CycleType cycleType,
             BigDecimal grossPay) {
 
+        return calculate(monthlyBasicSalary, cycleType, grossPay, false, BigDecimal.ZERO);
+    }
+
+    /**
+     * @param minimumWageEarner whether the employee is flagged as an MWE
+     * @param mweExemptPay      for an MWE, the part of gross pay that is
+     *                          exempt (statutory minimum wage and overtime
+     *                          pay); ignored otherwise
+     */
+    public StatutoryDeductions calculate(
+            BigDecimal monthlyBasicSalary,
+            PayCycle.CycleType cycleType,
+            BigDecimal grossPay,
+            boolean minimumWageEarner,
+            BigDecimal mweExemptPay) {
+
         if (!isEnabled()) {
             return StatutoryDeductions.none(grossPay);
         }
@@ -84,10 +106,22 @@ public class StatutoryDeductionService {
         BigDecimal pagIbig = money(monthlyPagIbig(salary).multiply(periodShare));
 
         BigDecimal contributions = sss.add(philHealth).add(pagIbig);
-        BigDecimal taxable = grossPay.subtract(contributions).max(BigDecimal.ZERO);
-        BigDecimal tax = PhilippineWithholdingTax.forPeriod(cycleType, taxable);
 
         List<String> notes = new ArrayList<>();
+
+        BigDecimal taxable;
+
+        if (minimumWageEarner) {
+            BigDecimal exempt = mweExemptPay != null ? mweExemptPay : BigDecimal.ZERO;
+            taxable = grossPay.subtract(exempt).max(BigDecimal.ZERO);
+            notes.add("Minimum wage earner: regular and overtime pay (" + money(exempt.min(grossPay))
+                    + ") exempt from withholding tax under RR 11-2018; "
+                    + "only other compensation (" + money(taxable) + ") is taxed.");
+        } else {
+            taxable = grossPay.subtract(contributions).max(BigDecimal.ZERO);
+        }
+
+        BigDecimal tax = PhilippineWithholdingTax.forPeriod(cycleType, taxable);
 
         if (contributions.add(tax).compareTo(grossPay) > 0) {
             notes.add("Statutory deductions (" + contributions.add(tax)

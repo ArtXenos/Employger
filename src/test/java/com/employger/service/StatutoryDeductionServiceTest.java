@@ -143,6 +143,45 @@ class StatutoryDeductionServiceTest {
     }
 
     @Test
+    void minimumWageEarnerPaysContributionsButNoTaxOnRegularAndOvertimePay() {
+        StatutoryDeductionService.StatutoryDeductions result = service.calculate(
+                new BigDecimal("13000.00"), PayCycle.CycleType.SEMI_MONTHLY,
+                new BigDecimal("7000.00"), true, new BigDecimal("7000.00"));
+
+        // SSS MSC 13,000 x 5% / 2 = 325.00; PhilHealth 13,000 x 5% x 50% / 2
+        // = 162.50; Pag-IBIG 10,000 x 2% / 2 = 100.00.
+        assertThat(result.totalContributions()).isEqualByComparingTo("587.50");
+        assertThat(result.taxableCompensation()).isEqualByComparingTo("0.00");
+        assertThat(result.withholdingTax()).isEqualByComparingTo("0.00");
+        assertThat(result.notes()).anySatisfy(note -> assertThat(note)
+                .startsWith("Minimum wage earner").contains("RR 11-2018"));
+    }
+
+    @Test
+    void minimumWageEarnerIsTaxedOnlyOnOtherCompensation() {
+        // 6,500 exempt pay plus 11,500 other compensation (e.g. a bonus).
+        StatutoryDeductionService.StatutoryDeductions result = service.calculate(
+                new BigDecimal("13000.00"), PayCycle.CycleType.SEMI_MONTHLY,
+                new BigDecimal("18000.00"), true, new BigDecimal("6500.00"));
+
+        // Contributions are not subtracted again from the other compensation.
+        // 15% x (11,500 - 10,417) = 162.45
+        assertThat(result.taxableCompensation()).isEqualByComparingTo("11500.00");
+        assertThat(result.withholdingTax()).isEqualByComparingTo("162.45");
+    }
+
+    @Test
+    void sameIncomeIsTaxedWhenNotMinimumWageEarner() {
+        StatutoryDeductionService.StatutoryDeductions result = service.calculate(
+                new BigDecimal("25000.00"), PayCycle.CycleType.SEMI_MONTHLY,
+                new BigDecimal("12500.00"), false, new BigDecimal("12500.00"));
+
+        // The exempt amount is ignored for everyone else.
+        assertThat(result.withholdingTax()).isEqualByComparingTo("156.83");
+        assertThat(result.notes()).noneSatisfy(note -> assertThat(note).contains("Minimum wage earner"));
+    }
+
+    @Test
     void deductionsAboveGrossPayAreFlagged() {
         StatutoryDeductionService.StatutoryDeductions result = service.calculate(
                 new BigDecimal("600.00"), PayCycle.CycleType.WEEKLY, new BigDecimal("100.00"));

@@ -144,6 +144,29 @@ class EmployeeAndUserValidationIntegrationTest {
     }
 
     @Test
+    void minimumWageEarnerFlagDefaultsOffIsKeptWhenOmittedAndChangesAreAudited() throws Exception {
+        Employee employee = employee("mwe@example.test");
+        String body = VALID_EMPLOYEE.replace("maria@example.test", "mwe@example.test");
+
+        sendEmployee(put("/api/employees/{id}", employee.getEmployeeId()),
+                body.replace("\"employmentStatus\"", "\"minimumWageEarner\": true, \"employmentStatus\""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minimumWageEarner").value(true));
+
+        assertThat(latestAudit().getAction()).isEqualTo("EMPLOYEE_MWE_CHANGED");
+        assertThat(latestAudit().getDescription()).endsWith("minimum wage earner: false -> true");
+
+        // Omitted: unchanged.
+        sendEmployee(put("/api/employees/{id}", employee.getEmployeeId()), body)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minimumWageEarner").value(true));
+
+        sendEmployee(post("/api/employees"), VALID_EMPLOYEE)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.minimumWageEarner").value(false));
+    }
+
+    @Test
     void unknownEmployeeReturns404WithMessage() throws Exception {
         mockMvc.perform(get("/api/employees/{id}", 999999))
                 .andExpect(status().isNotFound())

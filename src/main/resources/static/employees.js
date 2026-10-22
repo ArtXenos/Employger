@@ -214,6 +214,9 @@ window.editEmployee = function (employeeId) {
 
   document.getElementById("baseSalary").value = employee.baseSalary || "";
 
+  document.getElementById("minimumWageEarner").checked =
+    employee.minimumWageEarner === true;
+
   document.getElementById("postalCode").value = employee.postalCode || "";
 
   document.getElementById("dateHired").value = employee.dateHired || "";
@@ -253,6 +256,8 @@ employeeForm.addEventListener("submit", async (event) => {
     gender: document.getElementById("gender").value,
 
     baseSalary: Number(document.getElementById("baseSalary").value),
+
+    minimumWageEarner: document.getElementById("minimumWageEarner").checked,
 
     postalCode: document.getElementById("postalCode").value.trim(),
 

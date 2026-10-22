@@ -156,6 +156,7 @@ public class PayrollService {
                 Map<String, Object> preview = new LinkedHashMap<>();
 
                 preview.put("employeeId", employee.getEmployeeId());
+                preview.put("minimumWageEarner", employee.isMinimumWageEarner());
                 preview.put("payCycleId", payCycle.getPayCycleId());
                 preview.put("cycleStartDate", payCycle.getStartDate());
                 preview.put("cycleEndDate", payCycle.getEndDate());
@@ -473,8 +474,15 @@ public class PayrollService {
 
                 // Employee SSS, PhilHealth, and Pag-IBIG shares are the
                 // deductions; withholding tax applies to gross pay less them.
+                // For a minimum wage earner, regular and overtime pay are
+                // exempt from withholding tax (RR 11-2018).
                 StatutoryDeductionService.StatutoryDeductions statutory = statutoryDeductionService
-                                .calculate(employee.getBaseSalary(), payCycle.getCycleType(), grossPay);
+                                .calculate(
+                                                employee.getBaseSalary(),
+                                                payCycle.getCycleType(),
+                                                grossPay,
+                                                employee.isMinimumWageEarner(),
+                                                regularPay.add(overtimePay));
 
                 notes.addAll(statutory.notes());
 

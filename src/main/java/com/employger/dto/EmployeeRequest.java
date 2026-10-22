@@ -54,6 +54,9 @@ public class EmployeeRequest {
             message = "Base salary must have at most 10 digits before and 2 after the decimal point.")
     private BigDecimal baseSalary;
 
+    // Optional: new employees default to false, updates keep the current value.
+    private Boolean minimumWageEarner;
+
     @Size(max = 20, message = "Postal code must be at most 20 characters.")
     private String postalCode;
 
@@ -139,6 +142,14 @@ public class EmployeeRequest {
 
     public void setBaseSalary(BigDecimal baseSalary) {
         this.baseSalary = baseSalary;
+    }
+
+    public Boolean getMinimumWageEarner() {
+        return minimumWageEarner;
+    }
+
+    public void setMinimumWageEarner(Boolean minimumWageEarner) {
+        this.minimumWageEarner = minimumWageEarner;
     }
 
     public String getPostalCode() {

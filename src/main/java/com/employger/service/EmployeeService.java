@@ -56,11 +56,13 @@ public class EmployeeService {
         employee.setEmploymentStatus(request.getEmploymentStatus() != null
                 ? request.getEmploymentStatus()
                 : Employee.EmploymentStatus.ACTIVE);
+        employee.setMinimumWageEarner(Boolean.TRUE.equals(request.getMinimumWageEarner()));
 
         Employee saved = employeeRepository.save(employee);
 
         auditService.record("EMPLOYEE_CREATED",
-                "Created employee #" + saved.getEmployeeId() + " with base salary " + saved.getBaseSalary());
+                "Created employee #" + saved.getEmployeeId() + " with base salary " + saved.getBaseSalary()
+                        + (saved.isMinimumWageEarner() ? ", minimum wage earner" : ""));
 
         return saved;
     }
@@ -99,6 +101,17 @@ public class EmployeeService {
             auditService.record("EMPLOYEE_STATUS_CHANGED",
                     "Employee #" + id + " employment status: " + previousStatus
                             + " -> " + employee.getEmploymentStatus());
+        }
+
+        // Changes withholding tax on future payroll, so it is audited.
+        if (request.getMinimumWageEarner() != null
+                && request.getMinimumWageEarner() != employee.isMinimumWageEarner()) {
+
+            employee.setMinimumWageEarner(request.getMinimumWageEarner());
+
+            auditService.record("EMPLOYEE_MWE_CHANGED",
+                    "Employee #" + id + " minimum wage earner: " + !request.getMinimumWageEarner()
+                            + " -> " + request.getMinimumWageEarner());
         }
 
         return employeeRepository.save(employee);

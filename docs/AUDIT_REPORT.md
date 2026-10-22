@@ -35,8 +35,9 @@ Every finding below is labelled **Confirmed** (reproduced from code, live data, 
 | 2026-10-22 | Payroll page uses server preview with warnings | Done | `45d753e` |
 | 2026-10-22 | Roles: GM read-only, employee self-service (`/api/me`, My Payroll page), 401/403 messages (M-13) | Done, tested | `7c6b529` |
 | 2026-10-22 | Migration V3 + PH statutory deductions and BIR withholding tax (M-10) | **Applied to employger_db 23:09**; rates verified against official sources (`docs/STATUTORY_DEDUCTIONS.md`) | `185ffb9` |
-| 2026-10-22 | Dedicated DB account (H-08) | **Blocked**: MariaDB system table `mysql.db` is corrupt, so GRANT fails. See "Database incident 2026-10-22". | — |
-| — | Strict `sql_mode` | Pending (test on restored copy first) | — |
+| 2026-10-22 | Dedicated DB account (H-08) | **Done** on MariaDB 10.11.19 (port 3307, localhost only). Blocked on XAMPP 10.4 by the system-table incident. See `MARIADB_UPGRADE.md`. | see git log |
+| 2026-10-22 | Supported server (H-08, EOL 10.4) | **Done**: data moved to MariaDB 10.11.19; verify-db.sql matched; app runs as `employger_app`. XAMPP 10.4 kept as a fallback. | see git log |
+| 2026-10-22 | Strict `sql_mode` | **On** (10.11 default). App starts and validates; watch for new data errors. | — |
 
 ### Database incident 2026-10-22: corrupt MariaDB system tables
 

@@ -6,6 +6,23 @@ XAMPP's MariaDB 10.4 is out of support, and since 2026-10-22 it crashes when you
 
 Time: about 30 minutes.
 
+## Status: done on 2026-10-22 (23:30)
+
+MariaDB **10.11.19** is installed as the Windows service `MariaDB`, starting automatically. The MSI's SHA-256 matched MariaDB's published checksum and its signature is valid. `employger_db` was restored from `employger_db_2026-10-22_for-mariadb-10.11.sql` (dumped from XAMPP at 23:29), and `verify-db.sql` matched on every check.
+
+Passwords for `root` and `employger_app` are in `%USERPROFILE%\Documents\employger-db-passwords.txt`, readable only by your Windows account. Move them into a password manager, then delete that file.
+
+The installer's defaults were looser than this guide asks for, so these were tightened afterwards:
+
+- **`bind-address=127.0.0.1`** was added to `C:\Program Files\MariaDB 10.11\data\my.ini`. The server had been listening on every network interface. The original file is kept as `my.ini.original`.
+- **Firewall:** the installer's inbound rule "MariaDB 10.11 (x64)" (all profiles) is **disabled**.
+- **`root@'%'` dropped.** The installer had created it even though remote root access wasn't requested.
+- **`innodb_buffer_pool_size`** lowered from 2010M to 256M, which is plenty for this database on a laptop.
+- **`employger_app`** exists for both `localhost` and `127.0.0.1`, with only SELECT, INSERT, UPDATE and DELETE on `employger_db`.
+- **Strict SQL mode** (`STRICT_TRANS_TABLES`) is on by default in 10.11. The app starts and validates its schema with it on. Report any new "Data truncated" or "Incorrect value" errors.
+
+Steps 1–5 below are kept as the record of how to do this again, for example on another PC.
+
 ## Before you start
 
 - A backup of the current data already exists: `Documents\employger-backups\employger_db_2026-10-22_before-mariadb-upgrade.sql` (taken 23:22, includes V2 and V3). If you've changed data since then, make a new one: `.\scripts\backup-db.ps1` (press Enter at the password prompt).
@@ -94,7 +111,7 @@ The account can only read and write rows in `employger_db`. It can't drop or alt
 In the PowerShell window you start the app from:
 
 ```powershell
-$env:DB_URL      = "jdbc:mysql://localhost:3307/employger_db"
+$env:DB_URL      = "jdbc:mysql://127.0.0.1:3307/employger_db"
 $env:DB_USERNAME = "employger_app"
 $env:DB_PASSWORD = Read-Host "DB password"
 .\mvnw.cmd spring-boot:run
@@ -108,7 +125,9 @@ Check that it works:
 2. Open the Payroll page and confirm payroll #6, #7 and #8 are listed.
 3. Open a payslip.
 
-**If you see `Access denied for user 'employger_app'@'127.0.0.1'`**, MariaDB saw the connection as `127.0.0.1` rather than `localhost`. Fix it on the new server:
+Use `127.0.0.1`, not `localhost`, in the URL. With `bind-address=127.0.0.1`, an IPv6 `localhost` connection (`::1`) would be refused.
+
+**If you see `Access denied for user 'employger_app'@'127.0.0.1'`**, the account exists only for `localhost`. Fix it on the new server:
 
 ```sql
 CREATE USER 'employger_app'@'127.0.0.1' IDENTIFIED BY '<same password>';

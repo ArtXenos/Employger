@@ -43,4 +43,4 @@ The server runs without `STRICT_TRANS_TABLES`, so invalid values are silently ad
 
 On XAMPP's MariaDB 10.4, creating `employger_app` is **blocked**. Granting privileges crashed the server after the `mysql.db` repair (see `AUDIT_REPORT.md`, "Database incident 2026-10-22"). There, the login exists with no privileges and an unknown password, so it can't be used. **Don't retry GRANT on that server.**
 
-Create the account on MariaDB 10.11 instead, as part of the move described in `MARIADB_UPGRADE.md` (step 5).
+**Done on MariaDB 10.11 (port 3307), 2026-10-22.** `employger_app` has SELECT, INSERT, UPDATE and DELETE on `employger_db` only, and the app runs as that account. See `MARIADB_UPGRADE.md`, "Status", and set `DB_URL`, `DB_USERNAME` and `DB_PASSWORD` as in its step 6. The root fallback in section 2 still points at XAMPP (3306).

@@ -625,76 +625,113 @@ function closeModal() {
 // PAYROLL PREVIEW
 // =========================
 
-function updateCalculationPreview() {
+// Ignore preview responses that arrive after a newer selection was made.
+let previewRequestNumber = 0;
+
+const PREVIEW_AMOUNT_FIELDS = {
+  previewBaseSalary: "baseRegularPay",
+  previewAttendanceDeduction: "attendanceDeduction",
+  previewRegularPay: "regularPay",
+  previewOvertimePay: "overtimePay",
+  previewGrossPay: "grossPay",
+  previewNetPay: "netPay",
+};
+
+// Shows the server's own calculation (the same one used to generate the
+// payroll), including warnings such as working days without attendance.
+async function updateCalculationPreview() {
   const employeeId = employeeSelect ? employeeSelect.value : "";
 
   const cycleId = payCycleSelect ? payCycleSelect.value : "";
 
-  const employee = employees.find(
-    (item) => String(item.employeeId) === String(employeeId),
-  );
+  resetPreview();
 
-  const cycle = payCycles.find(
-    (item) => String(item.payCycleId) === String(cycleId),
-  );
-
-  if (!employee || !cycle) {
-    resetPreview();
+  if (!employeeId || !cycleId) {
     return;
   }
 
-  const baseSalary = toNumber(employee.baseSalary);
+  const requestNumber = ++previewRequestNumber;
 
-  const regularPay = calculateCycleBasePay(baseSalary, cycle.cycleType);
+  setPreviewStatus("Calculating preview...");
 
-  const previewBaseSalary = document.getElementById("previewBaseSalary");
+  try {
+    const response = await fetch(
+      `/api/payroll/preview/employee/${encodeURIComponent(employeeId)}/pay-cycle/${encodeURIComponent(cycleId)}`,
+    );
 
-  const previewRegularPay = document.getElementById("previewRegularPay");
+    if (requestNumber !== previewRequestNumber) {
+      return;
+    }
 
-  const previewOvertimePay = document.getElementById("previewOvertimePay");
+    if (!response.ok) {
+      const errorText = (await response.text()).trim();
 
-  const previewGrossPay = document.getElementById("previewGrossPay");
+      setPreviewStatus(errorText || "Unable to calculate the preview.");
+      return;
+    }
 
-  if (previewBaseSalary) {
-    previewBaseSalary.textContent = formatCurrency(baseSalary);
+    const preview = await response.json();
+
+    if (requestNumber !== previewRequestNumber) {
+      return;
+    }
+
+    Object.entries(PREVIEW_AMOUNT_FIELDS).forEach(([elementId, field]) => {
+      const element = document.getElementById(elementId);
+
+      if (element) {
+        element.textContent = formatCurrency(preview[field]);
+      }
+    });
+
+    setPreviewStatus(
+      `${preview.workingDaysEmployed} of ${preview.workingDaysInCycle} working days, ` +
+        `${preview.approvedOvertimeCount} approved overtime record(s).`,
+    );
+
+    const warningsList = document.getElementById("previewWarnings");
+
+    if (warningsList) {
+      (preview.warnings || []).forEach((warning) => {
+        const item = document.createElement("li");
+
+        item.textContent = warning;
+
+        warningsList.appendChild(item);
+      });
+    }
+  } catch (error) {
+    if (requestNumber === previewRequestNumber) {
+      console.error("Payroll preview error:", error);
+
+      setPreviewStatus("Unable to reach the server for a preview.");
+    }
   }
+}
 
-  if (previewRegularPay) {
-    previewRegularPay.textContent = formatCurrency(regularPay);
-  }
+function setPreviewStatus(text) {
+  const status = document.getElementById("previewStatus");
 
-  if (previewOvertimePay) {
-    previewOvertimePay.textContent = "Calculated after generation";
-  }
-
-  if (previewGrossPay) {
-    previewGrossPay.textContent = "Calculated after generation";
+  if (status) {
+    status.textContent = text;
   }
 }
 
 function resetPreview() {
-  const previewBaseSalary = document.getElementById("previewBaseSalary");
+  Object.keys(PREVIEW_AMOUNT_FIELDS).forEach((elementId) => {
+    const element = document.getElementById(elementId);
 
-  const previewRegularPay = document.getElementById("previewRegularPay");
+    if (element) {
+      element.textContent = "₱0.00";
+    }
+  });
 
-  const previewOvertimePay = document.getElementById("previewOvertimePay");
+  setPreviewStatus("");
 
-  const previewGrossPay = document.getElementById("previewGrossPay");
+  const warningsList = document.getElementById("previewWarnings");
 
-  if (previewBaseSalary) {
-    previewBaseSalary.textContent = "₱0.00";
-  }
-
-  if (previewRegularPay) {
-    previewRegularPay.textContent = "₱0.00";
-  }
-
-  if (previewOvertimePay) {
-    previewOvertimePay.textContent = "₱0.00";
-  }
-
-  if (previewGrossPay) {
-    previewGrossPay.textContent = "₱0.00";
+  if (warningsList) {
+    warningsList.replaceChildren();
   }
 }
 
@@ -729,44 +766,12 @@ async function createPayroll(event) {
     return;
   }
 
-  const regularPay = calculateCycleBasePay(
-    toNumber(employee.baseSalary),
-    cycle.cycleType,
-  );
-
-  const payrollData = {
-    regularPay: regularPay,
-
-    // Backend calculates this
-    // from APPROVED overtime.
-    overtimePay: 0,
-
-    bonusAmount: 0,
-
-    // These will be expanded
-    // in the payroll calculation phase.
-    grossPay: 0,
-
-    taxAmount: 0,
-
-    deductionAmount: 0,
-
-    netPay: 0,
-
-    status: "DRAFT",
-  };
-
   try {
+    // Every amount is calculated by the server; nothing is sent.
     const response = await fetch(
       `/api/payroll/employee/${employeeId}/pay-cycle/${payCycleId}`,
       {
         method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify(payrollData),
       },
     );
 
@@ -1174,35 +1179,6 @@ async function logout() {
 // =========================
 // HELPER FUNCTIONS
 // =========================
-
-function calculateCycleBasePay(monthlySalary, cycleType) {
-  const annualSalary = monthlySalary * 12;
-
-  let periodsPerYear;
-
-  switch (cycleType) {
-    case "WEEKLY":
-      periodsPerYear = 52;
-      break;
-
-    case "BI_WEEKLY":
-      periodsPerYear = 26;
-      break;
-
-    case "SEMI_MONTHLY":
-      periodsPerYear = 24;
-      break;
-
-    case "MONTHLY":
-      periodsPerYear = 12;
-      break;
-
-    default:
-      periodsPerYear = 12;
-  }
-
-  return annualSalary / periodsPerYear;
-}
 
 function getPayCycleLabel(cycle) {
   if (!cycle || !cycle.payCycleId) {

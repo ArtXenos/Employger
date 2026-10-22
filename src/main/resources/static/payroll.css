@@ -861,3 +861,27 @@ input:focus {
 .payslip-button:hover {
     background: #6d28d9;
 }
+/* Server preview status and warnings */
+.preview-status {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.preview-warnings {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preview-warnings li {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-left: 3px solid #d97706;
+  border-radius: 4px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}

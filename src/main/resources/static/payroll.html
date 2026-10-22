@@ -228,8 +228,13 @@
             <h4>Payroll Preview</h4>
 
             <div class="calculation-row">
-              <span>Base Salary</span>
+              <span>Base Pay (this cycle)</span>
               <strong id="previewBaseSalary">₱0.00</strong>
+            </div>
+
+            <div class="calculation-row">
+              <span>Attendance Deduction</span>
+              <strong id="previewAttendanceDeduction">₱0.00</strong>
             </div>
 
             <div class="calculation-row">
@@ -242,16 +247,26 @@
               <strong id="previewOvertimePay">₱0.00</strong>
             </div>
 
-            <div class="calculation-row total-row">
-              <span>Estimated Gross Pay</span>
+            <div class="calculation-row">
+              <span>Gross Pay</span>
               <strong id="previewGrossPay">₱0.00</strong>
             </div>
+
+            <div class="calculation-row total-row">
+              <span>Net Pay</span>
+              <strong id="previewNetPay">₱0.00</strong>
+            </div>
+
+            <p id="previewStatus" class="preview-status" role="status" aria-live="polite"></p>
+
+            <ul id="previewWarnings" class="preview-warnings" aria-label="Payroll warnings"></ul>
           </div>
 
           <div class="form-note">
             <strong>Note:</strong>
-            Approved overtime is calculated by the backend from the employee's
-            approved overtime records within the selected pay cycle.
+            This preview is calculated by the server with the same rules used
+            when the payroll is generated. Nothing is saved until you click
+            Generate.
           </div>
 
           <!-- Actions -->

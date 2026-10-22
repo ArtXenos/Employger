@@ -108,11 +108,9 @@ The account can only read and write rows in `employger_db`. It can't drop or alt
 
 ## 6. Point the app at the new server
 
-In the PowerShell window you start the app from:
+Since 2026-10-23 the app's defaults point at this server: `jdbc:mariadb://127.0.0.1:3307/employger_db` as `employger_app`, using MariaDB's own JDBC driver. Only the password has to be set. In the PowerShell window you start the app from:
 
 ```powershell
-$env:DB_URL      = "jdbc:mysql://127.0.0.1:3307/employger_db"
-$env:DB_USERNAME = "employger_app"
 $pw = Read-Host "employger_app password" -AsSecureString
 $env:DB_PASSWORD = [Net.NetworkCredential]::new("", $pw).Password
 .\mvnw.cmd spring-boot:run
@@ -120,7 +118,7 @@ $env:DB_PASSWORD = [Net.NetworkCredential]::new("", $pw).Password
 
 Type the **`employger_app`** password, not root's. `-AsSecureString` shows `*` instead of the characters, so the password doesn't appear in the terminal or in anything you copy from it.
 
-These variables last only for that window. No password is written to any file.
+The variable lasts only for that window. No password is written to any file. If an older window still sets `DB_URL` to a `jdbc:mysql://` address, remove that line: the MariaDB driver only accepts `jdbc:mariadb://`.
 
 Check that it works:
 
@@ -139,8 +137,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON employger_db.* TO 'employger_app'@'127.0
 
 ## 7. Switching back (if needed)
 
-1. Close the app's PowerShell window. This clears the variables.
-2. Start the app in a new window without setting them. It connects to XAMPP on 3306 as `root`, exactly as before.
+1. Stop the app and start MySQL in the XAMPP panel.
+2. In a new PowerShell window:
+   ```powershell
+   $env:DB_URL      = "jdbc:mariadb://127.0.0.1:3306/employger_db"
+   $env:DB_USERNAME = "root"
+   $env:DB_PASSWORD = ""
+   .\mvnw.cmd spring-boot:run
+   ```
+   XAMPP's data stopped at 2026-10-22 23:29.
 
 Anything entered while you were on the new server stays only on the new server.
 

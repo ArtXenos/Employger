@@ -1,47 +1,40 @@
 # Database account and credentials
 
-Em-Ployger currently connects to MariaDB as `root` with **no password**. That's acceptable only on a single-user development laptop. Any shared or deployed setup must use a dedicated account with a password, and credentials kept out of source files.
+Em-Ployger connects to **MariaDB 10.11.19** on `127.0.0.1:3307` as **`employger_app`**, through MariaDB Connector/J (`jdbc:mariadb://`). That account can read and write rows in `employger_db` only. It can't create, alter or drop tables, which matches `ddl-auto=validate`. Setup and history: `MARIADB_UPGRADE.md`.
 
-## 1. Create the application account
+## Starting the app
 
-1. Back up first: `.\scripts\backup-db.ps1`
-2. Open `scripts\create-app-db-user.sql` and replace `CHANGE_ME_STRONG_PASSWORD` with a long, unique password. **Don't commit that edit.**
-3. Run it:
-   ```powershell
-   cmd /c "C:\xampp\mysql\bin\mysql.exe -u root -p < scripts\create-app-db-user.sql"
-   ```
-   The output should end with a `GRANT SELECT, INSERT, UPDATE, DELETE ON employger_db.*` line.
-4. Undo the edit in the script: `git checkout scripts/create-app-db-user.sql`
-
-The account can read and write rows in `employger_db` only. It can't create, alter or drop tables, which matches `ddl-auto=validate`.
-
-## 2. Point the app at it (no password in any file)
-
-In the PowerShell window you start the app from:
+The URL and username are the defaults in `application.properties`. Only the password is set, as an environment variable, in the PowerShell window you start the app from:
 
 ```powershell
-$env:DB_USERNAME = "employger_app"
 $pw = Read-Host "employger_app password" -AsSecureString   # shows * while typing
 $env:DB_PASSWORD = [Net.NetworkCredential]::new("", $pw).Password
 .\mvnw.cmd spring-boot:run
 ```
 
-In VS Code, put the same two variables in a launch configuration's `env` block **only** if `.vscode/` stays out of git (it's already in `.gitignore`).
+Type the `employger_app` password, **not** root's. No password is written to any project file.
 
-If the variables aren't set, the app falls back to `root` with no password, exactly as before.
+In VS Code, you can put `DB_PASSWORD` in a launch configuration's `env` block, but **only** while `.vscode/` stays out of git (it's already in `.gitignore`).
 
-**Check it worked:** the app starts and you can log in. If you see `Access denied for user 'employger_app'`, the password in `DB_PASSWORD` doesn't match the one in the script.
+To use a different server, also set `DB_URL` (it must start with `jdbc:mariadb://`) and `DB_USERNAME`.
 
-## 3. Give root a password (recommended)
+**If it fails with `Access denied for user 'employger_app'`**, `DB_PASSWORD` is wrong. Check that you used the app password, not root's.
 
-After the app works with `employger_app`, set a root password in the XAMPP shell or with `mysqladmin -u root password`. Then update phpMyAdmin's `config.inc.php` if you use it. Do this last: once root has a password, the default fallback above stops working.
+## Accounts on the 10.11 server
 
-## 4. Strict SQL mode (planned, not yet enabled)
+| Account | Used by | Rights |
+|---|---|---|
+| `root` (localhost, 127.0.0.1, ::1, PC name) | You, for maintenance (mysql.exe, HeidiSQL, backups) | Everything. Local connections only. |
+| `employger_app` (localhost, 127.0.0.1) | The app | SELECT, INSERT, UPDATE, DELETE on `employger_db` |
 
-The server runs without `STRICT_TRANS_TABLES`, so invalid values are silently adjusted instead of rejected. Enabling strict mode is recommended, but it can surface hidden bad data. Enable it only after testing against a restored copy of the database (see `BACKUP_AND_RECOVERY.md`).
+Keep both passwords in a password manager. The server listens on 127.0.0.1 only, and its firewall rule is disabled.
 
-## Status (2026-10-22)
+To recreate `employger_app` (for example on another PC): `scripts\create-app-db-user.sql`, as in `MARIADB_UPGRADE.md` step 5.
 
-On XAMPP's MariaDB 10.4, creating `employger_app` is **blocked**. Granting privileges crashed the server after the `mysql.db` repair (see `AUDIT_REPORT.md`, "Database incident 2026-10-22"). There, the login exists with no privileges and an unknown password, so it can't be used. **Don't retry GRANT on that server.**
+## Strict SQL mode
 
-**Done on MariaDB 10.11 (port 3307), 2026-10-22.** `employger_app` has SELECT, INSERT, UPDATE and DELETE on `employger_db` only, and the app runs as that account. See `MARIADB_UPGRADE.md`, "Status", and set `DB_URL`, `DB_USERNAME` and `DB_PASSWORD` as in its step 6. The root fallback in section 2 still points at XAMPP (3306).
+On (the MariaDB 10.11 default): invalid values are rejected instead of being silently adjusted.
+
+## Old XAMPP server (3306)
+
+Stopped and kept only as a fallback. Its `root` has **no password**, and its data stopped at 2026-10-22 23:29. Don't run GRANT on it: that crashed it on 2026-10-22 (see `AUDIT_REPORT.md`, "Database incident 2026-10-22"). How to switch back: `MARIADB_UPGRADE.md` step 7.

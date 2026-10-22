@@ -45,7 +45,15 @@ Every finding below is labelled **Confirmed** (reproduced from code, live data, 
 - **Automatic recovery:** MariaDB is configured with `aria_recover_options = BACKUP,QUICK`. When `mysql.proxies_priv` was first read, the server repaired it itself and kept the original as `proxies_priv.MAD-261022231028.BAK`. It now checks OK and holds its one standard row. The same automatic repair failed for `mysql.db`, which is still marked crashed.
 - **Current effect:** `GRANT`/`REVOKE` at database level fail. Root login and the app work. An `employger_app` login exists with **no privileges** and a password that was discarded unsaved, so it can't be used.
 - **Evidence and backups:** `Documents\employger-backups\mysql-system-2026-10-22\` holds copies of the damaged files and a dump of the readable `mysql` schema. `employger_db` backup: `employger_db_2026-10-22_230730_before-V2-V3.sql`.
-- **Next step (needs owner approval):** `REPAIR TABLE mysql.db EXTENDED`. If that fails, restore XAMPP's pristine `mysql.db` files from `C:\xampp\mysql\backup\mysql\` with MariaDB stopped. Rows in `mysql.db` are database-level grants only (e.g. phpMyAdmin's `pma` user), which can be re-granted.
+- **Repair (owner-approved, 23:12):** `REPAIR TABLE mysql.db EXTENDED` rebuilt the table (`CHECK` OK, normal file sizes), but all 3 rows were unreadable (every data page failed its CRC) and were dropped. XAMPP's pristine copy shows those rows were: two anonymous grants on `test`/`test\_%` (no anonymous user exists, so they granted nothing; intentionally not restored) and `pma@localhost` on `phpmyadmin` (phpMyAdmin's control user).
+- **Crash (23:13:04):** re-granting `pma` (`GRANT … ON phpmyadmin.* TO pma@localhost; FLUSH PRIVILEGES`) crashed `mysqld.exe`. The Windows Application log records an access violation `0xc0000005` in `VCRUNTIME140.dll`. MariaDB's own error log has no entry. This is a crash inside MariaDB's privilege code, most likely from inconsistent privilege data left by the corrupt system tables.
+- **Preserved:** a full copy of `C:\xampp\mysql\data` taken **after the crash, with the server stopped** (195 files, 105 MB): `Documents\employger-backups\mysql-data-copy-2026-10-22-after-stop`.
+- **State at handover:** MariaDB stopped. V2 and V3 had been committed (DDL is durable in InnoDB) about 4 minutes before the crash. Verify after restart. Nothing has been retried.
+- **Recommended next steps:**
+  1. Start MySQL from the XAMPP panel.
+  2. Run `CHECK TABLE` on `employger_db` and the `mysql` schema, and confirm the V2/V3 columns and the record counts.
+  3. **Don't retry GRANT** on this installation. The safest durable fix is a clean, supported MariaDB (10.11 LTS or newer) with `employger_db` restored from the logical backup, which also clears H-08 (EOL 10.4).
+  4. Until then, the app keeps working on root.
 
 **Behaviour now in effect (after restart):** days covered by a PROCESSED or PAID payroll are locked for that employee. For employee 35, attendance and overtime for Oct 1–15 can no longer change, and pending overtime #12 (Oct 3) can only be rejected, since #6 already paid those days. Overtime amounts are recalculated at approval. Pending overtime #13 (₱5.18/h, computed under an older 1.5 multiplier) will be approved at the current 1.25 rate.
 

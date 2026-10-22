@@ -3,14 +3,16 @@ package com.employger.controller;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.dto.CreateUserRequest;
 import com.employger.dto.UserResponse;
-import com.employger.entity.User;
 import com.employger.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.employger.dto.UpdateUserRequest;
 
 import java.util.List;
 
+// Errors (400 invalid input, 404 not found, 409 conflict) are turned into
+// plain-text responses by ApiExceptionHandler.
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -31,56 +33,29 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUserById(
-            @PathVariable Integer id) {
+    public UserResponse getUserById(@PathVariable Integer id) {
 
         return userService.getUserById(id)
                 .map(UserResponse::new)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 
     @PostMapping
-    public ResponseEntity<UserResponse> createUser(
-            @RequestBody CreateUserRequest request) {
-
-        User savedUser = userService.createUser(request);
-
-        return ResponseEntity.ok(
-                new UserResponse(savedUser));
+    public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
+        return new UserResponse(userService.createUser(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponse> updateUser(
+    public UserResponse updateUser(
             @PathVariable Integer id,
-            @RequestBody UpdateUserRequest request) {
+            @Valid @RequestBody UpdateUserRequest request) {
 
-        try {
-
-            User updatedUser = userService.updateUser(id, request);
-
-            return ResponseEntity.ok(
-                    new UserResponse(updatedUser));
-
-        } catch (ResourceNotFoundException e) {
-
-            return ResponseEntity.notFound().build();
-        }
+        return new UserResponse(userService.updateUser(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(
-            @PathVariable Integer id) {
-
-        try {
-
-            userService.deleteUser(id);
-
-            return ResponseEntity.noContent().build();
-
-        } catch (ResourceNotFoundException e) {
-
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<Void> deleteUser(@PathVariable Integer id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }

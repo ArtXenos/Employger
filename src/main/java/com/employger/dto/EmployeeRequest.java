@@ -1,0 +1,183 @@
+package com.employger.dto;
+
+import com.employger.entity.Employee;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Size;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+/**
+ * What a client may set when creating or updating an employee. The ID,
+ * timestamps and profile image are deliberately absent, so a request can
+ * never overwrite them. Limits match the employees table.
+ */
+public class EmployeeRequest {
+
+    @NotBlank(message = "First name is required.")
+    @Size(max = 100, message = "First name must be at most 100 characters.")
+    private String firstName;
+
+    @NotBlank(message = "Last name is required.")
+    @Size(max = 100, message = "Last name must be at most 100 characters.")
+    private String lastName;
+
+    @NotNull(message = "Date of birth is required.")
+    @Past(message = "Date of birth must be in the past.")
+    private LocalDate dateOfBirth;
+
+    @NotBlank(message = "Email is required.")
+    @Email(message = "Email is not a valid email address.")
+    @Size(max = 150, message = "Email must be at most 150 characters.")
+    private String email;
+
+    @Size(max = 30, message = "Phone must be at most 30 characters.")
+    private String phone;
+
+    @Size(max = 255, message = "Address must be at most 255 characters.")
+    private String address;
+
+    @Size(max = 100, message = "Department must be at most 100 characters.")
+    private String department;
+
+    @Size(max = 20, message = "Gender must be at most 20 characters.")
+    private String gender;
+
+    @NotNull(message = "Base salary is required.")
+    @DecimalMin(value = "0.00", message = "Base salary cannot be negative.")
+    @Digits(integer = 10, fraction = 2,
+            message = "Base salary must have at most 10 digits before and 2 after the decimal point.")
+    private BigDecimal baseSalary;
+
+    @Size(max = 20, message = "Postal code must be at most 20 characters.")
+    private String postalCode;
+
+    @Size(max = 100, message = "Designation must be at most 100 characters.")
+    private String designation;
+
+    // Optional: new employees default to ACTIVE, updates keep the current status.
+    private Employee.EmploymentStatus employmentStatus;
+
+    @NotNull(message = "Date hired is required.")
+    private LocalDate dateHired;
+
+    @Size(max = 100, message = "Job title must be at most 100 characters.")
+    private String jobTitle;
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public BigDecimal getBaseSalary() {
+        return baseSalary;
+    }
+
+    public void setBaseSalary(BigDecimal baseSalary) {
+        this.baseSalary = baseSalary;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
+    }
+
+    public String getDesignation() {
+        return designation;
+    }
+
+    public void setDesignation(String designation) {
+        this.designation = designation;
+    }
+
+    public Employee.EmploymentStatus getEmploymentStatus() {
+        return employmentStatus;
+    }
+
+    public void setEmploymentStatus(Employee.EmploymentStatus employmentStatus) {
+        this.employmentStatus = employmentStatus;
+    }
+
+    public LocalDate getDateHired() {
+        return dateHired;
+    }
+
+    public void setDateHired(LocalDate dateHired) {
+        this.dateHired = dateHired;
+    }
+
+    public String getJobTitle() {
+        return jobTitle;
+    }
+
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
+    }
+}

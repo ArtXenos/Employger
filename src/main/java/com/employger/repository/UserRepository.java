@@ -8,4 +8,14 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Integer> {
 
     Optional<User> findByUsername(String username);
+
+    boolean existsByUsernameIgnoreCase(String username);
+
+    boolean existsByUsernameIgnoreCaseAndUserIdNot(String username, Integer userId);
+
+    boolean existsByEmployeeEmployeeId(Integer employeeId);
+
+    boolean existsByEmployeeEmployeeIdAndUserIdNot(Integer employeeId, Integer userId);
+
+    long countByRoleAndStatus(User.Role role, User.Status status);
 }

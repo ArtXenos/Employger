@@ -1,13 +1,26 @@
 package com.employger.dto;
 
 import com.employger.entity.User;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 public class UpdateUserRequest {
 
     private Integer employeeId;
+
+    @NotBlank(message = "Username is required.")
+    @Pattern(regexp = "[A-Za-z0-9._@-]{3,100}",
+            message = "Username must be 3 to 100 characters: letters, digits, '.', '_', '-' or '@'.")
     private String username;
+
+    // Blank keeps the current password. Strength rules: UserService.
     private String password;
+
+    @NotNull(message = "Role is required.")
     private User.Role role;
+
+    @NotNull(message = "Status is required.")
     private User.Status status;
 
     public Integer getEmployeeId() {

@@ -9,9 +9,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.transaction.CannotCreateTransactionException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.util.stream.Collectors;
 
 /**
  * Turns exceptions that escape a controller into plain-text responses with
@@ -54,6 +58,23 @@ public class ApiExceptionHandler {
 
         return text(HttpStatus.SERVICE_UNAVAILABLE,
                 "The database is unavailable. Please try again later or contact the administrator.");
+    }
+
+    /**
+     * A request body failed its @Valid constraints. Every problem is listed,
+     * so the user can fix the whole form in one go.
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleValidationFailure(MethodArgumentNotValidException e) {
+
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .distinct()
+                .sorted()
+                .collect(Collectors.joining(" "));
+
+        return text(HttpStatus.BAD_REQUEST,
+                message.isEmpty() ? "The request contains invalid values." : message);
     }
 
     @ExceptionHandler({ HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class })

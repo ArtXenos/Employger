@@ -1,5 +1,6 @@
 package com.employger.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,6 +36,9 @@ public class Employee {
     @Column(length = 100)
     private String department;
 
+    // Never serialized: attendance, overtime and payroll responses embed the
+    // employee, and an image could add megabytes to each of them.
+    @JsonIgnore
     @Column(name = "profile_image")
     private byte[] profileImage;
 

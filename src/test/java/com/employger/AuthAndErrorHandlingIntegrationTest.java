@@ -176,8 +176,9 @@ class AuthAndErrorHandlingIntegrationTest {
     void missingRecordReturns404() throws Exception {
         mockMvc.perform(post("/api/attendance/employee/999999")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"attendanceDate\": \"2026-10-05\"}"))
-                .andExpect(status().isNotFound());
+                        .content("{\"attendanceDate\": \"2026-10-05\", \"status\": \"PRESENT\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().string("Employee not found"));
     }
 
     @Test

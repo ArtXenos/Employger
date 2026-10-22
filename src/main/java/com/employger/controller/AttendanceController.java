@@ -1,13 +1,18 @@
 package com.employger.controller;
 
+import com.employger.dto.AttendanceRequest;
+import com.employger.dto.AttendanceResponse;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Attendance;
 import com.employger.service.AttendanceService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// Errors (400 invalid input, 404 not found, 409 conflict) are turned into
+// plain-text responses by ApiExceptionHandler.
 @RestController
 @RequestMapping("/api/attendance")
 public class AttendanceController {
@@ -20,76 +25,55 @@ public class AttendanceController {
     }
 
     @GetMapping
-    public List<Attendance> getAllAttendance() {
-        return attendanceService.getAllAttendance();
+    public List<AttendanceResponse> getAllAttendance() {
+        return toResponses(attendanceService.getAllAttendance());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Attendance> getAttendanceById(
+    public AttendanceResponse getAttendanceById(
             @PathVariable Integer id) {
 
         return attendanceService.getAttendanceById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() ->
-                        ResponseEntity.notFound().build());
+                .map(AttendanceResponse::from)
+                .orElseThrow(() -> new ResourceNotFoundException("Attendance not found"));
     }
 
     @GetMapping("/employee/{employeeId}")
-    public List<Attendance> getAttendanceByEmployee(
+    public List<AttendanceResponse> getAttendanceByEmployee(
             @PathVariable Integer employeeId) {
 
-        return attendanceService
-                .getAttendanceByEmployee(employeeId);
+        return toResponses(attendanceService.getAttendanceByEmployee(employeeId));
     }
 
     @PostMapping("/employee/{employeeId}")
-    public ResponseEntity<Attendance> createAttendance(
+    public AttendanceResponse createAttendance(
             @PathVariable Integer employeeId,
-            @RequestBody Attendance attendanceDetails) {
+            @Valid @RequestBody AttendanceRequest request) {
 
-        try {
-            Attendance savedAttendance =
-                    attendanceService.createAttendance(
-                            employeeId,
-                            attendanceDetails);
-
-            return ResponseEntity.ok(savedAttendance);
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return AttendanceResponse.from(
+                attendanceService.createAttendance(employeeId, request.toEntity()));
     }
 
     @PutMapping("/{id}/employee/{employeeId}")
-    public ResponseEntity<Attendance> updateAttendance(
+    public AttendanceResponse updateAttendance(
             @PathVariable Integer id,
             @PathVariable Integer employeeId,
-            @RequestBody Attendance attendanceDetails) {
+            @Valid @RequestBody AttendanceRequest request) {
 
-        try {
-            Attendance updatedAttendance =
-                    attendanceService.updateAttendance(
-                            id,
-                            employeeId,
-                            attendanceDetails);
-
-            return ResponseEntity.ok(updatedAttendance);
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return AttendanceResponse.from(
+                attendanceService.updateAttendance(id, employeeId, request.toEntity()));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAttendance(
             @PathVariable Integer id) {
 
-        try {
-            attendanceService.deleteAttendance(id);
-            return ResponseEntity.noContent().build();
+        attendanceService.deleteAttendance(id);
 
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.noContent().build();
+    }
+
+    private static List<AttendanceResponse> toResponses(List<Attendance> records) {
+        return records.stream().map(AttendanceResponse::from).toList();
     }
 }

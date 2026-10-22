@@ -677,6 +677,22 @@ public class PayrollService {
                                         "Payment method is required");
                 }
 
+                paymentMethod = paymentMethod.trim();
+                paymentReference = paymentReference == null || paymentReference.isBlank()
+                                ? null
+                                : paymentReference.trim();
+
+                // Column limits: payment_method VARCHAR(50), payment_reference VARCHAR(100).
+                if (paymentMethod.length() > 50) {
+                        throw new IllegalArgumentException(
+                                        "Payment method must be at most 50 characters");
+                }
+
+                if (paymentReference != null && paymentReference.length() > 100) {
+                        throw new IllegalArgumentException(
+                                        "Payment reference must be at most 100 characters");
+                }
+
                 ensureNoOverlappingPayroll(
                                 payroll.getEmployee(),
                                 payroll.getPayCycle(),

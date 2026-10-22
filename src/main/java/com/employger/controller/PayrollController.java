@@ -1,7 +1,7 @@
 package com.employger.controller;
 
+import com.employger.dto.PayrollResponse;
 import com.employger.exception.ResourceNotFoundException;
-import com.employger.entity.Payroll;
 import com.employger.service.PayrollService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+// Errors (400 invalid input, 404 not found, 409 conflict) are turned into
+// plain-text responses by ApiExceptionHandler.
 @RestController
 @RequestMapping("/api/payroll")
 public class PayrollController {
@@ -25,185 +27,110 @@ public class PayrollController {
     }
 
     @GetMapping
-    public List<Payroll> getAllPayroll() {
-        return payrollService.getAllPayroll();
+    public List<PayrollResponse> getAllPayroll() {
+        return toResponses(payrollService.getAllPayroll());
     }
 
     @GetMapping("/preview/employee/{employeeId}/pay-cycle/{payCycleId}")
-    public ResponseEntity<Map<String, Object>> previewPayroll(
+    public Map<String, Object> previewPayroll(
             @PathVariable Integer employeeId,
             @PathVariable Integer payCycleId) {
 
-        try {
-            Map<String, Object> preview = payrollService.previewPayroll(
-                    employeeId,
-                    payCycleId);
-
-            return ResponseEntity.ok(preview);
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return payrollService.previewPayroll(employeeId, payCycleId);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Payroll> getPayrollById(
+    public PayrollResponse getPayrollById(
             @PathVariable Integer id) {
 
         return payrollService.getPayrollById(id)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(PayrollResponse::from)
+                .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
     }
 
     @GetMapping("/employee/{employeeId}")
-    public List<Payroll> getPayrollByEmployee(
+    public List<PayrollResponse> getPayrollByEmployee(
             @PathVariable Integer employeeId) {
 
-        return payrollService
-                .getPayrollByEmployee(employeeId);
+        return toResponses(payrollService.getPayrollByEmployee(employeeId));
     }
 
     @GetMapping("/pay-cycle/{payCycleId}")
-    public List<Payroll> getPayrollByPayCycle(
+    public List<PayrollResponse> getPayrollByPayCycle(
             @PathVariable Integer payCycleId) {
 
-        return payrollService
-                .getPayrollByPayCycle(payCycleId);
+        return toResponses(payrollService.getPayrollByPayCycle(payCycleId));
     }
 
     @GetMapping("/employee/{employeeId}/pay-cycle/{payCycleId}")
-    public ResponseEntity<Payroll> getPayrollByEmployeeAndPayCycle(
+    public PayrollResponse getPayrollByEmployeeAndPayCycle(
             @PathVariable Integer employeeId,
             @PathVariable Integer payCycleId) {
 
         return payrollService
-                .getPayrollByEmployeeAndPayCycle(
-                        employeeId,
-                        payCycleId)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .getPayrollByEmployeeAndPayCycle(employeeId, payCycleId)
+                .map(PayrollResponse::from)
+                .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
     }
 
-    // The request body is accepted for compatibility with existing
-    // clients but ignored: every amount is calculated on the server.
+    // Any request body sent by older clients is ignored: every amount is
+    // calculated on the server.
     @PostMapping("/employee/{employeeId}/pay-cycle/{payCycleId}")
     public ResponseEntity<?> createPayroll(
             @PathVariable Integer employeeId,
-            @PathVariable Integer payCycleId,
-            @RequestBody(required = false) Payroll ignoredPayrollDetails) {
+            @PathVariable Integer payCycleId) {
 
         try {
-            Payroll savedPayroll = payrollService.createPayroll(
-                    employeeId,
-                    payCycleId);
-
-            return ResponseEntity.ok(savedPayroll);
-
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+            return ResponseEntity.ok(PayrollResponse.from(
+                    payrollService.createPayroll(employeeId, payCycleId)));
 
         } catch (DataIntegrityViolationException e) {
+            // Two requests raced past the duplicate check.
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body("Payroll already exists for this employee and pay cycle");
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
         }
     }
 
-    // Recalculates a DRAFT payroll from current records. The request
-    // body is ignored so amounts and status cannot be overwritten.
+    // Recalculates a DRAFT payroll from current records. Any request body is
+    // ignored, so amounts and status cannot be overwritten.
     @PutMapping("/{id}")
-    public ResponseEntity<?> updatePayroll(
-            @PathVariable Integer id,
-            @RequestBody(required = false) Payroll ignoredPayrollDetails) {
+    public PayrollResponse updatePayroll(
+            @PathVariable Integer id) {
 
-        try {
-            Payroll updatedPayroll = payrollService.updatePayroll(id);
-
-            return ResponseEntity.ok(updatedPayroll);
-
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return PayrollResponse.from(payrollService.updatePayroll(id));
     }
 
     // The processing user is the logged-in user. A userId request
     // parameter sent by older clients is ignored.
     @PostMapping("/{id}/process")
-    public ResponseEntity<?> processPayroll(
+    public PayrollResponse processPayroll(
             @PathVariable Integer id,
             Authentication authentication) {
 
-        try {
-            Payroll processedPayroll = payrollService.processPayroll(
-                    id,
-                    authentication.getName());
-
-            return ResponseEntity.ok(processedPayroll);
-
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return PayrollResponse.from(
+                payrollService.processPayroll(id, authentication.getName()));
     }
 
     @PostMapping("/{id}/pay")
-    public ResponseEntity<?> markPayrollAsPaid(
+    public PayrollResponse markPayrollAsPaid(
             @PathVariable Integer id,
             @RequestParam String paymentMethod,
             @RequestParam(required = false) String paymentReference) {
 
-        try {
-            Payroll paidPayroll = payrollService.markPayrollAsPaid(
-                    id,
-                    paymentMethod,
-                    paymentReference);
-
-            return ResponseEntity.ok(paidPayroll);
-
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return PayrollResponse.from(
+                payrollService.markPayrollAsPaid(id, paymentMethod, paymentReference));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deletePayroll(
+    public ResponseEntity<Void> deletePayroll(
             @PathVariable Integer id) {
 
-        try {
-            payrollService.deletePayroll(id);
+        payrollService.deletePayroll(id);
 
-            return ResponseEntity.noContent().build();
+        return ResponseEntity.noContent().build();
+    }
 
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+    private static List<PayrollResponse> toResponses(List<com.employger.entity.Payroll> payrolls) {
+        return payrolls.stream().map(PayrollResponse::from).toList();
     }
 }

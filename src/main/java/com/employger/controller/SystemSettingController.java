@@ -1,13 +1,16 @@
 package com.employger.controller;
 
+import com.employger.dto.SettingValueRequest;
+import com.employger.dto.SystemSettingResponse;
 import com.employger.exception.ResourceNotFoundException;
-import com.employger.entity.SystemSetting;
 import com.employger.service.SystemSettingService;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+// Errors (400 invalid input, 404 not found) are turned into plain-text
+// responses by ApiExceptionHandler.
 @RestController
 @RequestMapping("/api/settings")
 public class SystemSettingController {
@@ -21,34 +24,29 @@ public class SystemSettingController {
     }
 
     @GetMapping
-    public List<SystemSetting> getAllSettings() {
-        return systemSettingService.getAllSettings();
+    public List<SystemSettingResponse> getAllSettings() {
+        return systemSettingService.getAllSettings()
+                .stream()
+                .map(SystemSettingResponse::from)
+                .toList();
     }
 
     @GetMapping("/{settingName}")
-    public ResponseEntity<SystemSetting> getSettingByName(
+    public SystemSettingResponse getSettingByName(
             @PathVariable String settingName) {
 
         return systemSettingService
                 .getSettingByName(settingName)
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+                .map(SystemSettingResponse::from)
+                .orElseThrow(() -> new ResourceNotFoundException("Setting not found"));
     }
 
     @PutMapping("/{settingName}")
-    public ResponseEntity<SystemSetting> updateSetting(
+    public SystemSettingResponse updateSetting(
             @PathVariable String settingName,
-            @RequestBody SystemSetting settingDetails) {
+            @Valid @RequestBody SettingValueRequest request) {
 
-        try {
-            SystemSetting updatedSetting = systemSettingService.updateSetting(
-                    settingName,
-                    settingDetails.getSettingValue());
-
-            return ResponseEntity.ok(updatedSetting);
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return SystemSettingResponse.from(
+                systemSettingService.updateSetting(settingName, request.settingValue()));
     }
 }

@@ -13,6 +13,8 @@ public interface OvertimeRepository
 
     List<Overtime> findByAttendanceAttendanceId(Integer attendanceId);
 
+    List<Overtime> findByPayrollPayrollId(Integer payrollId);
+
     List<Overtime> findByEmployeeEmployeeIdAndOvertimeDate(
         Integer employeeId,
         LocalDate overtimeDate);

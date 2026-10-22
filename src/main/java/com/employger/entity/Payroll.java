@@ -68,6 +68,37 @@ public class Payroll {
     @Column(name = "payment_reference", length = 100)
     private String paymentReference;
 
+    // Calculation snapshot (migration V2): how the amounts above were
+    // derived, recorded at calculation time. NULL for payroll calculated
+    // before V2.
+
+    @Column(name = "base_pay", precision = 12, scale = 2)
+    private BigDecimal basePay;
+
+    @Column(name = "attendance_deduction", precision = 12, scale = 2)
+    private BigDecimal attendanceDeduction;
+
+    @Column(name = "hourly_rate", precision = 14, scale = 6)
+    private BigDecimal hourlyRate;
+
+    @Column(name = "factor_rate", precision = 10, scale = 2)
+    private BigDecimal factorRate;
+
+    @Column(name = "regular_hours_per_day", precision = 5, scale = 2)
+    private BigDecimal regularHoursPerDay;
+
+    @Column(name = "working_days_in_cycle")
+    private Integer workingDaysInCycle;
+
+    @Column(name = "working_days_employed")
+    private Integer workingDaysEmployed;
+
+    @Column(name = "calculation_notes", columnDefinition = "text")
+    private String calculationNotes;
+
+    @Column(name = "calculated_at")
+    private LocalDateTime calculatedAt;
+
     public enum Status {
         DRAFT,
         PROCESSED,
@@ -201,5 +232,77 @@ public class Payroll {
 
     public void setPaymentReference(String paymentReference) {
         this.paymentReference = paymentReference;
+    }
+
+    public BigDecimal getBasePay() {
+        return basePay;
+    }
+
+    public void setBasePay(BigDecimal basePay) {
+        this.basePay = basePay;
+    }
+
+    public BigDecimal getAttendanceDeduction() {
+        return attendanceDeduction;
+    }
+
+    public void setAttendanceDeduction(BigDecimal attendanceDeduction) {
+        this.attendanceDeduction = attendanceDeduction;
+    }
+
+    public BigDecimal getHourlyRate() {
+        return hourlyRate;
+    }
+
+    public void setHourlyRate(BigDecimal hourlyRate) {
+        this.hourlyRate = hourlyRate;
+    }
+
+    public BigDecimal getFactorRate() {
+        return factorRate;
+    }
+
+    public void setFactorRate(BigDecimal factorRate) {
+        this.factorRate = factorRate;
+    }
+
+    public BigDecimal getRegularHoursPerDay() {
+        return regularHoursPerDay;
+    }
+
+    public void setRegularHoursPerDay(BigDecimal regularHoursPerDay) {
+        this.regularHoursPerDay = regularHoursPerDay;
+    }
+
+    public Integer getWorkingDaysInCycle() {
+        return workingDaysInCycle;
+    }
+
+    public void setWorkingDaysInCycle(Integer workingDaysInCycle) {
+        this.workingDaysInCycle = workingDaysInCycle;
+    }
+
+    public Integer getWorkingDaysEmployed() {
+        return workingDaysEmployed;
+    }
+
+    public void setWorkingDaysEmployed(Integer workingDaysEmployed) {
+        this.workingDaysEmployed = workingDaysEmployed;
+    }
+
+    public String getCalculationNotes() {
+        return calculationNotes;
+    }
+
+    public void setCalculationNotes(String calculationNotes) {
+        this.calculationNotes = calculationNotes;
+    }
+
+    public LocalDateTime getCalculatedAt() {
+        return calculatedAt;
+    }
+
+    public void setCalculatedAt(LocalDateTime calculatedAt) {
+        this.calculatedAt = calculatedAt;
     }
 }

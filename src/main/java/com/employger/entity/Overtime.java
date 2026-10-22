@@ -1,5 +1,6 @@
 package com.employger.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -62,6 +63,13 @@ public class Overtime {
     @ManyToOne
     @JoinColumn(name = "approved_by")
     private User approvedBy;
+
+    // The payroll that paid this overtime (migration V2). Set only by the
+    // server when payroll is calculated; never read from request bodies.
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payroll_id")
+    private Payroll payroll;
 
     @Column(
         name = "created_at",
@@ -155,5 +163,13 @@ public class Overtime {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public Payroll getPayroll() {
+        return payroll;
+    }
+
+    public void setPayroll(Payroll payroll) {
+        this.payroll = payroll;
     }
 }

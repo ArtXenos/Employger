@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
  * used; repositories are mocked.
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("unchecked")
 class PayrollServiceTest {
 
     private static final LocalDate OCT_1 = LocalDate.of(2026, 10, 1);
@@ -72,6 +73,8 @@ class PayrollServiceTest {
         lenient().when(systemSettingService.getSettingValue("factor_rate")).thenReturn("261");
         lenient().when(systemSettingService.getSettingValue("regular_hours_per_day")).thenReturn("8");
         lenient().when(systemSettingService.getSettingValue("default_overtime_rate")).thenReturn("1.25");
+        lenient().when(systemSettingService.findSettingValue("rest_days"))
+                .thenReturn(Optional.of("SATURDAY,SUNDAY"));
 
         PayrollCalculationService calculationService =
                 new PayrollCalculationService(systemSettingService);
@@ -84,7 +87,6 @@ class PayrollServiceTest {
                 attendanceRepository,
                 userRepository,
                 calculationService,
-                systemSettingService,
                 auditService);
 
         employee = new Employee();
@@ -104,21 +106,87 @@ class PayrollServiceTest {
     // ---------- calculation ----------
 
     @Test
-    void createPayroll_reproducesStoredPayroll6Figures() {
+    void createPayroll_appliesRestDaysAndRoundsOnlyFinalAmounts() {
         stubOctoberAttendanceAndOvertime();
 
         Payroll payroll = payrollService.createPayroll(35, 1);
 
-        // Values match payroll #6 in employger_db, verified by hand:
-        // base 12,500.00 - deduction (0.25h + 8h) x 143.68 = 11,314.64
-        assertThat(payroll.getRegularPay()).isEqualByComparingTo("11314.64");
+        // Same inputs as paid payroll #6 in employger_db, under the policy
+        // adopted on 2026-10-22. #6 itself (11,314.64) is never recalculated.
+        //   hourly rate = 25,000 x 12 / 261 / 8 = 143.678161 (not rounded)
+        //   Oct 3 (Sat) and Oct 4 (Sun) are rest days: no deduction
+        //   Oct 5 ABSENT: 8 h x 143.678161 = 1,149.43
+        //   regular pay = 12,500.00 - 1,149.43 = 11,350.57
+        assertThat(payroll.getAttendanceDeduction()).isEqualByComparingTo("1149.43");
+        assertThat(payroll.getRegularPay()).isEqualByComparingTo("11350.57");
         assertThat(payroll.getOvertimePay()).isEqualByComparingTo("898.00");
-        assertThat(payroll.getGrossPay()).isEqualByComparingTo("12212.64");
-        assertThat(payroll.getNetPay()).isEqualByComparingTo("12212.64");
+        assertThat(payroll.getGrossPay()).isEqualByComparingTo("12248.57");
+        assertThat(payroll.getNetPay()).isEqualByComparingTo("12248.57");
         assertThat(payroll.getStatus()).isEqualTo(Payroll.Status.DRAFT);
-        assertThat(payroll.getPayrollId()).isNull();
         assertThat(payroll.getProcessedBy()).isNull();
         assertThat(payroll.getPaymentDate()).isNull();
+    }
+
+    @Test
+    void createPayroll_recordsCalculationSnapshotAndLinksOvertime() {
+        List<Overtime> overtime = stubOctoberAttendanceAndOvertime();
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        assertThat(payroll.getBasePay()).isEqualByComparingTo("12500.00");
+        assertThat(payroll.getHourlyRate()).isEqualByComparingTo("143.678161");
+        assertThat(payroll.getFactorRate()).isEqualByComparingTo("261");
+        assertThat(payroll.getRegularHoursPerDay()).isEqualByComparingTo("8");
+        assertThat(payroll.getWorkingDaysInCycle()).isEqualTo(11);
+        assertThat(payroll.getWorkingDaysEmployed()).isEqualTo(11);
+        assertThat(payroll.getCalculatedAt()).isNotNull();
+        assertThat(overtime).allSatisfy(record -> assertThat(record.getPayroll()).isSameAs(payroll));
+    }
+
+    @Test
+    void calculation_warnsAboutWorkingDaysWithoutAttendance() {
+        stubOctoberAttendanceAndOvertime();
+
+        Map<String, Object> preview = payrollService.previewPayroll(35, 1);
+
+        // Weekdays Oct 1-15 without a record (Oct 3-5 are recorded).
+        assertThat((List<Object>) preview.get("missingAttendanceDates")).containsExactly(
+                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 2),
+                LocalDate.of(2026, 10, 6), LocalDate.of(2026, 10, 7),
+                LocalDate.of(2026, 10, 8), LocalDate.of(2026, 10, 9),
+                LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 13),
+                LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 15));
+        assertThat((List<?>) preview.get("warnings")).anySatisfy(
+                warning -> assertThat(warning.toString()).contains("10 working day(s)"));
+    }
+
+    @Test
+    void calculation_proratesMidCycleHireByWorkingDays() {
+        employee.setDateHired(LocalDate.of(2026, 10, 6));
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        // Oct 1-15 has 11 working days; Oct 6-15 has 8.
+        // 12,500 x 8 / 11 = 9,090.909090... -> 9,090.91
+        assertThat(payroll.getWorkingDaysEmployed()).isEqualTo(8);
+        assertThat(payroll.getBasePay()).isEqualByComparingTo("9090.91");
+        assertThat(payroll.getCalculationNotes()).contains("prorated");
+    }
+
+    @Test
+    void calculation_excludesOvertimeAlreadyPaidByAnotherPayroll() {
+        Payroll otherPayroll = payroll(99, firstHalf, Payroll.Status.PAID);
+        Overtime alreadyPaid = approvedOvertime("500.00");
+        alreadyPaid.setPayroll(otherPayroll);
+        Overtime unpaid = approvedOvertime("100.00");
+
+        when(overtimeRepository.findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
+                35, OCT_1, OCT_15, Overtime.Status.APPROVED)).thenReturn(List.of(alreadyPaid, unpaid));
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        assertThat(payroll.getOvertimePay()).isEqualByComparingTo("100.00");
+        assertThat(alreadyPaid.getPayroll()).isSameAs(otherPayroll);
     }
 
     @Test
@@ -135,7 +203,7 @@ class PayrollServiceTest {
         assertThat((BigDecimal) preview.get("overtimePay")).isEqualByComparingTo(created.getOvertimePay());
         assertThat((BigDecimal) preview.get("grossPay")).isEqualByComparingTo(created.getGrossPay());
         assertThat((BigDecimal) preview.get("netPay")).isEqualByComparingTo(created.getNetPay());
-        assertThat((BigDecimal) preview.get("attendanceDeduction")).isEqualByComparingTo("1185.36");
+        assertThat((BigDecimal) preview.get("attendanceDeduction")).isEqualByComparingTo("1149.43");
     }
 
     // ---------- overlapping pay cycles ----------
@@ -278,7 +346,7 @@ class PayrollServiceTest {
 
         Payroll updated = payrollService.updatePayroll(6);
 
-        assertThat(updated.getNetPay()).isEqualByComparingTo("12212.64");
+        assertThat(updated.getNetPay()).isEqualByComparingTo("12248.57");
         assertThat(updated.getStatus()).isEqualTo(Payroll.Status.DRAFT);
     }
 
@@ -321,18 +389,22 @@ class PayrollServiceTest {
 
     // ---------- helpers ----------
 
-    private void stubOctoberAttendanceAndOvertime() {
-        when(attendanceRepository.findByEmployeeEmployeeId(35)).thenReturn(List.of(
+    private List<Overtime> stubOctoberAttendanceAndOvertime() {
+        when(attendanceRepository.findByEmployeeEmployeeIdAndAttendanceDateBetween(35, OCT_1, OCT_15)).thenReturn(List.of(
                 attendance(LocalDate.of(2026, 10, 3), Attendance.Status.PRESENT, "8.00"),
                 attendance(LocalDate.of(2026, 10, 4), Attendance.Status.LATE, "7.75"),
                 attendance(LocalDate.of(2026, 10, 5), Attendance.Status.ABSENT, "0.00")));
 
+        List<Overtime> overtime = List.of(
+                approvedOvertime("0.00"),
+                approvedOvertime("179.60"),
+                approvedOvertime("359.20"),
+                approvedOvertime("359.20"));
+
         when(overtimeRepository.findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
-                35, OCT_1, OCT_15, Overtime.Status.APPROVED)).thenReturn(List.of(
-                        approvedOvertime("0.00"),
-                        approvedOvertime("179.60"),
-                        approvedOvertime("359.20"),
-                        approvedOvertime("359.20")));
+                35, OCT_1, OCT_15, Overtime.Status.APPROVED)).thenReturn(overtime);
+
+        return overtime;
     }
 
     private static PayCycle payCycle(
@@ -369,6 +441,7 @@ class PayrollServiceTest {
         Overtime overtime = new Overtime();
         overtime.setEmployee(employee);
         overtime.setStatus(Overtime.Status.APPROVED);
+        overtime.setOvertimeDate(LocalDate.of(2026, 10, 3));
         overtime.setOvertimeAmount(new BigDecimal(amount));
         return overtime;
     }

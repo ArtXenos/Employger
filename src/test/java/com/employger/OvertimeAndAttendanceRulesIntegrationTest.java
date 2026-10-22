@@ -139,7 +139,9 @@ class OvertimeAndAttendanceRulesIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.overtimeRate").value(287.36))
-                .andExpect(jsonPath("$.overtimeAmount").value(574.72))
+                // 143.678161 x 2.00 x 2 h = 574.7126 -> 574.71. Computed from
+                // the unrounded rate, not 287.36 x 2 (rounding policy 2026-10-22).
+                .andExpect(jsonPath("$.overtimeAmount").value(574.71))
                 .andExpect(jsonPath("$.approvedBy").value("hr"));
     }
 

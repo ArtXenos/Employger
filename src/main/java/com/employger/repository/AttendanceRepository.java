@@ -16,4 +16,10 @@ public interface AttendanceRepository
             Integer employeeId,
             LocalDate attendanceDate
     );
+
+    List<Attendance> findByEmployeeEmployeeIdAndAttendanceDateBetween(
+            Integer employeeId,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 }

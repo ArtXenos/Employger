@@ -12,18 +12,22 @@ import com.employger.repository.PayrollRepository;
 import com.employger.repository.OvertimeRepository;
 import com.employger.repository.AttendanceRepository;
 import com.employger.repository.UserRepository;
-import com.employger.service.SystemSettingService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class PayrollService {
@@ -36,7 +40,6 @@ public class PayrollService {
         private final OvertimeRepository overtimeRepository;
         private final AttendanceRepository attendanceRepository;
         private final UserRepository userRepository;
-        private final SystemSettingService systemSettingService;
         private final PayrollCalculationService payrollCalculationService;
         private final AuditService auditService;
 
@@ -48,7 +51,6 @@ public class PayrollService {
                         AttendanceRepository attendanceRepository,
                         UserRepository userRepository,
                         PayrollCalculationService payrollCalculationService,
-                        SystemSettingService systemSettingService,
                         AuditService auditService) {
 
                 this.auditService = auditService;
@@ -60,7 +62,6 @@ public class PayrollService {
                 this.attendanceRepository = attendanceRepository;
                 this.userRepository = userRepository;
                 this.payrollCalculationService = payrollCalculationService;
-                this.systemSettingService = systemSettingService;
         }
 
         public List<Payroll> getAllPayroll() {
@@ -95,6 +96,12 @@ public class PayrollService {
                                                 payCycleId);
         }
 
+        /*
+         * Shows what payroll would be for this employee and cycle without
+         * creating or changing anything. Uses the same calculate() as
+         * payroll creation, so the two cannot disagree.
+         */
+        @Transactional(readOnly = true)
         public Map<String, Object> previewPayroll(
                         Integer employeeId,
                         Integer payCycleId) {
@@ -105,110 +112,41 @@ public class PayrollService {
                 PayCycle payCycle = payCycleRepository.findById(payCycleId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Pay cycle not found"));
 
-                // Calculate regular pay without creating a payroll record.
-                BigDecimal baseRegularPay = payrollCalculationService.calculateCycleBasePay(
-                                employee,
-                                payCycle.getCycleType());
+                Payroll existing = payrollRepository
+                                .findByEmployeeEmployeeIdAndPayCyclePayCycleId(employeeId, payCycleId)
+                                .orElse(null);
 
-                BigDecimal attendanceDeduction = calculateAttendanceDeduction(employee, payCycle);
+                PayrollBreakdown breakdown = calculate(employee, payCycle, existing);
 
-                BigDecimal regularPay = baseRegularPay
-                                .subtract(attendanceDeduction)
-                                .max(ZERO)
-                                .setScale(2, RoundingMode.HALF_UP);
-
-                // Include only approved overtime within this pay cycle.
-                List<Overtime> approvedOvertime = overtimeRepository
-                                .findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
-                                                employeeId,
-                                                payCycle.getStartDate(),
-                                                payCycle.getEndDate(),
-                                                Overtime.Status.APPROVED);
-
-                BigDecimal overtimePay = approvedOvertime.stream()
-                                .map(Overtime::getOvertimeAmount)
-                                .filter(amount -> amount != null)
-                                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                                .setScale(2, RoundingMode.HALF_UP);
-
-                BigDecimal bonusAmount = ZERO;
-                BigDecimal grossPay = regularPay
-                                .add(overtimePay)
-                                .add(bonusAmount)
-                                .setScale(2, RoundingMode.HALF_UP);
-
-                // Tax and other deductions are not yet calculated by the
-                // existing payroll logic, so preserve its current behavior.
-                BigDecimal taxAmount = ZERO;
-                BigDecimal otherDeductions = ZERO;
-                BigDecimal netPay = grossPay
-                                .subtract(taxAmount)
-                                .subtract(otherDeductions)
-                                .max(ZERO)
-                                .setScale(2, RoundingMode.HALF_UP);
-
-                // Build an attendance breakdown for the preview response.
                 List<Map<String, Object>> attendanceBreakdown = new ArrayList<>();
 
-                List<Attendance> attendanceRecords = attendanceRepository.findByEmployeeEmployeeId(employeeId);
-
-                BigDecimal regularHoursPerDay = new BigDecimal(
-                                systemSettingService.getSettingValue(
-                                                "regular_hours_per_day"));
-
-                for (Attendance attendance : attendanceRecords) {
-                        LocalDate date = attendance.getAttendanceDate();
-
-                        if (date == null
-                                        || date.isBefore(payCycle.getStartDate())
-                                        || date.isAfter(payCycle.getEndDate())
-                                        || attendance.getStatus() == null) {
-                                continue;
-                        }
-
-                        BigDecimal recordedHours = attendance.getRegularHours();
-
-                        if (recordedHours == null) {
-                                recordedHours = BigDecimal.ZERO;
-                        }
-
-                        BigDecimal unpaidHours;
-
-                        switch (attendance.getStatus()) {
-                                case ABSENT:
-                                        unpaidHours = regularHoursPerDay;
-                                        break;
-
-                                case PRESENT:
-                                case LATE:
-                                        unpaidHours = regularHoursPerDay
-                                                        .subtract(recordedHours)
-                                                        .max(BigDecimal.ZERO);
-                                        break;
-
-                                case LEAVE:
-                                default:
-                                        unpaidHours = BigDecimal.ZERO;
-                                        break;
-                        }
-
-                        BigDecimal hourlyRate = payrollCalculationService.calculateHourlyRate(employee);
-
-                        BigDecimal attendanceDeductionForDay = hourlyRate
-                                        .multiply(unpaidHours)
-                                        .setScale(2, RoundingMode.HALF_UP);
+                for (PayrollBreakdown.AttendanceDay day : breakdown.attendanceDays()) {
 
                         Map<String, Object> attendanceItem = new LinkedHashMap<>();
 
-                        attendanceItem.put("date", date);
-                        attendanceItem.put("status", attendance.getStatus());
-                        attendanceItem.put("recordedHours", recordedHours);
-                        attendanceItem.put("unpaidHours", unpaidHours);
-                        attendanceItem.put(
-                                        "deduction",
-                                        attendanceDeductionForDay);
+                        attendanceItem.put("attendanceId", day.attendanceId());
+                        attendanceItem.put("date", day.date());
+                        attendanceItem.put("status", day.status());
+                        attendanceItem.put("restDay", day.restDay());
+                        attendanceItem.put("recordedHours", day.recordedHours());
+                        attendanceItem.put("unpaidHours", day.unpaidHours());
+                        attendanceItem.put("deduction", day.deduction());
 
                         attendanceBreakdown.add(attendanceItem);
+                }
+
+                List<Map<String, Object>> overtimeBreakdown = new ArrayList<>();
+
+                for (Overtime overtime : breakdown.overtime()) {
+
+                        Map<String, Object> overtimeItem = new LinkedHashMap<>();
+
+                        overtimeItem.put("overtimeId", overtime.getOvertimeId());
+                        overtimeItem.put("date", overtime.getOvertimeDate());
+                        overtimeItem.put("hours", overtime.getHours());
+                        overtimeItem.put("amount", overtime.getOvertimeAmount());
+
+                        overtimeBreakdown.add(overtimeItem);
                 }
 
                 Map<String, Object> preview = new LinkedHashMap<>();
@@ -218,18 +156,26 @@ public class PayrollService {
                 preview.put("cycleStartDate", payCycle.getStartDate());
                 preview.put("cycleEndDate", payCycle.getEndDate());
 
-                preview.put("baseRegularPay", baseRegularPay);
-                preview.put("attendanceDeduction", attendanceDeduction);
-                preview.put("regularPay", regularPay);
-                preview.put("approvedOvertimeCount", approvedOvertime.size());
-                preview.put("overtimePay", overtimePay);
-                preview.put("bonusAmount", bonusAmount);
-                preview.put("grossPay", grossPay);
-                preview.put("taxAmount", taxAmount);
-                preview.put("otherDeductions", otherDeductions);
-                preview.put("netPay", netPay);
+                preview.put("cycleBasePay", breakdown.cycleBasePay());
+                preview.put("baseRegularPay", breakdown.basePay());
+                preview.put("hourlyRate", breakdown.hourlyRate());
+                preview.put("workingDaysInCycle", breakdown.workingDaysInCycle());
+                preview.put("workingDaysEmployed", breakdown.workingDaysEmployed());
+                preview.put("unpaidHours", breakdown.unpaidHours());
+                preview.put("attendanceDeduction", breakdown.attendanceDeduction());
+                preview.put("regularPay", breakdown.regularPay());
+                preview.put("approvedOvertimeCount", breakdown.overtime().size());
+                preview.put("overtimePay", breakdown.overtimePay());
+                preview.put("bonusAmount", breakdown.bonusAmount());
+                preview.put("grossPay", breakdown.grossPay());
+                preview.put("taxAmount", breakdown.taxAmount());
+                preview.put("otherDeductions", breakdown.deductionAmount());
+                preview.put("netPay", breakdown.netPay());
 
                 preview.put("attendanceBreakdown", attendanceBreakdown);
+                preview.put("overtimeBreakdown", overtimeBreakdown);
+                preview.put("missingAttendanceDates", breakdown.missingAttendanceDates());
+                preview.put("warnings", breakdown.notes());
 
                 preview.put(
                                 "note",
@@ -279,9 +225,10 @@ public class PayrollService {
                 payroll.setPayCycle(payCycle);
                 payroll.setStatus(Payroll.Status.DRAFT);
 
-                applyCalculatedAmounts(payroll);
-
+                // Save first so the new ID can be linked to its overtime.
                 Payroll saved = payrollRepository.save(payroll);
+
+                applyCalculation(saved);
 
                 auditService.record("PAYROLL_CREATED",
                                 "Created DRAFT " + describe(saved) + " with net pay " + saved.getNetPay());
@@ -359,189 +306,265 @@ public class PayrollService {
                 }
         }
 
-        private void applyCalculatedAmounts(Payroll payrollDetails) {
+        /*
+         * The single payroll calculation, used by preview, create,
+         * recalculate, and process. Policy decided 2026-10-22:
+         *
+         *  - Base pay = annual salary / periods per year, prorated by
+         *    working days for an employee hired after the cycle starts.
+         *  - Rest days (rest_days setting, default Saturday and Sunday) never
+         *    produce attendance deductions.
+         *  - Working days: ABSENT = full regular day unpaid; PRESENT/LATE =
+         *    regular hours minus recorded hours unpaid; LEAVE = no deduction.
+         *  - A working day with no attendance record is paid, but listed as a
+         *    warning so HR can complete attendance before processing.
+         *  - Only APPROVED overtime dated in the cycle and not already paid by
+         *    another payroll is included.
+         *  - Intermediate values keep 6 decimals; only final amounts are
+         *    rounded to centavos.
+         *
+         * `existing` is the payroll being recalculated (null for a new one),
+         * so overtime already linked to it is still included.
+         */
+        PayrollBreakdown calculate(
+                        Employee employee,
+                        PayCycle payCycle,
+                        Payroll existing) {
 
-                Employee employee = payrollDetails.getEmployee();
-                PayCycle payCycle = payrollDetails.getPayCycle();
-                Integer employeeId = employee.getEmployeeId();
+                PayrollCalculationService rates = payrollCalculationService;
 
-                /*
-                 * Calculate the employee's regular pay for the
-                 * selected pay cycle.
-                 */
-                BigDecimal regularPay = payrollCalculationService.calculateCycleBasePay(
+                BigDecimal hourlyRate = rates.calculateHourlyRate(employee);
+                BigDecimal factorRate = rates.calculateFactorRate();
+                BigDecimal regularHoursPerDay = rates.calculateRegularHoursPerDay();
+                Set<DayOfWeek> restDays = rates.getRestDays();
+
+                LocalDate cycleStart = payCycle.getStartDate();
+                LocalDate cycleEnd = payCycle.getEndDate();
+
+                LocalDate employedFrom = employee.getDateHired() != null
+                                && employee.getDateHired().isAfter(cycleStart)
+                                                ? employee.getDateHired()
+                                                : cycleStart;
+
+                int workingDaysInCycle = rates.countWorkingDays(cycleStart, cycleEnd, restDays);
+
+                int workingDaysEmployed = employedFrom.isAfter(cycleEnd)
+                                ? 0
+                                : rates.countWorkingDays(employedFrom, cycleEnd, restDays);
+
+                List<String> notes = new ArrayList<>();
+
+                // ---------- base pay, prorated by working days ----------
+
+                BigDecimal cycleBasePay = rates.calculateCycleBasePay(
                                 employee,
                                 payCycle.getCycleType());
 
-                /*
-                 * Adjust regular pay based on unpaid attendance.
-                 */
-                BigDecimal attendanceDeduction = calculateAttendanceDeduction(
-                                employee,
-                                payCycle);
+                BigDecimal basePay = cycleBasePay;
 
-                regularPay = regularPay
-                                .subtract(attendanceDeduction)
-                                .max(ZERO)
-                                .setScale(2, RoundingMode.HALF_UP);
+                if (workingDaysInCycle > 0 && workingDaysEmployed < workingDaysInCycle) {
 
-                payrollDetails.setRegularPay(regularPay);
+                        basePay = cycleBasePay
+                                        .multiply(BigDecimal.valueOf(workingDaysEmployed))
+                                        .divide(BigDecimal.valueOf(workingDaysInCycle),
+                                                        PayrollCalculationService.INTERMEDIATE_SCALE,
+                                                        RoundingMode.HALF_UP);
 
-                /*
-                 * Only APPROVED overtime records within the
-                 * selected pay cycle are included.
-                 */
-                List<Overtime> approvedOvertime = overtimeRepository
-                                .findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
-                                                employeeId,
-                                                payCycle.getStartDate(),
-                                                payCycle.getEndDate(),
-                                                Overtime.Status.APPROVED);
-
-                BigDecimal overtimePay = approvedOvertime.stream()
-                                .map(Overtime::getOvertimeAmount)
-                                .filter(amount -> amount != null)
-                                .reduce(
-                                                BigDecimal.ZERO,
-                                                BigDecimal::add)
-                                .setScale(
-                                                2,
-                                                RoundingMode.HALF_UP);
-
-                payrollDetails.setOvertimePay(overtimePay);
-
-                /*
-                 * Bonuses will be connected in the next step.
-                 */
-                BigDecimal bonusAmount = ZERO;
-
-                payrollDetails.setBonusAmount(bonusAmount);
-
-                /*
-                 * Gross Pay =
-                 * Regular Pay + Overtime Pay + Bonuses
-                 */
-                BigDecimal grossPay = regularPay
-                                .add(overtimePay)
-                                .add(bonusAmount)
-                                .setScale(
-                                                2,
-                                                RoundingMode.HALF_UP);
-
-                payrollDetails.setGrossPay(grossPay);
-
-                /*
-                 * Tax and other deductions will be connected
-                 * after the basic payroll calculation is working.
-                 */
-                BigDecimal taxAmount = ZERO;
-                BigDecimal deductionAmount = ZERO;
-
-                payrollDetails.setTaxAmount(taxAmount);
-                payrollDetails.setDeductionAmount(deductionAmount);
-
-                /*
-                 * Net Pay =
-                 * Gross Pay - Tax - Other Deductions
-                 */
-                BigDecimal netPay = grossPay
-                                .subtract(taxAmount)
-                                .subtract(deductionAmount)
-                                .max(ZERO)
-                                .setScale(
-                                                2,
-                                                RoundingMode.HALF_UP);
-
-                payrollDetails.setNetPay(netPay);
-        }
-
-        private BigDecimal calculateAttendanceDeduction(
-                        Employee employee,
-                        PayCycle payCycle) {
-
-                List<Attendance> attendanceRecords = attendanceRepository.findByEmployeeEmployeeId(
-                                employee.getEmployeeId());
-
-                BigDecimal hourlyRate = payrollCalculationService.calculateHourlyRate(employee);
-
-                BigDecimal regularHoursPerDay;
-
-                try {
-                        regularHoursPerDay = new BigDecimal(
-                                        systemSettingService.getSettingValue(
-                                                        "regular_hours_per_day"));
-
-                        if (regularHoursPerDay.compareTo(BigDecimal.ZERO) <= 0
-                                        || regularHoursPerDay.compareTo(
-                                                        new BigDecimal("24")) > 0) {
-                                throw new IllegalArgumentException(
-                                                "regular_hours_per_day must be greater than 0 and at most 24");
-                        }
-                } catch (NumberFormatException e) {
-                        throw new IllegalArgumentException(
-                                        "Invalid regular_hours_per_day setting");
+                        notes.add("Base pay prorated: employed from " + employedFrom
+                                        + ", paid for " + workingDaysEmployed + " of "
+                                        + workingDaysInCycle + " working days.");
                 }
 
-                BigDecimal deduction = BigDecimal.ZERO;
+                basePay = money(basePay);
+
+                // ---------- attendance deduction ----------
+
+                List<Attendance> attendanceRecords = new ArrayList<>(attendanceRepository
+                                .findByEmployeeEmployeeIdAndAttendanceDateBetween(
+                                                employee.getEmployeeId(),
+                                                employedFrom,
+                                                cycleEnd));
+
+                attendanceRecords.sort(Comparator.comparing(Attendance::getAttendanceDate));
+
+                List<PayrollBreakdown.AttendanceDay> attendanceDays = new ArrayList<>();
+                Set<LocalDate> recordedDates = new HashSet<>();
+                BigDecimal totalUnpaidHours = BigDecimal.ZERO;
 
                 for (Attendance attendance : attendanceRecords) {
 
-                        LocalDate attendanceDate = attendance.getAttendanceDate();
+                        LocalDate date = attendance.getAttendanceDate();
+                        recordedDates.add(date);
 
-                        if (attendanceDate == null
-                                        || attendanceDate.isBefore(payCycle.getStartDate())
-                                        || attendanceDate.isAfter(payCycle.getEndDate())) {
-                                continue;
-                        }
+                        boolean restDay = !rates.isWorkingDay(date, restDays);
 
-                        if (attendance.getStatus() == null) {
-                                continue;
-                        }
+                        BigDecimal recordedHours = attendance.getRegularHours() != null
+                                        ? attendance.getRegularHours()
+                                        : BigDecimal.ZERO;
 
-                        BigDecimal unpaidHours;
+                        BigDecimal unpaidHours = restDay
+                                        ? BigDecimal.ZERO
+                                        : unpaidHours(attendance.getStatus(), recordedHours, regularHoursPerDay);
 
-                        switch (attendance.getStatus()) {
-                                case ABSENT:
-                                        // An explicitly recorded absence is treated as
-                                        // a full unpaid workday in this initial version.
-                                        unpaidHours = regularHoursPerDay;
-                                        break;
+                        totalUnpaidHours = totalUnpaidHours.add(unpaidHours);
 
-                                case PRESENT:
-                                case LATE:
-                                        // Use recorded hours so lost time is not deducted
-                                        // a second time from the same attendance record.
-                                        BigDecimal recordedHours = attendance.getRegularHours();
+                        attendanceDays.add(new PayrollBreakdown.AttendanceDay(
+                                        attendance.getAttendanceId(),
+                                        date,
+                                        attendance.getStatus(),
+                                        restDay,
+                                        recordedHours,
+                                        unpaidHours,
+                                        money(hourlyRate.multiply(unpaidHours))));
+                }
 
-                                        if (recordedHours == null) {
-                                                recordedHours = BigDecimal.ZERO;
-                                        }
+                BigDecimal attendanceDeduction = money(hourlyRate.multiply(totalUnpaidHours));
 
-                                        unpaidHours = regularHoursPerDay
-                                                        .subtract(recordedHours)
-                                                        .max(BigDecimal.ZERO);
-                                        break;
+                List<LocalDate> missingAttendanceDates = new ArrayList<>();
 
-                                case LEAVE:
-                                        // Leave cannot safely be treated as unpaid until
-                                        // the system records whether it is paid or unpaid.
-                                        unpaidHours = BigDecimal.ZERO;
-                                        break;
-
-                                default:
-                                        unpaidHours = BigDecimal.ZERO;
-                        }
-
-                        if (unpaidHours.compareTo(BigDecimal.ZERO) > 0) {
-                                BigDecimal dailyDeduction = hourlyRate
-                                                .multiply(unpaidHours)
-                                                .setScale(2, RoundingMode.HALF_UP);
-
-                                deduction = deduction.add(dailyDeduction);
+                for (LocalDate date = employedFrom; !date.isAfter(cycleEnd); date = date.plusDays(1)) {
+                        if (rates.isWorkingDay(date, restDays) && !recordedDates.contains(date)) {
+                                missingAttendanceDates.add(date);
                         }
                 }
 
-                return deduction.setScale(2, RoundingMode.HALF_UP);
+                if (!missingAttendanceDates.isEmpty()) {
+                        notes.add("No attendance recorded for " + missingAttendanceDates.size()
+                                        + " working day(s), paid in full: " + missingAttendanceDates);
+                }
+
+                BigDecimal regularPay = basePay.subtract(attendanceDeduction).max(ZERO);
+
+                // ---------- overtime ----------
+
+                Integer existingPayrollId = existing != null ? existing.getPayrollId() : null;
+
+                List<Overtime> overtime = overtimeRepository
+                                .findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
+                                                employee.getEmployeeId(),
+                                                cycleStart,
+                                                cycleEnd,
+                                                Overtime.Status.APPROVED)
+                                .stream()
+                                .filter(record -> record.getPayroll() == null
+                                                || record.getPayroll().getPayrollId().equals(existingPayrollId))
+                                .sorted(Comparator.comparing(Overtime::getOvertimeDate))
+                                .toList();
+
+                BigDecimal overtimePay = money(overtime.stream()
+                                .map(Overtime::getOvertimeAmount)
+                                .filter(amount -> amount != null)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+                // ---------- totals ----------
+
+                // Bonuses, tax, and statutory deductions are not calculated yet.
+                BigDecimal bonusAmount = ZERO;
+                BigDecimal taxAmount = ZERO;
+                BigDecimal deductionAmount = ZERO;
+
+                BigDecimal grossPay = regularPay.add(overtimePay).add(bonusAmount);
+
+                BigDecimal netPay = grossPay
+                                .subtract(taxAmount)
+                                .subtract(deductionAmount)
+                                .max(ZERO);
+
+                return new PayrollBreakdown(
+                                cycleBasePay,
+                                basePay,
+                                hourlyRate,
+                                factorRate,
+                                regularHoursPerDay,
+                                workingDaysInCycle,
+                                workingDaysEmployed,
+                                attendanceDays,
+                                missingAttendanceDates,
+                                totalUnpaidHours,
+                                attendanceDeduction,
+                                regularPay,
+                                overtime,
+                                overtimePay,
+                                bonusAmount,
+                                grossPay,
+                                taxAmount,
+                                deductionAmount,
+                                netPay,
+                                notes);
+        }
+
+        private static BigDecimal unpaidHours(
+                        Attendance.Status status,
+                        BigDecimal recordedHours,
+                        BigDecimal regularHoursPerDay) {
+
+                if (status == null) {
+                        return BigDecimal.ZERO;
+                }
+
+                switch (status) {
+                        case ABSENT:
+                                return regularHoursPerDay;
+
+                        case PRESENT:
+                        case LATE:
+                                return regularHoursPerDay.subtract(recordedHours).max(BigDecimal.ZERO);
+
+                        case LEAVE:
+                        default:
+                                // Leave is not deducted: paid/unpaid leave is not recorded.
+                                return BigDecimal.ZERO;
+                }
+        }
+
+        private static BigDecimal money(BigDecimal amount) {
+                return amount.setScale(
+                                PayrollCalculationService.FINAL_MONETARY_SCALE,
+                                RoundingMode.HALF_UP);
+        }
+
+        /*
+         * Copies a fresh calculation onto the payroll, records the snapshot
+         * of how it was calculated, and links the included overtime to it.
+         * The payroll must already have an ID.
+         */
+        private void applyCalculation(Payroll payroll) {
+
+                PayrollBreakdown breakdown = calculate(
+                                payroll.getEmployee(),
+                                payroll.getPayCycle(),
+                                payroll);
+
+                payroll.setRegularPay(breakdown.regularPay());
+                payroll.setOvertimePay(breakdown.overtimePay());
+                payroll.setBonusAmount(breakdown.bonusAmount());
+                payroll.setGrossPay(breakdown.grossPay());
+                payroll.setTaxAmount(breakdown.taxAmount());
+                payroll.setDeductionAmount(breakdown.deductionAmount());
+                payroll.setNetPay(breakdown.netPay());
+
+                payroll.setBasePay(breakdown.basePay());
+                payroll.setAttendanceDeduction(breakdown.attendanceDeduction());
+                payroll.setHourlyRate(breakdown.hourlyRate());
+                payroll.setFactorRate(breakdown.factorRate());
+                payroll.setRegularHoursPerDay(breakdown.regularHoursPerDay());
+                payroll.setWorkingDaysInCycle(breakdown.workingDaysInCycle());
+                payroll.setWorkingDaysEmployed(breakdown.workingDaysEmployed());
+                payroll.setCalculationNotes(breakdown.notes().isEmpty()
+                                ? null
+                                : String.join("\n", breakdown.notes()));
+                payroll.setCalculatedAt(LocalDateTime.now());
+
+                // Release overtime no longer included, then link what is.
+                for (Overtime linked : overtimeRepository.findByPayrollPayrollId(payroll.getPayrollId())) {
+                        if (!breakdown.overtime().contains(linked)) {
+                                linked.setPayroll(null);
+                        }
+                }
+
+                for (Overtime included : breakdown.overtime()) {
+                        included.setPayroll(payroll);
+                }
         }
 
         /*
@@ -567,7 +590,7 @@ public class PayrollService {
 
                 BigDecimal previousNetPay = payroll.getNetPay();
 
-                applyCalculatedAmounts(payroll);
+                applyCalculation(payroll);
 
                 auditService.record("PAYROLL_RECALCULATED",
                                 "Recalculated DRAFT " + describe(payroll) + ": net pay "
@@ -594,12 +617,21 @@ public class PayrollService {
                 com.employger.entity.User user = userRepository.findByUsername(username)
                                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+                // Process the current numbers, not those from when the draft
+                // was created: attendance or overtime may have changed since.
+                BigDecimal draftNetPay = payroll.getNetPay();
+
+                applyCalculation(payroll);
+
                 payroll.setStatus(Payroll.Status.PROCESSED);
-                payroll.setProcessedAt(java.time.LocalDateTime.now());
+                payroll.setProcessedAt(LocalDateTime.now());
                 payroll.setProcessedBy(user);
 
                 auditService.record("PAYROLL_PROCESSED",
-                                "Processed " + describe(payroll) + " with net pay " + payroll.getNetPay());
+                                "Processed " + describe(payroll) + " with net pay " + payroll.getNetPay()
+                                                + (draftNetPay != null && draftNetPay.compareTo(payroll.getNetPay()) != 0
+                                                                ? " (recalculated from draft net pay " + draftNetPay + ")"
+                                                                : ""));
 
                 return payrollRepository.save(payroll);
         }
@@ -660,6 +692,11 @@ public class PayrollService {
 
                 auditService.record("PAYROLL_DELETED",
                                 "Deleted DRAFT " + describe(payroll) + " with net pay " + payroll.getNetPay());
+
+                // Release this draft's overtime so a new payroll can include it.
+                for (Overtime linked : overtimeRepository.findByPayrollPayrollId(payroll.getPayrollId())) {
+                        linked.setPayroll(null);
+                }
 
                 payrollRepository.delete(payroll);
         }

@@ -34,7 +34,8 @@ public class SystemSettingService {
             "late_grace_period_minutes",
             "night_differential_rate",
             "night_differential_start",
-            "night_differential_end");
+            "night_differential_end",
+            "rest_days");
 
     private final AuditService auditService;
 
@@ -86,6 +87,12 @@ public class SystemSettingService {
                 "Changed " + settingName + ": " + previousValue + " -> " + setting.getSettingValue());
 
         return systemSettingRepository.save(setting);
+    }
+
+    public Optional<String> findSettingValue(String settingName) {
+        return systemSettingRepository
+                .findBySettingName(settingName)
+                .map(SystemSetting::getSettingValue);
     }
 
     public String getSettingValue(String settingName) {
@@ -163,6 +170,14 @@ public class SystemSettingService {
                 } catch (Exception e) {
                     throw new IllegalArgumentException(
                             name + " must use HH:mm time format");
+                }
+                break;
+
+            case "rest_days":
+                // Comma-separated day names, e.g. SATURDAY,SUNDAY, or NONE.
+                if (PayrollCalculationService.parseRestDays(value).size() == 7) {
+                    throw new IllegalArgumentException(
+                            "rest_days cannot include every day of the week");
                 }
                 break;
 

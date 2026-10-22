@@ -35,3 +35,4 @@ build/
 ### Database backups (contain salary/personal data) ###
 *.sql
 !scripts/*.sql
+!db/migrations/*.sql

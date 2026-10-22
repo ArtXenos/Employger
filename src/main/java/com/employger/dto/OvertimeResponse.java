@@ -17,6 +17,7 @@ public class OvertimeResponse {
     private BigDecimal overtimeAmount;
     private String status;
     private String approvedBy;
+    private Integer payrollId;
 
     public OvertimeResponse(Overtime overtime) {
 
@@ -47,6 +48,9 @@ public class OvertimeResponse {
 
         this.approvedBy = overtime.getApprovedBy() != null
                 ? overtime.getApprovedBy().getUsername()
+                : null;
+        this.payrollId = overtime.getPayroll() != null
+                ? overtime.getPayroll().getPayrollId()
                 : null;
     }
 
@@ -88,5 +92,9 @@ public class OvertimeResponse {
 
     public String getApprovedBy() {
         return approvedBy;
+    }
+
+    public Integer getPayrollId() {
+        return payrollId;
     }
 }

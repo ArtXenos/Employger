@@ -38,3 +38,12 @@ After the app works with `employger_app`, set a root password in the XAMPP shell
 ## 4. Strict SQL mode (planned, not yet enabled)
 
 The server runs without `STRICT_TRANS_TABLES`, so invalid values are silently adjusted instead of rejected. Enabling strict mode is recommended, but it can surface hidden bad data. Enable it only after testing against a restored copy of the database (see `BACKUP_AND_RECOVERY.md`).
+
+## Status (2026-10-22)
+
+Creating `employger_app` started but is **blocked**: MariaDB's privilege table `mysql.db` is corrupt, so `GRANT` fails. The login exists with no privileges and an unknown, discarded password, so it can't be used. Once `mysql.db` is repaired (see `AUDIT_REPORT.md`, "Database incident 2026-10-22"), finish with:
+
+```sql
+ALTER USER 'employger_app'@'localhost' IDENTIFIED BY '<new password>';
+GRANT SELECT, INSERT, UPDATE, DELETE ON employger_db.* TO 'employger_app'@'localhost';
+```

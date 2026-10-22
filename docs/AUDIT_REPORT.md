@@ -28,9 +28,24 @@ Every finding below is labelled **Confirmed** (reproduced from code, live data, 
 | 2026-10-21 | H-02 overtime rules; locked days for PROCESSED/PAID payroll; attendance validation | Done, tested | `209cba4` |
 | 2026-10-21 | H-07 audit trail (existing `audit_logs` table) | Done, tested; mapping validated against `employger_db` | `e6bf403` |
 | 2026-10-21 | H-08 env-based DB credentials, least-privilege account script, 10 s connection timeout | Done (defaults unchanged; account not created; needs your password) | see git log |
-| — | H-07 payroll calculation snapshot columns, `overtime.payroll_id` | **Pending approval** (schema change) | — |
-| — | C-04 change cascade FKs to RESTRICT | **Pending approval** (schema change) | — |
+| 2026-10-22 | §11 policy decisions recorded (derived hours, Sat/Sun rest days, warn on missing attendance, working-day proration, round only finals, GM read-only, employee self-service, PH statutory deductions, generated DB password) | Decided by owner | — |
+| 2026-10-22 | Migration V2: payroll FK RESTRICT (C-04), calculation snapshot + `overtime.payroll_id` (H-07), `rest_days` setting | **Applied to employger_db 23:09**, rehearsed apply/rollback/re-apply on a scratch copy first | `e67215b`, fix `54ac5f6` |
+| 2026-10-22 | Single `calculate()` for preview/create/process (M-07); rest days; proration; missing-attendance warnings; rounding (M-08); process recalculates | Done, tested | `e67215b` |
+| 2026-10-22 | Hours derived from time in/out (H-03) | Done, tested | `dbd61d8` |
+| 2026-10-22 | Payroll page uses server preview with warnings | Done | `45d753e` |
+| 2026-10-22 | Roles: GM read-only, employee self-service (`/api/me`, My Payroll page), 401/403 messages (M-13) | Done, tested | `7c6b529` |
+| 2026-10-22 | Migration V3 + PH statutory deductions and BIR withholding tax (M-10) | **Applied to employger_db 23:09**; rates verified against official sources (`docs/STATUTORY_DEDUCTIONS.md`) | `185ffb9` |
+| 2026-10-22 | Dedicated DB account (H-08) | **Blocked**: MariaDB system table `mysql.db` is corrupt, so GRANT fails. See "Database incident 2026-10-22". | — |
 | — | Strict `sql_mode` | Pending (test on restored copy first) | — |
+
+### Database incident 2026-10-22: corrupt MariaDB system tables
+
+- **What happened:** creating the `employger_app` account failed with `Got error 176 "Read page with wrong checksum" from storage engine Aria`.
+- **Findings** (read-only `CHECK TABLE`): MariaDB's own privilege tables `mysql.db` and `mysql.proxies_priv` (Aria engine) were corrupt, with index files about 100–200× their expected size. That's consistent with the 2026-10-06 file-copy incident plus repeated unclean shutdowns (crash recovery on 10-21 11:40, 10-22 03:36 and 10-22 23:04). **All `employger_db` tables (InnoDB) check OK; no payroll data is affected.**
+- **Automatic recovery:** MariaDB is configured with `aria_recover_options = BACKUP,QUICK`. When `mysql.proxies_priv` was first read, the server repaired it itself and kept the original as `proxies_priv.MAD-261022231028.BAK`. It now checks OK and holds its one standard row. The same automatic repair failed for `mysql.db`, which is still marked crashed.
+- **Current effect:** `GRANT`/`REVOKE` at database level fail. Root login and the app work. An `employger_app` login exists with **no privileges** and a password that was discarded unsaved, so it can't be used.
+- **Evidence and backups:** `Documents\employger-backups\mysql-system-2026-10-22\` holds copies of the damaged files and a dump of the readable `mysql` schema. `employger_db` backup: `employger_db_2026-10-22_230730_before-V2-V3.sql`.
+- **Next step (needs owner approval):** `REPAIR TABLE mysql.db EXTENDED`. If that fails, restore XAMPP's pristine `mysql.db` files from `C:\xampp\mysql\backup\mysql\` with MariaDB stopped. Rows in `mysql.db` are database-level grants only (e.g. phpMyAdmin's `pma` user), which can be re-granted.
 
 **Behaviour now in effect (after restart):** days covered by a PROCESSED or PAID payroll are locked for that employee. For employee 35, attendance and overtime for Oct 1–15 can no longer change, and pending overtime #12 (Oct 3) can only be rejected, since #6 already paid those days. Overtime amounts are recalculated at approval. Pending overtime #13 (₱5.18/h, computed under an older 1.5 multiplier) will be approved at the current 1.25 rate.
 

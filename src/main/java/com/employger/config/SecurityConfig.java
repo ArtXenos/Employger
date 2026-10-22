@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CsrfException;
 
 import java.io.IOException;
 
@@ -44,7 +45,11 @@ public class SecurityConfig {
                         throws Exception {
 
                 http
-                                .csrf(AbstractHttpConfigurer::disable)
+                                // Session cookies are sent automatically, so a page on another
+                                // site could otherwise submit changes as the logged-in user.
+                                // spa(): the token travels in the XSRF-TOKEN cookie, and csrf.js
+                                // copies it into the X-XSRF-TOKEN header of every write request.
+                                .csrf(csrf -> csrf.spa())
 
                                 .authorizeHttpRequests(auth -> auth
 
@@ -105,7 +110,10 @@ public class SecurityConfig {
                                                 .accessDeniedHandler((request, response, e) -> writePlainText(
                                                                 response,
                                                                 HttpServletResponse.SC_FORBIDDEN,
-                                                                "You do not have permission to perform this action.")))
+                                                                e instanceof CsrfException
+                                                                                ? "Your security token is missing or expired. "
+                                                                                                + "Please reload the page and try again."
+                                                                                : "You do not have permission to perform this action.")))
 
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(

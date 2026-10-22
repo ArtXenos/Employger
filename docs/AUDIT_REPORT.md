@@ -40,6 +40,7 @@ Every finding below is labelled **Confirmed** (reproduced from code, live data, 
 | 2026-10-22 | Strict `sql_mode` | **On** (10.11 default). App starts and validates; watch for new data errors. | — |
 | 2026-10-23 | Hibernate dialect warning | **Done**: switched to MariaDB Connector/J; Hibernate detects MariaDB 10.11.19 and MariaDBDialect. | see git log |
 | 2026-10-23 | Login brute-force protection (M-11) | **Done**: in-memory counter per username (5) and per client address (20) in a 15-minute window, then a 15-minute lock checked before the password. Same response for real and unknown usernames. Locks are written to audit_logs as `LOGIN_LOCKED`. Counters reset on restart. | see git log |
+| 2026-10-23 | CSRF protection (M-03) | **Done**: Spring Security `csrf.spa()`; `csrf.js`, loaded first on all 10 pages, adds the X-XSRF-TOKEN header to same-origin writes; `GET /api/auth/csrf` issues a token; a clear 403 message on a missing or invalid token; session cookie `SameSite=Lax`. Verified with integration tests, curl against the running app, and a Node harness for `csrf.js` (no real-browser test). | see git log |
 
 ### Database incident 2026-10-22: corrupt MariaDB system tables
 
@@ -356,7 +357,7 @@ No double-deduction exists in the current code: a day's lost hours are either an
 | Disabled users | ✔ `disabled(status != ACTIVE)` |
 | Failure responses | ✗ 403 instead of 401; DB errors indistinguishable (H-04) |
 | Session fixation | ✗ Not rotated (M-03) |
-| CSRF | ✗ Disabled (M-03); XSS makes this exploitable (H-01) |
+| CSRF | ✓ Enabled 2026-10-23: cookie token (`csrf.spa()`) sent as X-XSRF-TOKEN by `csrf.js` on every page; session cookie SameSite=Lax (M-03) |
 | URL authorization | ✔ for most APIs; ✗ payslips (C-05) |
 | Ownership checks | N/A today (no employee self-service); must be designed in when added |
 | Actor spoofing | ✗ `userId` request params (H-06) |

@@ -24,6 +24,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -179,6 +180,19 @@ public class AuthController {
                 String clean = username.replaceAll("\\p{Cntrl}", "?");
 
                 return clean.length() > 50 ? clean.substring(0, 50) + "..." : clean;
+        }
+
+        /**
+         * Makes sure the XSRF-TOKEN cookie is set. csrf.js calls this before
+         * the first write request on a page that has no token cookie yet.
+         */
+        @GetMapping("/csrf")
+        public ResponseEntity<Void> csrf(CsrfToken csrfToken) {
+
+                // Reading the token generates it and writes the cookie.
+                csrfToken.getToken();
+
+                return ResponseEntity.noContent().build();
         }
 
         @GetMapping("/me")

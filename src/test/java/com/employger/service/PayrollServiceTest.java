@@ -190,6 +190,12 @@ class PayrollServiceTest {
         assertThat(payroll.getTaxableCompensation()).isEqualByComparingTo("11462.50");
         assertThat(payroll.getTaxAmount()).isEqualByComparingTo("156.83");
         assertThat(payroll.getNetPay()).isEqualByComparingTo("11305.67");
+
+        // Employer shares are recorded but do not change net pay.
+        assertThat(payroll.getSssEmployerContribution()).isEqualByComparingTo("1250.00");
+        assertThat(payroll.getSssEcContribution()).isEqualByComparingTo("15.00");
+        assertThat(payroll.getPhilHealthEmployerContribution()).isEqualByComparingTo("312.50");
+        assertThat(payroll.getPagIbigEmployerContribution()).isEqualByComparingTo("100.00");
     }
 
     @Test
@@ -223,7 +229,12 @@ class PayrollServiceTest {
                 Map.entry("pagibig_employee_rate", "0.02"),
                 Map.entry("pagibig_low_salary_rate", "0.01"),
                 Map.entry("pagibig_low_salary_threshold", "1500"),
-                Map.entry("pagibig_max_fund_salary", "10000"))
+                Map.entry("pagibig_max_fund_salary", "10000"),
+                Map.entry("sss_employer_rate", "0.10"),
+                Map.entry("sss_ec_msc_threshold", "15000"),
+                Map.entry("sss_ec_amount_low", "10"),
+                Map.entry("sss_ec_amount_high", "30"),
+                Map.entry("pagibig_employer_rate", "0.02"))
                 .forEach((name, value) -> lenient().when(systemSettingService.getSettingValue(name)).thenReturn(value));
     }
 

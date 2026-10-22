@@ -39,11 +39,24 @@ Em-Ployger deducts the **employee share** of SSS, PhilHealth and Pag-IBIG contri
 
    **HR decides who is an MWE.** Em-Ployger doesn't know regional wage orders, so it can't check that the salary really equals the SMW. Under the same regulation, reducing wages to obtain the exemption is misrepresentation.
 
+7. **Employer shares** (migration V5) are recorded on every payroll calculated from now on, using the same salary basis and per-cycle spreading as the employee shares. They're a **company cost on top of gross pay and are never deducted** from the employee. The Payroll page shows the total as *Employer contributions (company cost)*. Payroll calculated before V5 shows "Not recorded".
+
+| Item | Employer share | Official source (verified 2026-10-23) |
+|---|---|---|
+| **SSS** | **10%** of the whole Monthly Salary Credit, regular SS plus MPF (e.g. MSC ₱25,000 → ₱2,000 + ₱500). | SSS Circular 2024-006 schedule table, *Employer* columns, read from the page image of the official PDF. |
+| **SSS EC** | **₱10** a month for MSC below ₱15,000, **₱30** from MSC ₱15,000 (compensation ₱14,750 and up). Paid by the employer only. | Same table, *EC* column. |
+| **PhilHealth** | The other half of the premium: the same amount as the employee share. | Equal sharing, RA 11223; premium rules as above. |
+| **Pag-IBIG** | **2%** of monthly compensation up to the ₱10,000 maximum fund salary (₱200 a month), **including** employees earning ₱1,500 or less, who themselves pay 1%. | RA 9679 §7: "All employers - two percent (2%) of the monthly compensation of all covered employees" ([lawphil](https://lawphil.net/statutes/repacts/ra2009/ra_9679_2009.html)); cap: Circular 460. |
+
+Settings (Settings → Statutory Deductions): `sss_employer_rate`, `sss_ec_msc_threshold`, `sss_ec_amount_low`, `sss_ec_amount_high`, `pagibig_employer_rate`. The PhilHealth employer share follows `philhealth_employee_share`.
+
+Spreading per cycle means that, for example, a semi-monthly cycle records ₱15.00 EC (half of ₱30). SSS bills EC per month, so the remittance total for a month is the sum of that month's cycles.
+
 ## Not covered (review with your accountant)
 
 - Holiday pay, night shift differential and hazard pay aren't computed, so the MWE exemption covers only regular and overtime pay.
 - Non-taxable benefits: 13th-month pay and other benefits up to ₱90,000, de minimis benefits.
-- Employer shares and EC contributions, and remittance reports (SSS R-3, PhilHealth RF-1, HDMF MCRF, BIR 1601-C, 2316).
+- Remittance reports (SSS R-3, PhilHealth RF-1, HDMF MCRF, BIR 1601-C, 2316). Employer shares are recorded, but no report is produced from them yet.
 - Year-end tax annualization.
 - Holiday, rest-day and night-shift premium pay.
 

@@ -48,7 +48,12 @@ public class SystemSettingService {
             "pagibig_employee_rate",
             "pagibig_low_salary_rate",
             "pagibig_low_salary_threshold",
-            "pagibig_max_fund_salary");
+            "pagibig_max_fund_salary",
+            "sss_employer_rate",
+            "sss_ec_msc_threshold",
+            "sss_ec_amount_low",
+            "sss_ec_amount_high",
+            "pagibig_employer_rate");
 
     private final AuditService auditService;
 
@@ -194,6 +199,8 @@ public class SystemSettingService {
                 break;
 
             case "sss_employee_rate":
+            case "sss_employer_rate":
+            case "pagibig_employer_rate":
             case "philhealth_premium_rate":
             case "pagibig_employee_rate":
             case "pagibig_low_salary_rate":
@@ -213,8 +220,15 @@ public class SystemSettingService {
             case "philhealth_salary_ceiling":
             case "pagibig_low_salary_threshold":
             case "pagibig_max_fund_salary":
+            case "sss_ec_msc_threshold":
                 validateDecimal(name, value,
                         BigDecimal.ONE, new BigDecimal("10000000"));
+                break;
+
+            case "sss_ec_amount_low":
+            case "sss_ec_amount_high":
+                validateDecimal(name, value,
+                        BigDecimal.ZERO, new BigDecimal("10000"));
                 break;
 
             case "rest_days":

@@ -38,6 +38,13 @@ class StatutoryDeductionServiceTest {
             Map.entry("pagibig_low_salary_threshold", "1500"),
             Map.entry("pagibig_max_fund_salary", "10000"));
 
+    private static final Map<String, String> V5_SETTINGS = Map.ofEntries(
+            Map.entry("sss_employer_rate", "0.10"),
+            Map.entry("sss_ec_msc_threshold", "15000"),
+            Map.entry("sss_ec_amount_low", "10"),
+            Map.entry("sss_ec_amount_high", "30"),
+            Map.entry("pagibig_employer_rate", "0.02"));
+
     @Mock
     private SystemSettingService systemSettingService;
 
@@ -46,6 +53,8 @@ class StatutoryDeductionServiceTest {
     @BeforeEach
     void setUp() {
         V3_SETTINGS.forEach((name, value) ->
+                lenient().when(systemSettingService.getSettingValue(name)).thenReturn(value));
+        V5_SETTINGS.forEach((name, value) ->
                 lenient().when(systemSettingService.getSettingValue(name)).thenReturn(value));
         lenient().when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
                 .thenReturn(Optional.of("true"));
@@ -94,6 +103,69 @@ class StatutoryDeductionServiceTest {
     })
     void pagIbigEmployeeShare(String salary, String expected) {
         assertThat(service.monthlyPagIbig(new BigDecimal(salary))).isEqualByComparingTo(expected);
+    }
+
+    // Rows of the SSS Circular 2024-006 table: compensation -> employer
+    // regular SS + MPF, and EC.
+    @ParameterizedTest(name = "SSS employer: salary {0} -> {1} + EC {2}")
+    @CsvSource({
+            "4000.00, 500.00, 10.00",       // below 5,250 -> MSC 5,000
+            "14749.99, 1450.00, 10.00",     // MSC 14,500: last EC 10 row
+            "14750.00, 1500.00, 30.00",     // MSC 15,000: EC becomes 30
+            "20250.00, 2050.00, 30.00",     // 2,000 regular + 50 MPF
+            "25000.00, 2500.00, 30.00",     // table total 2,530.00
+            "34750.00, 3500.00, 30.00",     // table total 3,530.00
+            "250000.00, 3500.00, 30.00",
+    })
+    void sssEmployerShareAndEcMatchOfficialTable(String salary, String employer, String ec) {
+        assertThat(service.monthlySssEmployer(new BigDecimal(salary))).isEqualByComparingTo(employer);
+        assertThat(service.monthlyEc(new BigDecimal(salary))).isEqualByComparingTo(ec);
+    }
+
+    @ParameterizedTest(name = "PhilHealth employer: salary {0} -> {1}")
+    @CsvSource({
+            "8000.00, 250.00",      // premium 500 at the floor, shared equally
+            "25000.00, 625.00",
+            "150000.00, 2500.00",   // premium 5,000 at the ceiling
+    })
+    void philHealthEmployerPaysTheOtherHalf(String salary, String expected) {
+        assertThat(service.monthlyPhilHealthEmployer(new BigDecimal(salary))).isEqualByComparingTo(expected);
+        assertThat(service.monthlyPhilHealthEmployer(new BigDecimal(salary)))
+                .isEqualByComparingTo(service.monthlyPhilHealth(new BigDecimal(salary)));
+    }
+
+    @ParameterizedTest(name = "Pag-IBIG employer: salary {0} -> {1}")
+    @CsvSource({
+            "1500.00, 30.00",       // employer 2% even where the employee pays 1%
+            "10000.00, 200.00",
+            "25000.00, 200.00",     // maximum fund salary 10,000
+    })
+    void pagIbigEmployerShare(String salary, String expected) {
+        assertThat(service.monthlyPagIbigEmployer(new BigDecimal(salary))).isEqualByComparingTo(expected);
+    }
+
+    @Test
+    void employerSharesAreSpreadPerCycleAndNotDeducted() {
+        StatutoryDeductionService.StatutoryDeductions result = service.calculate(
+                new BigDecimal("25000.00"), PayCycle.CycleType.SEMI_MONTHLY, new BigDecimal("12500.00"));
+
+        // Half of each monthly employer amount.
+        assertThat(result.employer().sss()).isEqualByComparingTo("1250.00");
+        assertThat(result.employer().ec()).isEqualByComparingTo("15.00");
+        assertThat(result.employer().philHealth()).isEqualByComparingTo("312.50");
+        assertThat(result.employer().pagIbig()).isEqualByComparingTo("100.00");
+        assertThat(result.employer().total()).isEqualByComparingTo("1677.50");
+        // Employee deductions are exactly as before.
+        assertThat(result.totalContributions()).isEqualByComparingTo("1037.50");
+    }
+
+    @Test
+    void noEmployerSharesWhenDisabled() {
+        lenient().when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
+                .thenReturn(Optional.of("false"));
+
+        assertThat(service.calculate(new BigDecimal("25000.00"), PayCycle.CycleType.MONTHLY,
+                new BigDecimal("25000.00")).employer().total()).isEqualByComparingTo("0");
     }
 
     // BIR RR 11-2018 Annex E bracket boundaries.

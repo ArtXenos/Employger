@@ -177,6 +177,14 @@ public class PayrollService {
                 preview.put("philHealthContribution", breakdown.statutory().philHealth());
                 preview.put("pagIbigContribution", breakdown.statutory().pagIbig());
                 preview.put("taxableCompensation", breakdown.statutory().taxableCompensation());
+
+                // Employer cost on top of gross pay; not deducted from net pay.
+                StatutoryDeductionService.EmployerShares employer = breakdown.statutory().employer();
+                preview.put("sssEmployerContribution", employer.sss());
+                preview.put("sssEcContribution", employer.ec());
+                preview.put("philHealthEmployerContribution", employer.philHealth());
+                preview.put("pagIbigEmployerContribution", employer.pagIbig());
+                preview.put("employerContributionTotal", employer.total());
                 preview.put("taxAmount", breakdown.taxAmount());
                 preview.put("otherDeductions", breakdown.deductionAmount());
                 preview.put("netPay", breakdown.netPay());
@@ -584,6 +592,12 @@ public class PayrollService {
                 payroll.setPhilHealthContribution(breakdown.statutory().philHealth());
                 payroll.setPagIbigContribution(breakdown.statutory().pagIbig());
                 payroll.setTaxableCompensation(breakdown.statutory().taxableCompensation());
+
+                StatutoryDeductionService.EmployerShares employer = breakdown.statutory().employer();
+                payroll.setSssEmployerContribution(employer.sss());
+                payroll.setSssEcContribution(employer.ec());
+                payroll.setPhilHealthEmployerContribution(employer.philHealth());
+                payroll.setPagIbigEmployerContribution(employer.pagIbig());
 
                 // Release overtime no longer included, then link what is.
                 for (Overtime linked : overtimeRepository.findByPayrollPayrollId(payroll.getPayrollId())) {

@@ -114,6 +114,20 @@ public class Payroll {
     @Column(name = "taxable_compensation", precision = 12, scale = 2)
     private BigDecimal taxableCompensation;
 
+    // Employer shares (migration V5): a cost to the company, never deducted
+    // from the employee's pay. NULL on payroll calculated before V5.
+    @Column(name = "sss_employer_contribution", precision = 12, scale = 2)
+    private BigDecimal sssEmployerContribution;
+
+    @Column(name = "sss_ec_contribution", precision = 12, scale = 2)
+    private BigDecimal sssEcContribution;
+
+    @Column(name = "philhealth_employer_contribution", precision = 12, scale = 2)
+    private BigDecimal philHealthEmployerContribution;
+
+    @Column(name = "pagibig_employer_contribution", precision = 12, scale = 2)
+    private BigDecimal pagIbigEmployerContribution;
+
     public enum Status {
         DRAFT,
         PROCESSED,
@@ -351,5 +365,37 @@ public class Payroll {
 
     public void setTaxableCompensation(BigDecimal taxableCompensation) {
         this.taxableCompensation = taxableCompensation;
+    }
+
+    public BigDecimal getSssEmployerContribution() {
+        return sssEmployerContribution;
+    }
+
+    public void setSssEmployerContribution(BigDecimal sssEmployerContribution) {
+        this.sssEmployerContribution = sssEmployerContribution;
+    }
+
+    public BigDecimal getSssEcContribution() {
+        return sssEcContribution;
+    }
+
+    public void setSssEcContribution(BigDecimal sssEcContribution) {
+        this.sssEcContribution = sssEcContribution;
+    }
+
+    public BigDecimal getPhilHealthEmployerContribution() {
+        return philHealthEmployerContribution;
+    }
+
+    public void setPhilHealthEmployerContribution(BigDecimal philHealthEmployerContribution) {
+        this.philHealthEmployerContribution = philHealthEmployerContribution;
+    }
+
+    public BigDecimal getPagIbigEmployerContribution() {
+        return pagIbigEmployerContribution;
+    }
+
+    public void setPagIbigEmployerContribution(BigDecimal pagIbigEmployerContribution) {
+        this.pagIbigEmployerContribution = pagIbigEmployerContribution;
     }
 }

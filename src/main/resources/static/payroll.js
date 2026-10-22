@@ -637,6 +637,7 @@ const PREVIEW_AMOUNT_FIELDS = {
   previewContributions: "otherDeductions",
   previewTax: "taxAmount",
   previewNetPay: "netPay",
+  previewEmployerContributions: "employerContributionTotal",
 };
 
 // Shows the server's own calculation (the same one used to generate the
@@ -1062,6 +1063,12 @@ function viewPayroll(payrollId) {
   document.getElementById("detailsNetPay").textContent = formatCurrency(
     payroll.netPay,
   );
+
+  // Not recorded for payroll calculated before employer shares existed.
+  document.getElementById("detailsEmployerContributions").textContent =
+    payroll.employerContributionTotal == null
+      ? "Not recorded"
+      : formatCurrency(payroll.employerContributionTotal);
 
   deletePayrollButton.dataset.payrollId = payroll.payrollId;
 

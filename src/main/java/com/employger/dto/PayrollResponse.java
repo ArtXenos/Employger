@@ -5,6 +5,8 @@ import com.employger.entity.Payroll;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 /**
  * A payroll as returned by /api/payroll and inside payslips. Field names
@@ -40,7 +42,12 @@ public record PayrollResponse(
         BigDecimal sssContribution,
         BigDecimal philHealthContribution,
         BigDecimal pagIbigContribution,
-        BigDecimal taxableCompensation) {
+        BigDecimal taxableCompensation,
+        BigDecimal sssEmployerContribution,
+        BigDecimal sssEcContribution,
+        BigDecimal philHealthEmployerContribution,
+        BigDecimal pagIbigEmployerContribution,
+        BigDecimal employerContributionTotal) {
 
     // PayCycle is returned as is: it has no links to people.
     public static PayrollResponse from(Payroll payroll) {
@@ -73,6 +80,27 @@ public record PayrollResponse(
                 payroll.getSssContribution(),
                 payroll.getPhilHealthContribution(),
                 payroll.getPagIbigContribution(),
-                payroll.getTaxableCompensation());
+                payroll.getTaxableCompensation(),
+                payroll.getSssEmployerContribution(),
+                payroll.getSssEcContribution(),
+                payroll.getPhilHealthEmployerContribution(),
+                payroll.getPagIbigEmployerContribution(),
+                employerTotal(payroll));
+    }
+
+    // NULL for payroll calculated before employer shares were recorded (V5).
+    private static BigDecimal employerTotal(Payroll payroll) {
+
+        if (payroll.getSssEmployerContribution() == null) {
+            return null;
+        }
+
+        return Stream.of(
+                        payroll.getSssEmployerContribution(),
+                        payroll.getSssEcContribution(),
+                        payroll.getPhilHealthEmployerContribution(),
+                        payroll.getPagIbigEmployerContribution())
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

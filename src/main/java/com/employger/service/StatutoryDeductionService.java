@@ -28,7 +28,9 @@ import java.util.List;
  *    apply and are not subtracted again from that other compensation.
  *  - Non-taxable benefits (13th month and others up to 90,000) are not
  *    modelled.
- *  - Employer shares are not part of employee pay and are not computed.
+ *  - Employer shares (SSS with EC, PhilHealth, Pag-IBIG) use the same
+ *    basis and the same per-cycle spreading. They are recorded on the
+ *    payroll as a cost and never deducted from the employee's pay.
  */
 @Service
 public class StatutoryDeductionService {
@@ -40,11 +42,32 @@ public class StatutoryDeductionService {
             BigDecimal totalContributions,
             BigDecimal taxableCompensation,
             BigDecimal withholdingTax,
+            EmployerShares employer,
             List<String> notes) {
 
         static StatutoryDeductions none(BigDecimal grossPay) {
             BigDecimal zero = BigDecimal.ZERO.setScale(2);
-            return new StatutoryDeductions(zero, zero, zero, zero, grossPay, zero, List.of());
+            return new StatutoryDeductions(zero, zero, zero, zero, grossPay, zero, EmployerShares.none(), List.of());
+        }
+    }
+
+    /**
+     * What the employer pays on top of the employee's pay for one cycle.
+     * Never deducted from the employee: it is a payroll cost.
+     */
+    public record EmployerShares(
+            BigDecimal sss,
+            BigDecimal ec,
+            BigDecimal philHealth,
+            BigDecimal pagIbig) {
+
+        static EmployerShares none() {
+            BigDecimal zero = BigDecimal.ZERO.setScale(2);
+            return new EmployerShares(zero, zero, zero, zero);
+        }
+
+        public BigDecimal total() {
+            return sss.add(ec).add(philHealth).add(pagIbig);
         }
     }
 
@@ -123,20 +146,27 @@ public class StatutoryDeductionService {
 
         BigDecimal tax = PhilippineWithholdingTax.forPeriod(cycleType, taxable);
 
+        EmployerShares employer = new EmployerShares(
+                money(monthlySssEmployer(salary).multiply(periodShare)),
+                money(monthlyEc(salary).multiply(periodShare)),
+                money(monthlyPhilHealthEmployer(salary).multiply(periodShare)),
+                money(monthlyPagIbigEmployer(salary).multiply(periodShare)));
+
         if (contributions.add(tax).compareTo(grossPay) > 0) {
             notes.add("Statutory deductions (" + contributions.add(tax)
                     + ") exceed gross pay (" + grossPay + "); net pay is set to zero. Review this payroll.");
         }
 
-        return new StatutoryDeductions(sss, philHealth, pagIbig, contributions, money(taxable), tax, notes);
+        return new StatutoryDeductions(sss, philHealth, pagIbig, contributions, money(taxable), tax, employer, notes);
     }
 
     /**
-     * SSS Circular 2024-006: employee share = rate x Monthly Salary Credit.
-     * MSC brackets are `step` wide and centred on each credit (e.g. 5,250 to
-     * 5,749.99 -> 5,500), clamped to [minimum, maximum].
+     * SSS Circular 2024-006: Monthly Salary Credit. Brackets are `step` wide
+     * and centred on each credit (e.g. 5,250 to 5,749.99 -> 5,500), clamped
+     * to [minimum, maximum]. The credit above 20,000 is the MPF part; the
+     * rates apply to the whole credit.
      */
-    BigDecimal monthlySss(BigDecimal salary) {
+    BigDecimal monthlySalaryCredit(BigDecimal salary) {
 
         BigDecimal minimum = decimal("sss_msc_minimum");
         BigDecimal maximum = decimal("sss_msc_maximum");
@@ -146,21 +176,53 @@ public class StatutoryDeductionService {
                 .subtract(minimum.subtract(step.divide(BigDecimal.valueOf(2))))
                 .divide(step, 0, RoundingMode.FLOOR);
 
-        BigDecimal credit = minimum.add(step.multiply(steps)).max(minimum).min(maximum);
-
-        return credit.multiply(decimal("sss_employee_rate"));
+        return minimum.add(step.multiply(steps)).max(minimum).min(maximum);
     }
 
-    /** PhilHealth: rate x monthly basic salary within [floor, ceiling]; employee pays its share. */
-    BigDecimal monthlyPhilHealth(BigDecimal salary) {
+    /** SSS employee share = rate x MSC. */
+    BigDecimal monthlySss(BigDecimal salary) {
+        return monthlySalaryCredit(salary).multiply(decimal("sss_employee_rate"));
+    }
+
+    /** SSS employer share = rate x MSC (10% in the 2025 schedule). */
+    BigDecimal monthlySssEmployer(BigDecimal salary) {
+        return monthlySalaryCredit(salary).multiply(decimal("sss_employer_rate"));
+    }
+
+    /** Employees' Compensation, paid by the employer: a flat amount by MSC. */
+    BigDecimal monthlyEc(BigDecimal salary) {
+        return monthlySalaryCredit(salary).compareTo(decimal("sss_ec_msc_threshold")) < 0
+                ? decimal("sss_ec_amount_low")
+                : decimal("sss_ec_amount_high");
+    }
+
+    /** PhilHealth premium: rate x monthly basic salary within [floor, ceiling]. */
+    BigDecimal monthlyPhilHealthPremium(BigDecimal salary) {
 
         BigDecimal basis = salary
                 .max(decimal("philhealth_salary_floor"))
                 .min(decimal("philhealth_salary_ceiling"));
 
-        return basis
-                .multiply(decimal("philhealth_premium_rate"))
-                .multiply(decimal("philhealth_employee_share"));
+        return basis.multiply(decimal("philhealth_premium_rate"));
+    }
+
+    /** PhilHealth employee share of the premium. */
+    BigDecimal monthlyPhilHealth(BigDecimal salary) {
+        return monthlyPhilHealthPremium(salary).multiply(decimal("philhealth_employee_share"));
+    }
+
+    /** PhilHealth employer share: the rest of the premium. */
+    BigDecimal monthlyPhilHealthEmployer(BigDecimal salary) {
+        return monthlyPhilHealthPremium(salary).subtract(monthlyPhilHealth(salary));
+    }
+
+    /**
+     * Pag-IBIG employer share: RA 9679 Sec. 7, 2% for every employee
+     * (including those earning 1,500 or less), on compensation up to the
+     * maximum fund salary.
+     */
+    BigDecimal monthlyPagIbigEmployer(BigDecimal salary) {
+        return salary.min(decimal("pagibig_max_fund_salary")).multiply(decimal("pagibig_employer_rate"));
     }
 
     /** Pag-IBIG: lower rate at or below the threshold; basis capped at the maximum fund salary. */

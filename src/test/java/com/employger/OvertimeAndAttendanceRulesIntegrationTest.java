@@ -78,6 +78,10 @@ class OvertimeAndAttendanceRulesIntegrationTest {
         setting("factor_rate", "261");
         setting("regular_hours_per_day", "8");
         setting("default_overtime_rate", "1.25");
+        setting("standard_start_time", "08:00");
+        setting("standard_end_time", "17:00");
+        setting("unpaid_break_minutes", "60");
+        setting("late_grace_period_minutes", "0");
 
         User hr = new User();
         hr.setUsername("hr");
@@ -219,11 +223,26 @@ class OvertimeAndAttendanceRulesIntegrationTest {
 
     @Test
     void overnightShiftIsAccepted() throws Exception {
+        // 22:00-06:00 = 8 h span, less the 60-minute unpaid break = 7 h.
         saveAttendance("""
                 {"attendanceDate": "2026-10-09", "timeIn": "22:00:00", "timeOut": "06:00:00",
-                 "status": "PRESENT", "regularHours": 7}
+                 "status": "PRESENT", "regularHours": 0}
                 """)
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regularHours").value(7.00));
+    }
+
+    @Test
+    void hoursAndLatenessAreDerivedFromTimes() throws Exception {
+        // Typed hours (8) are replaced by the derived value:
+        // 09:15-17:00 = 7.75 h, less the 60-minute break = 6.75 h, LATE.
+        saveAttendance("""
+                {"attendanceDate": "2026-10-09", "timeIn": "09:15:00", "timeOut": "17:00:00",
+                 "status": "PRESENT", "regularHours": 8}
+                """)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regularHours").value(6.75))
+                .andExpect(jsonPath("$.status").value("LATE"));
     }
 
     // ---------- helpers ----------

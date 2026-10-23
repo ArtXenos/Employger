@@ -1,5 +1,11 @@
 /* Benefits, holidays and reports pages. Builds on pay-cycles.css. */
 
+/* dashboard.css gives its big .action-button tiles a 132px minimum height;
+   undo that for the small Edit / Delete buttons in table rows. */
+td .action-button {
+  min-height: 0;
+}
+
 .records-section + .records-section {
   margin-top: 24px;
 }

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Users - Em-Ployger</title>
+
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/pay-cycles.css" />
+    <link rel="stylesheet" href="/benefits.css" />
+  </head>
+
+  <body>
+    <div class="app-layout">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">EP</div>
+
+          <div>
+            <h1>Em-Ployger</h1>
+            <p>Payroll Management</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard.html" class="nav-item"><span>▦</span><span>Dashboard</span></a>
+          <a href="/employees.html" class="nav-item"><span>♙</span><span>Employees</span></a>
+          <a href="/attendance.html" class="nav-item"><span>◷</span><span>Attendance</span></a>
+          <a href="/pay-cycles.html" class="nav-item"><span>□</span><span>Pay Cycles</span></a>
+          <a href="/overtime.html" class="nav-item"><span>↗</span><span>Overtime</span></a>
+          <a href="/payroll.html" class="nav-item"><span>₱</span><span>Payroll</span></a>
+          <a href="/benefits.html" class="nav-item"><span>✦</span><span>Benefits</span></a>
+          <a href="/reports.html" class="nav-item"><span>▤</span><span>Reports</span></a>
+          <a href="/settings.html" class="nav-item"><span>⚙</span><span>Settings</span></a>
+          <a href="/users.html" class="nav-item active"><span>⚿</span><span>Users</span></a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <a href="#" id="logoutButton"> Logout </a>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="main-content">
+        <header class="page-header">
+          <div>
+            <h2>Users</h2>
+            <p>
+              Login accounts and their roles. Administrators manage users and
+              settings; HR managers manage payroll; general managers can view
+              payroll; employees see only their own payslips. Every change is
+              recorded in the audit log.
+            </p>
+          </div>
+        </header>
+
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>Accounts</h3>
+              <p id="userSummary">Loading...</p>
+            </div>
+
+            <div class="section-actions">
+              <button type="button" class="add-button" id="addUserButton">+ Add User</button>
+            </div>
+          </div>
+
+          <p id="pageMessage" class="form-message report-message" role="alert"></p>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Linked Employee</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="userTableBody">
+                <tr><td colspan="5" class="empty-row">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- USER MODAL -->
+        <div class="modal" id="userModal" aria-hidden="true">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div>
+                <h3 id="userModalTitle">Add User</h3>
+                <p id="userModalHint">Give the password to the person privately.</p>
+              </div>
+              <button type="button" class="close-button" data-close="userModal">&times;</button>
+            </div>
+
+            <form id="userForm" class="modal-form" autocomplete="off">
+              <input type="hidden" id="userId" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="userUsername">Username</label>
+                  <input type="text" id="userUsername" maxlength="100" pattern="[A-Za-z0-9._@\-]{3,100}"
+                    title="3 to 100 characters: letters, digits, '.', '_', '-' or '@'." autocomplete="off" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="userRole">Role</label>
+                  <select id="userRole" required>
+                    <option value="ADMINISTRATOR">Administrator</option>
+                    <option value="HR_MANAGER">HR manager</option>
+                    <option value="GENERAL_MANAGER">General manager (view only)</option>
+                    <option value="EMPLOYEE">Employee (own payslips)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="userStatus">Status</label>
+                  <select id="userStatus" required>
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive (cannot log in)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="userEmployee">Linked employee</label>
+                  <select id="userEmployee"></select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="userPassword" id="userPasswordLabel">Password</label>
+                  <input type="password" id="userPassword" maxlength="72" autocomplete="new-password" />
+                </div>
+
+                <div class="form-group">
+                  <label for="userPasswordConfirm">Confirm password</label>
+                  <input type="password" id="userPasswordConfirm" maxlength="72" autocomplete="new-password" />
+                </div>
+              </div>
+
+              <p class="type-hint" id="passwordHint">
+                At least 12 characters; a few unrelated words work well.
+              </p>
+
+              <p class="form-message" id="userMessage" role="alert"></p>
+
+              <div class="modal-actions">
+                <button type="button" class="cancel-button" data-close="userModal">Cancel</button>
+                <button type="submit" class="save-button">Save User</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/csrf.js"></script>
+    <script src="/session.js"></script>
+    <script src="/users.js"></script>
+  </body>
+</html>

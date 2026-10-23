@@ -134,6 +134,62 @@
   display: none;
 }
 
+/* Reports page */
+
+.month-input {
+  width: 170px;
+}
+
+.download-link {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.report-message {
+  margin: 0 24px 16px;
+}
+
+.report-message:empty {
+  display: none;
+}
+
+.figures-table th[scope="row"] {
+  text-align: left;
+  font-weight: 500;
+  color: #334155;
+  background: white;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.figures-table .money {
+  width: 180px;
+}
+
+.figures-heading th {
+  text-align: left;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Printing the Reports page prints only Form 2316. */
+@media print {
+  .reports-page .sidebar,
+  .reports-page .page-header,
+  .reports-page .inline-form,
+  .reports-page .records-section:not(:has(#form2316Result)) {
+    display: none !important;
+  }
+
+  .reports-page .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}
+
 @media (max-width: 700px) {
   .form-row.three {
     grid-template-columns: 1fr;

@@ -3,6 +3,7 @@
 //   EMPLOYEE         -> sent to their own payroll page
 //   GENERAL_MANAGER  -> read-only: write controls hidden, banner shown
 //   not ADMINISTRATOR -> Settings link hidden (settings are admin-only)
+//   GENERAL_MANAGER  -> Reports link hidden (reports are admin and HR only)
 
 (function () {
   const READ_ONLY_CONTROLS = [
@@ -66,6 +67,13 @@
     if (user.role !== "ADMINISTRATOR") {
       document
         .querySelectorAll('a[href$="settings.html"]')
+        .forEach((link) => link.remove());
+    }
+
+    // Reports list government ID numbers: administrators and HR only.
+    if (user.role !== "ADMINISTRATOR" && user.role !== "HR_MANAGER") {
+      document
+        .querySelectorAll('a[href$="reports.html"]')
         .forEach((link) => link.remove());
     }
 

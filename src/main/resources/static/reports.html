@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Reports - Em-Ployger</title>
+
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/pay-cycles.css" />
+    <link rel="stylesheet" href="/benefits.css" />
+  </head>
+
+  <body class="reports-page">
+    <div class="app-layout">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">EP</div>
+
+          <div>
+            <h1>Em-Ployger</h1>
+            <p>Payroll Management</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard.html" class="nav-item"><span>▦</span><span>Dashboard</span></a>
+          <a href="/employees.html" class="nav-item"><span>♙</span><span>Employees</span></a>
+          <a href="/attendance.html" class="nav-item"><span>◷</span><span>Attendance</span></a>
+          <a href="/pay-cycles.html" class="nav-item"><span>□</span><span>Pay Cycles</span></a>
+          <a href="/overtime.html" class="nav-item"><span>↗</span><span>Overtime</span></a>
+          <a href="/payroll.html" class="nav-item"><span>₱</span><span>Payroll</span></a>
+          <a href="/benefits.html" class="nav-item"><span>✦</span><span>Benefits</span></a>
+          <a href="/reports.html" class="nav-item active"><span>▤</span><span>Reports</span></a>
+          <a href="/settings.html" class="nav-item"><span>⚙</span><span>Settings</span></a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <a href="#" id="logoutButton"> Logout </a>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="main-content">
+        <header class="page-header">
+          <div>
+            <h2>Reports</h2>
+            <p>
+              Monthly SSS, PhilHealth, Pag-IBIG and BIR 1601-C figures, and
+              BIR Form 2316 for each employee. Built from processed and paid
+              payroll only; a payroll belongs to the month its pay cycle ends.
+              Copy the figures into each agency's portal.
+            </p>
+          </div>
+        </header>
+
+        <!-- MONTHLY REMITTANCES -->
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>Monthly Remittances</h3>
+              <p id="monthlySummary">Choose a month.</p>
+            </div>
+
+            <div class="section-actions">
+              <label for="reportMonth" class="inline-label">Month</label>
+              <input type="month" id="reportMonth" class="year-input month-input" />
+            </div>
+          </div>
+
+          <ul id="monthlyNotes" class="notes-list" role="status" aria-live="polite"></ul>
+          <p id="monthlyMessage" class="form-message report-message" role="alert"></p>
+        </section>
+
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>SSS</h3>
+              <p id="sssInfo"></p>
+            </div>
+            <div class="section-actions">
+              <a class="add-button download-link" id="sssCsv" href="#" download>Download CSV</a>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>SS Number</th>
+                  <th class="money">Employee Share</th>
+                  <th class="money">Employer Share</th>
+                  <th class="money">EC</th>
+                  <th class="money">Total</th>
+                </tr>
+              </thead>
+              <tbody id="sssTableBody">
+                <tr><td colspan="6" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>PhilHealth</h3>
+              <p id="philHealthInfo"></p>
+            </div>
+            <div class="section-actions">
+              <a class="add-button download-link" id="philHealthCsv" href="#" download>Download CSV</a>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>PhilHealth Number</th>
+                  <th class="money">Employee Share</th>
+                  <th class="money">Employer Share</th>
+                  <th class="money">Total</th>
+                </tr>
+              </thead>
+              <tbody id="philHealthTableBody">
+                <tr><td colspan="5" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>Pag-IBIG</h3>
+              <p id="pagIbigInfo"></p>
+            </div>
+            <div class="section-actions">
+              <a class="add-button download-link" id="pagIbigCsv" href="#" download>Download CSV</a>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Pag-IBIG MID</th>
+                  <th class="money">Employee Share</th>
+                  <th class="money">Employer Share</th>
+                  <th class="money">Total</th>
+                </tr>
+              </thead>
+              <tbody id="pagIbigTableBody">
+                <tr><td colspan="5" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="records-section">
+          <div class="section-header">
+            <div>
+              <h3>BIR 1601-C</h3>
+              <p id="birInfo"></p>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="figures-table">
+              <tbody id="birTableBody">
+                <tr><td colspan="2" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- BIR 2316 -->
+        <section class="records-section">
+          <div class="section-header">
+            <div>
+              <h3>BIR Form 2316</h3>
+              <p>
+                Certificate of compensation and tax withheld for one employee
+                and year. Give it to the employee by January 31 of the next
+                year, or when they leave.
+              </p>
+            </div>
+          </div>
+
+          <form id="form2316Form" class="inline-form">
+            <div class="form-group">
+              <label for="form2316Employee">Employee</label>
+              <select id="form2316Employee" required></select>
+            </div>
+
+            <div class="form-group">
+              <label for="form2316Year">Year</label>
+              <input type="number" id="form2316Year" min="2000" max="2100" required />
+            </div>
+
+            <button type="submit" class="save-button">Show Form 2316</button>
+            <button type="button" class="cancel-button hidden" id="print2316Button">Print</button>
+          </form>
+
+          <p id="form2316Message" class="form-message report-message" role="alert"></p>
+          <ul id="form2316Notes" class="notes-list"></ul>
+
+          <div class="table-container hidden" id="form2316Result">
+            <table class="figures-table">
+              <tbody id="form2316TableBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/csrf.js"></script>
+    <script src="/session.js"></script>
+    <script src="/reports.js"></script>
+  </body>
+</html>

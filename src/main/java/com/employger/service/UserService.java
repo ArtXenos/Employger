@@ -95,6 +95,10 @@ public class UserService {
     @Transactional
     public User updateUser(Integer id, UpdateUserRequest request) {
 
+        // Before the change: renaming your own account would otherwise leave
+        // the audit entry without an actor.
+        User actor = auditService.currentUser().orElse(null);
+
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -149,7 +153,7 @@ public class UserService {
 
         if (!changes.isEmpty()) {
             auditService.record("USER_UPDATED",
-                    "User #" + id + ": " + String.join(", ", changes));
+                    "User #" + id + ": " + String.join(", ", changes), actor);
         }
 
         return userRepository.save(user);

@@ -291,6 +291,18 @@ class EmployeeAndUserValidationIntegrationTest {
     }
 
     @Test
+    void renamingYourOwnAccountStillRecordsYouAsTheActor() throws Exception {
+        sendUser(put("/api/users/{id}", actingAdmin.getUserId()),
+                "renamed.admin", "", "ADMINISTRATOR", "ACTIVE", null)
+                .andExpect(status().isOk());
+
+        AuditLog entry = latestAudit();
+        assertThat(entry.getDescription()).contains("acting.admin -> renamed.admin");
+        assertThat(entry.getUser()).isNotNull();
+        assertThat(entry.getUser().getUserId()).isEqualTo(actingAdmin.getUserId());
+    }
+
+    @Test
     void blankPasswordOnUpdateKeepsTheCurrentOne() throws Exception {
         User target = user("target.user", User.Role.EMPLOYEE, null);
         String oldHash = target.getPasswordHash();

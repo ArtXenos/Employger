@@ -34,12 +34,20 @@ public class AuditService {
 
     @Transactional
     public void record(String action, String description) {
+        record(action, description, currentUser().orElse(null));
+    }
+
+    /**
+     * For changes that can rename the acting user: look them up before the
+     * change, because afterwards the session's username matches nobody.
+     */
+    public void record(String action, String description, User actor) {
 
         AuditLog entry = new AuditLog();
 
         entry.setAction(action);
         entry.setDescription(description);
-        entry.setUser(currentUser().orElse(null));
+        entry.setUser(actor);
 
         auditLogRepository.save(entry);
     }

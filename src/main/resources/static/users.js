@@ -143,6 +143,9 @@ function openUserModal(user) {
   $("userStatus").value = editing ? user.status : "ACTIVE";
   $("userPassword").value = "";
   $("userPasswordConfirm").value = "";
+  if (window.hidePasswords) {
+    window.hidePasswords($("userForm"));
+  }
   $("userPassword").required = !editing;
   $("userPasswordConfirm").required = !editing;
   $("userPasswordLabel").textContent = editing ? "New password (optional)" : "Password";

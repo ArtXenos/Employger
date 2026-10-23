@@ -46,10 +46,23 @@ a {
   min-width: 0;
 }
 
+/* One content spacing for every management page. The dashboard and
+   My Payroll pad inside their own topbar and content blocks instead. */
+.app-layout > .main-content,
+.app-container > .main-content {
+  padding: 32px;
+}
+
 .sidebar {
   width: 260px;
   flex: 0 0 260px;
-  min-height: 100vh;
+  /* Stays in view while the page scrolls, so Logout is always at the
+     bottom of the screen; scrolls itself if the window is very short. */
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow-y: auto;
   padding: 24px 16px 18px;
   display: flex;
   flex-direction: column;
@@ -139,7 +152,7 @@ a {
   min-width: 0;
   flex: 1;
 }
-.topbar {
+.dashboard-container .topbar {
   min-height: 86px;
   display: flex;
   align-items: center;
@@ -149,22 +162,22 @@ a {
   background: white;
   border-bottom: 1px solid var(--border);
 }
-.topbar h2 {
+.dashboard-container .topbar h2 {
   margin: 0 0 5px;
   font-size: 25px;
   letter-spacing: -0.5px;
 }
-.topbar p {
+.dashboard-container .topbar p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
 }
-.user-info {
+.dashboard-container .user-info {
   display: flex;
   align-items: center;
   gap: 11px;
 }
-.user-avatar {
+.dashboard-container .user-avatar {
   width: 42px;
   height: 42px;
   display: grid;
@@ -174,24 +187,24 @@ a {
   color: white;
   font-weight: 700;
 }
-.user-copy strong,
-.user-copy span {
+.dashboard-container .user-copy strong,
+.dashboard-container .user-copy span {
   display: block;
 }
-.user-copy strong {
+.dashboard-container .user-copy strong {
   font-size: 14px;
 }
-.user-copy span {
+.dashboard-container .user-copy span {
   margin-top: 3px;
   color: var(--muted);
   font-size: 12px;
 }
-.dashboard-content {
+.dashboard-container .dashboard-content {
   max-width: 1600px;
   margin: 0 auto;
   padding: 28px 32px 36px;
 }
-.welcome-card {
+.dashboard-container .welcome-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -203,25 +216,25 @@ a {
   color: white;
   box-shadow: 0 8px 20px rgb(37 99 235 / 12%);
 }
-.welcome-card .eyebrow {
+.dashboard-container .welcome-card .eyebrow {
   margin: 0 0 9px;
   color: #dbeafe;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.1px;
 }
-.welcome-card h2 {
+.dashboard-container .welcome-card h2 {
   margin: 0 0 8px;
   font-size: 23px;
 }
-.welcome-card p:not(.eyebrow) {
+.dashboard-container .welcome-card p:not(.eyebrow) {
   max-width: 700px;
   margin: 0;
   color: #eff6ff;
   font-size: 13px;
   line-height: 1.6;
 }
-.welcome-link {
+.dashboard-container .welcome-link {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -234,16 +247,16 @@ a {
   font-size: 13px;
   font-weight: 600;
 }
-.welcome-link:hover {
+.dashboard-container .welcome-link:hover {
   background: rgb(255 255 255 / 12%);
 }
-.summary-grid {
+.dashboard-container .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
   margin-bottom: 24px;
 }
-.summary-card {
+.dashboard-container .summary-card {
   min-width: 0;
   display: flex;
   align-items: center;
@@ -254,7 +267,7 @@ a {
   border-radius: 12px;
   box-shadow: 0 3px 10px rgb(15 23 42 / 3%);
 }
-.summary-icon {
+.dashboard-container .summary-icon {
   width: 46px;
   height: 46px;
   flex: 0 0 46px;
@@ -265,30 +278,30 @@ a {
   color: var(--blue);
   font-size: 21px;
 }
-.summary-card > div:last-child {
+.dashboard-container .summary-card > div:last-child {
   min-width: 0;
 }
-.summary-card span,
-.summary-card small {
+.dashboard-container .summary-card span,
+.dashboard-container .summary-card small {
   display: block;
 }
-.summary-card span {
+.dashboard-container .summary-card span {
   margin-bottom: 6px;
   color: var(--muted);
   font-size: 12px;
 }
-.summary-card strong {
+.dashboard-container .summary-card strong {
   display: block;
   overflow-wrap: anywhere;
   font-size: clamp(19px, 1.7vw, 25px);
   line-height: 1.25;
 }
-.summary-card small {
+.dashboard-container .summary-card small {
   margin-top: 5px;
   color: #94a3b8;
   font-size: 11px;
 }
-.section-card {
+.dashboard-container .section-card {
   margin-bottom: 24px;
   padding: 24px;
   background: white;
@@ -296,28 +309,28 @@ a {
   border-radius: 12px;
   box-shadow: 0 3px 10px rgb(15 23 42 / 3%);
 }
-.section-header {
+.dashboard-container .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 18px;
 }
-.section-header h2 {
+.dashboard-container .section-header h2 {
   margin: 0 0 5px;
   font-size: 17px;
 }
-.section-header p {
+.dashboard-container .section-header p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
 }
-.quick-actions {
+.dashboard-container .quick-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
-.quick-actions .action-button {
+.dashboard-container .quick-actions .action-button {
   position: relative;
   min-width: 0;
   min-height: 132px;
@@ -334,12 +347,12 @@ a {
     border-color 0.18s ease,
     box-shadow 0.18s ease;
 }
-.quick-actions .action-button:hover {
+.dashboard-container .quick-actions .action-button:hover {
   transform: translateY(-2px);
   border-color: #93c5fd;
   box-shadow: 0 8px 18px rgb(37 99 235 / 8%);
 }
-.quick-actions .action-button > span:first-child {
+.dashboard-container .quick-actions .action-button > span:first-child {
   display: grid;
   place-items: center;
   width: 35px;
@@ -350,37 +363,37 @@ a {
   color: var(--blue);
   font-size: 18px;
 }
-.quick-actions .action-button strong {
+.dashboard-container .quick-actions .action-button strong {
   margin-bottom: 5px;
   font-size: 13px;
 }
-.quick-actions .action-button small {
+.dashboard-container .quick-actions .action-button small {
   max-width: 90%;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.45;
 }
-.quick-actions .action-button .action-arrow {
+.dashboard-container .quick-actions .action-button .action-arrow {
   position: absolute;
   top: 20px;
   right: 15px;
   color: #94a3b8;
   font-size: 16px;
 }
-.dashboard-message {
+.dashboard-container .dashboard-message {
   min-height: 16px;
   margin: 0;
   color: var(--muted);
   font-size: 12px;
 }
-.dashboard-message.error {
+.dashboard-container .dashboard-message.error {
   color: #b91c1c;
 }
 @media (max-width: 1150px) {
-  .summary-grid {
+  .dashboard-container .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .quick-actions {
+  .dashboard-container .quick-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -391,13 +404,15 @@ a {
     display: block;
   }
   .sidebar {
+    position: static;
     width: 100%;
+    height: auto;
     min-height: auto;
     padding: 14px;
   }
   .app-layout > .main-content,
   .app-container > .main-content {
-    padding: 16px;
+    padding: 20px;
   }
   .brand {
     padding: 0 4px 14px;
@@ -416,30 +431,30 @@ a {
     margin-top: 12px;
     text-align: center;
   }
-  .topbar {
+  .dashboard-container .topbar {
     min-height: auto;
     padding: 18px;
   }
-  .topbar h2 {
+  .dashboard-container .topbar h2 {
     font-size: 22px;
   }
-  .dashboard-content {
+  .dashboard-container .dashboard-content {
     padding: 18px;
   }
-  .welcome-card {
+  .dashboard-container .welcome-card {
     align-items: flex-start;
     flex-direction: column;
     padding: 22px;
   }
-  .summary-grid,
-  .quick-actions {
+  .dashboard-container .summary-grid,
+  .dashboard-container .quick-actions {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  .summary-card {
+  .dashboard-container .summary-card {
     padding: 17px;
   }
-  .quick-actions .action-button {
+  .dashboard-container .quick-actions .action-button {
     min-height: 115px;
   }
 }

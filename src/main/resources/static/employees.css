@@ -4,129 +4,13 @@
   padding: 0;
 }
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  background: #f4f6fa;
-  color: #17233c;
-}
-
-.app-container {
-  display: flex;
-  min-height: 100vh;
-}
-
 /* =========================
    SIDEBAR
 ========================= */
 
-.sidebar {
-  width: 313px;
-  background: #151f34;
-  color: white;
-  padding: 30px 20px;
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  margin: 5px 10px 35px;
-}
-
-.brand-logo {
-  width: 45px;
-  height: 45px;
-  background: #2864e8;
-  border-radius: 13px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.brand h1 {
-  font-size: 27px;
-  line-height: 1;
-}
-
-.brand span {
-  display: block;
-  margin-top: 8px;
-  font-size: 13px;
-  color: #aeb8ca;
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.nav-item {
-  color: #d9dfec;
-  text-decoration: none;
-
-  padding: 15px 20px;
-  border-radius: 10px;
-
-  display: flex;
-  align-items: center;
-  gap: 18px;
-
-  font-size: 17px;
-}
-
-.nav-item:hover {
-  background: #202d48;
-}
-
-.nav-item.active {
-  background: #2864e8;
-  color: white;
-}
-
-.nav-item span {
-  width: 20px;
-  text-align: center;
-}
-
-.logout-button {
-  margin-top: auto;
-
-  background: none;
-  border: none;
-
-  color: #d9dfec;
-
-  text-align: left;
-  padding: 15px 17px;
-
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.logout-button:hover {
-  color: white;
-}
-
 /* =========================
    MAIN CONTENT
 ========================= */
-
-.main-content {
-  margin-left: 313px;
-  width: calc(100% - 313px);
-  padding: 35px 40px;
-}
 
 .topbar {
   display: flex;
@@ -512,15 +396,6 @@ tbody tr:hover {
 ========================= */
 
 @media (max-width: 900px) {
-  .sidebar {
-    width: 230px;
-  }
-
-  .main-content {
-    margin-left: 230px;
-    width: calc(100% - 230px);
-    padding: 25px;
-  }
 
   .employee-summary {
     grid-template-columns: 1fr;
@@ -528,20 +403,6 @@ tbody tr:hover {
 }
 
 @media (max-width: 700px) {
-  .sidebar {
-    position: static;
-    width: 100%;
-    min-height: auto;
-  }
-
-  .app-container {
-    flex-direction: column;
-  }
-
-  .main-content {
-    margin-left: 0;
-    width: 100%;
-  }
 
   .form-grid {
     grid-template-columns: 1fr;

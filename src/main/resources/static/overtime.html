@@ -14,70 +14,50 @@
     <div class="app-container">
       <!-- Sidebar -->
       <aside class="sidebar">
-        <div class="brand">
+        <a class="brand" href="/dashboard.html" aria-label="Em-Ployger dashboard">
           <div class="brand-logo">EP</div>
-
-          <div>
-            <h2>Em-Ployger</h2>
+          <div class="brand-copy">
+            <h1>Em-Ployger</h1>
             <span>Payroll Management</span>
           </div>
-        </div>
+        </a>
 
-        <nav class="sidebar-nav">
-          <a href="/dashboard.html" class="nav-item">
-            <span>▦</span>
-            Dashboard
-          </a>
-
-          <a href="/employees.html" class="nav-item">
-            <span>♙</span>
-            Employees
-          </a>
-
-          <a href="/attendance.html" class="nav-item">
-            <span>◷</span>
-            Attendance
-          </a>
-
-          <a href="/pay-cycles.html" class="nav-item">
-            <span>□</span>
-            Pay Cycles
-          </a>
-
-          <a href="/overtime.html" class="nav-item active">
-            <span>↗</span>
-            Overtime
-          </a>
-
-          <a href="/payroll.html" class="nav-item">
-            <span>₱</span>
-            Payroll
-          </a>
-
-          <a href="/benefits.html" class="nav-item">
-            <span>✦</span>
-            Benefits
-          </a>
-
-          <a href="/reports.html" class="nav-item">
-            <span>▤</span>
-            Reports
-          </a>
-
-          <a href="/settings.html" class="nav-item">
-            <span>⚙</span>
-            Settings
-          </a>
-
-          <a href="/users.html" class="nav-item">
-            <span>⚿</span>
-            Users
-          </a>
+        <nav class="sidebar-nav" aria-label="Main navigation">
+          <a href="/dashboard.html" class="nav-item"
+            ><span aria-hidden="true">▦</span>Dashboard</a
+          >
+          <a href="/employees.html" class="nav-item"
+            ><span aria-hidden="true">♙</span>Employees</a
+          >
+          <a href="/attendance.html" class="nav-item"
+            ><span aria-hidden="true">◷</span>Attendance</a
+          >
+          <a href="/pay-cycles.html" class="nav-item"
+            ><span aria-hidden="true">□</span>Pay Cycles</a
+          >
+          <a href="/overtime.html" class="nav-item active" aria-current="page"
+            ><span aria-hidden="true">↗</span>Overtime</a
+          >
+          <a href="/payroll.html" class="nav-item"
+            ><span aria-hidden="true">₱</span>Payroll</a
+          >
+          <a href="/benefits.html" class="nav-item"
+            ><span aria-hidden="true">✦</span>Benefits</a
+          >
+          <a href="/reports.html" class="nav-item"
+            ><span aria-hidden="true">▤</span>Reports</a
+          >
+          <a href="/settings.html" class="nav-item"
+            ><span aria-hidden="true">⚙</span>Settings</a
+          >
+          <a href="/users.html" class="nav-item"
+            ><span aria-hidden="true">⚿</span>Users</a
+          >
         </nav>
 
-        <div class="sidebar-footer">
-          <button id="logoutButton" class="logout-button">Logout</button>
-        </div>
+        <button id="logoutButton" class="logout-button" type="button">
+          Logout
+        </button>
       </aside>
 
       <!-- Main Content -->

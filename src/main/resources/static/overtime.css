@@ -14,21 +14,10 @@
   margin-bottom: 28px;
 }
 
-.page-header h1 {
-  margin: 0 0 8px;
-  font-size: 30px;
-}
-
-.page-header p {
-  margin: 0;
-  color: #6b7280;
-}
-
 /* ================================
    BUTTONS
 ================================ */
 
-.primary-button,
 .secondary-button,
 .action-button {
   border: none;
@@ -37,15 +26,6 @@
   font-size: 14px;
   cursor: pointer;
   transition: 0.2s ease;
-}
-
-.primary-button {
-  background: #111827;
-  color: white;
-}
-
-.primary-button:hover {
-  background: #1f2937;
 }
 
 .secondary-button {

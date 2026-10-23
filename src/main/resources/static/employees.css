@@ -19,36 +19,9 @@
   margin-bottom: 30px;
 }
 
-.topbar h2 {
-  font-size: 30px;
-  margin-bottom: 6px;
-}
-
-.topbar p {
-  color: #6d7890;
-}
-
 /* =========================
    BUTTONS
 ========================= */
-
-.primary-button {
-  border: none;
-  background: #2864e8;
-  color: white;
-
-  padding: 12px 20px;
-  border-radius: 8px;
-
-  font-size: 15px;
-  font-weight: bold;
-
-  cursor: pointer;
-}
-
-.primary-button:hover {
-  background: #1f55ca;
-}
 
 .secondary-button {
   border: 1px solid #d1d7e2;

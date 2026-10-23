@@ -7,33 +7,7 @@
   margin-bottom: 28px;
 }
 
-.page-header h2 {
-  margin: 0 0 8px;
-  font-size: 32px;
-}
-
-.page-header p {
-  margin: 0;
-  color: #64748b;
-  font-size: 16px;
-}
-
 /* Add Button */
-
-.add-button {
-  border: none;
-  border-radius: 10px;
-  padding: 13px 20px;
-  background: #2563eb;
-  color: white;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.add-button:hover {
-  background: #1d4ed8;
-}
 
 /* Summary */
 
@@ -312,7 +286,6 @@ td .action-button {
   margin-top: 20px;
 }
 
-.save-button,
 .cancel-button {
   border: none;
   border-radius: 8px;
@@ -320,15 +293,6 @@ td .action-button {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-}
-
-.save-button {
-  background: #2563eb;
-  color: white;
-}
-
-.save-button:hover {
-  background: #1d4ed8;
 }
 
 .cancel-button {

@@ -19,16 +19,6 @@
   margin-bottom: 28px;
 }
 
-.topbar h2 {
-  font-size: 28px;
-  margin-bottom: 5px;
-}
-
-.topbar p {
-  color: #6b7280;
-  font-size: 14px;
-}
-
 .user-info {
   display: flex;
   align-items: center;
@@ -123,7 +113,6 @@
    BUTTONS
    ========================= */
 
-.primary-button,
 .secondary-button {
   border: none;
   border-radius: 7px;
@@ -131,15 +120,6 @@
   font-size: 13px;
   cursor: pointer;
   font-weight: 600;
-}
-
-.primary-button {
-  background: #2563eb;
-  color: white;
-}
-
-.primary-button:hover {
-  background: #1d4ed8;
 }
 
 .secondary-button {

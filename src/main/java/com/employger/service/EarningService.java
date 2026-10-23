@@ -278,7 +278,7 @@ public class EarningService {
     }
 
     private static String describe(Earning earning) {
-        return EarningsCalculator.label(earning.getEarningType()) + " " + earning.getAmount()
+        return earning.getEarningType().getLabel() + " " + earning.getAmount()
                 + " for employee #" + earning.getEmployee().getEmployeeId() + " dated " + earning.getDateGiven();
     }
 

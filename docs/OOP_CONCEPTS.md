@@ -1,0 +1,358 @@
+# OOP Concepts in Em-Ployger
+
+This guide points to the exact code that shows each of the four OOP principles in Em-Ployger, a Philippine payroll system. Each section gives the class, where it is (`file:line`), and a few sentences you can say in the presentation.
+
+Everything here is real payroll behaviour. Nothing exists only to demonstrate a concept. The refactor that introduced these classes changed no payroll amount, which section 7 explains how we proved.
+
+---
+
+## 1. Abstraction
+
+**Idea:** code works with a general concept and does not need to know which specific one it has.
+
+### `StatutoryContribution`: "a government contribution"
+
+[src/main/java/com/employger/service/contribution/StatutoryContribution.java:17](../src/main/java/com/employger/service/contribution/StatutoryContribution.java#L17)
+
+```java
+public abstract class StatutoryContribution {
+    public abstract Type type();
+    public abstract BigDecimal monthlyEmployeeShare(BigDecimal salary);
+    public abstract BigDecimal monthlyEmployerShare(BigDecimal salary);
+    public BigDecimal monthlyEmployeesCompensation(BigDecimal salary) { return BigDecimal.ZERO; }
+    public final PeriodShares forPeriod(BigDecimal salary, BigDecimal periodShare) { ... }
+}
+```
+
+> "Every Philippine employer must pay SSS, PhilHealth and Pag-IBIG. They have different formulas, but payroll only needs to ask each one the same two questions: how much does the employee pay, and how much does the employer pay? `StatutoryContribution` is that common idea. It is `abstract` because a 'contribution in general' has no formula; only SSS, PhilHealth or Pag-IBIG do."
+
+### `DeMinimisBenefit`: "a tax-free benefit up to a limit"
+
+[src/main/java/com/employger/service/earning/DeMinimisBenefit.java:15](../src/main/java/com/employger/service/earning/DeMinimisBenefit.java#L15)
+
+```java
+public abstract class DeMinimisBenefit {
+    public abstract Earning.Type type();
+    public abstract ExemptionPeriod periodContaining(LocalDate date);
+    public abstract BigDecimal limit(BigDecimal dailyRate);
+}
+```
+
+> "BIR rules let some small benefits be tax-free up to a limit, for example rice subsidy, clothing, medical allowance and monetized leave. Each has its own period and limit, but the calculator treats them all the same way: find the period, find the limit, and see how much is still unused."
+
+---
+
+## 2. Inheritance
+
+**Idea:** a subclass gets the parent's state and behaviour and adds or replaces only what is different.
+
+### Three contributions extend `StatutoryContribution`
+
+| Class | Line | What it inherits | What it adds or replaces |
+|---|---|---|---|
+| `SssContribution` | [SssContribution.java:15](../src/main/java/com/employger/service/contribution/SssContribution.java#L15) | `forPeriod()`, `setting()`, the settings field | Monthly Salary Credit, employee and employer rates, **and EC** |
+| `PhilHealthContribution` | [PhilHealthContribution.java:13](../src/main/java/com/employger/service/contribution/PhilHealthContribution.java#L13) | the same, plus the zero EC default | One premium within a floor and ceiling, split in two |
+| `PagIbigContribution` | [PagIbigContribution.java:13](../src/main/java/com/employger/service/contribution/PagIbigContribution.java#L13) | the same, plus the zero EC default | Lower rate for low salaries, fund-salary cap |
+
+> "Spreading a monthly amount over a pay cycle and rounding it to centavos is the same for every contribution, so it is written once, in the parent's `forPeriod()` method. It is `final`, so no subclass can round differently. The subclasses only contain what makes each contribution different."
+
+### Four benefits extend `DeMinimisBenefit`
+
+| Class | Line | Period | Limit |
+|---|---|---|---|
+| `RiceSubsidy` | [RiceSubsidy.java:12](../src/main/java/com/employger/service/earning/RiceSubsidy.java#L12) | Month | ₱2,000 |
+| `ClothingAllowance` | [ClothingAllowance.java:12](../src/main/java/com/employger/service/earning/ClothingAllowance.java#L12) | Year (inherited `calendarYear()` helper) | ₱6,000 |
+| `MedicalCashAllowance` | [MedicalCashAllowance.java:12](../src/main/java/com/employger/service/earning/MedicalCashAllowance.java#L12) | Half-year | ₱1,500 |
+| `MonetizedLeave` | [MonetizedLeave.java:12](../src/main/java/com/employger/service/earning/MonetizedLeave.java#L12) | Year (inherited `calendarYear()` helper) | 10 days × daily rate |
+
+The limits shown are the defaults. HR can change them in Settings.
+
+---
+
+## 3. Polymorphism
+
+**Idea:** one call, many behaviours. The same method call runs a different implementation depending on the object's actual class at runtime.
+
+### Payroll loops over contributions without knowing which is which
+
+[src/main/java/com/employger/service/StatutoryDeductionService.java:166](../src/main/java/com/employger/service/StatutoryDeductionService.java#L166)
+
+```java
+for (StatutoryContribution contribution : statutoryContributions) {
+    shares.put(contribution.type(), contribution.forPeriod(salary, periodShare));
+}
+```
+
+> "This loop has no `if`, no `switch` and no `instanceof`. `forPeriod()` calls `monthlyEmployeeShare()`, and Java picks SSS's, PhilHealth's or Pag-IBIG's version at runtime. That is **dynamic dispatch**. Spring finds the three classes by their parent type and passes them in as a `List<StatutoryContribution>`."
+
+Before the refactor, the service called `monthlySss(...)`, `monthlyPhilHealth(...)` and `monthlyPagIbig(...)` one by one by name.
+
+### The tax-free calculator asks the object
+
+[src/main/java/com/employger/service/EarningsCalculator.java:188-195](../src/main/java/com/employger/service/EarningsCalculator.java#L188-L195)
+
+```java
+DeMinimisBenefit benefit = deMinimisBenefits.get(entry.getEarningType());
+...
+DeMinimisBenefit.ExemptionPeriod period = benefit.periodContaining(entry.getDateGiven());
+BigDecimal limit = benefit.limit(dailyRate);
+```
+
+Before the refactor, this was a `switch` over the four types, each case with its own period and limit.
+
+### Overriding a default: only SSS has EC
+
+The parent's `monthlyEmployeesCompensation()` is a **concrete** method that returns zero ([StatutoryContribution.java:50](../src/main/java/com/employger/service/contribution/StatutoryContribution.java#L50)). Only `SssContribution` overrides it ([SssContribution.java:39-40](../src/main/java/com/employger/service/contribution/SssContribution.java#L39-L40)), because Employees' Compensation is collected by SSS alone. The service adds the EC of every contribution and gets SSS's amount automatically.
+
+### Existing interface implementation
+
+`CustomUserDetailsService implements UserDetailsService` ([CustomUserDetailsService.java:14](../src/main/java/com/employger/service/CustomUserDetailsService.java#L14)). Spring Security calls `loadUserByUsername()` through the interface and runs our version.
+
+---
+
+## 4. Encapsulation
+
+**Idea:** an object keeps its data private and lets it change only in valid ways.
+
+### Payroll protects its own lifecycle: DRAFT → PROCESSED → PAID
+
+[src/main/java/com/employger/entity/Payroll.java:179-213](../src/main/java/com/employger/entity/Payroll.java#L179-L213)
+
+```java
+public void process(User processedBy, LocalDateTime processedAt) {
+    checkCanProcess();                 // throws unless DRAFT
+    this.status = Status.PROCESSED;
+    ...
+}
+
+public void markPaid(String paymentMethod, String paymentReference, LocalDateTime paymentDate) {
+    checkCanBePaid();                  // throws unless PROCESSED
+    this.status = Status.PAID;
+    ...
+}
+```
+
+> "A payroll can't be paid before it's processed, and a paid payroll can't be processed again. Before, only the service checked this, and it then set the status field directly. Now the payroll object enforces the rule itself, so any code that uses `process()` or `markPaid()` gets the check automatically."
+
+`PayrollService` calls `checkCanProcess()` first, before recalculating anything, and `process()` last ([PayrollService.java:968](../src/main/java/com/employger/service/PayrollService.java#L968), [:984](../src/main/java/com/employger/service/PayrollService.java#L984)).
+
+### Overtime: PENDING → APPROVED or REJECTED, then final
+
+[src/main/java/com/employger/entity/Overtime.java:90-108](../src/main/java/com/employger/entity/Overtime.java#L90-L108). `approve()` and `reject()` both refuse a request that has already been decided.
+
+### Hidden data
+
+- Every entity field is `private`. For example, `User.passwordHash` ([User.java:26](../src/main/java/com/employger/entity/User.java#L26)) is never sent to the browser.
+- Response DTOs such as `EmployeeResponse` and `EmployeeSummary` choose what leaves the server. Payroll lists show an employee's ID, name, department and job title, but never their salary, birth date, address or photo.
+- Each `Earning.Type` keeps its own display label ([Earning.java:72-81](../src/main/java/com/employger/entity/Earning.java#L72-L81)) instead of a `switch` elsewhere.
+- The contribution classes read rates only through the parent's `protected final setting()` method. The settings object itself is `private` to the parent.
+
+---
+
+## 5. Why `@Override` matters
+
+Every method in this project that overrides or implements another method carries `@Override`, in the new classes and in the existing ones.
+
+### 5.1 What it does
+
+`@Override` is an instruction to the **compiler**: "this method must override a method of a parent class, or implement a method of an interface." If it doesn't, the build fails.
+
+It changes nothing at runtime. The program behaves the same with or without it, *when the code is correct*. Its job is to turn a mistake that would otherwise be silent into a compile error.
+
+### 5.2 The "silent bug"
+
+`StatutoryContribution` has a concrete default method: EC is zero unless a subclass says otherwise. SSS is meant to replace it. Suppose a developer makes a one-letter typo: "Employee" instead of "Employees".
+
+**Before: no `@Override`.**
+
+```java
+public class SssContribution extends StatutoryContribution {
+    ...
+    // Meant to replace the parent's zero default, but "Employee" is missing its "s".
+    public BigDecimal monthlyEmployeeCompensation(BigDecimal salary) {
+        return ...;   // 10 or 30 depending on the salary credit
+    }
+}
+```
+
+This **compiles with no errors**. Java sees a brand-new method that nobody calls. The parent's `monthlyEmployeesCompensation()` still runs and returns zero. We compiled and ran this against the project (javac 26):
+
+```
+EC per semi-monthly cycle: 0.00        (correct: 15.00)
+```
+
+Every payroll would understate the employer's SSS cost by ₱15 per cycle. Reports and remittances would be wrong, and nothing would warn anyone.
+
+**After: with `@Override`.**
+
+```java
+    @Override
+    public BigDecimal monthlyEmployeeCompensation(BigDecimal salary) { ... }
+```
+
+The build stops immediately. This is the real compiler output:
+
+```
+TypoSss.java:16: error: monthlyEmployeeCompensation(BigDecimal) in TypoSss does not override or implement a method from a supertype
+    @Override
+    ^
+1 error
+```
+
+The same happens with the wrong parameter type, e.g. `monthlyEmployeesCompensation(double salary)` instead of `BigDecimal`. Java would treat that as an *overload* and keep running the parent's version, but `@Override` turns it into:
+
+```
+error: monthlyEmployeesCompensation(double) in TypoSss does not override or implement a method from a supertype
+```
+
+> **Why the example uses EC and not `monthlyEmployeeShare()`:** that method is `abstract`. A subclass that misspells an abstract method is already a compile error, because the class doesn't implement it. The silent bug can only happen when the parent method has a working default. That is exactly the case `@Override` exists for.
+
+### 5.3 Refactoring insurance
+
+Suppose next year someone renames the parent method, say `monthlyEmployeesCompensation(BigDecimal)` becomes `monthlyEcPremium(BigDecimal)`, or adds a parameter.
+
+- **With `@Override`:** `SssContribution`'s method no longer overrides anything, so the build fails and points straight to it. The developer updates it in the same change.
+- **Without it:** `SssContribution`'s old method silently becomes orphaned dead code, and EC drops to the parent's default without any warning.
+
+The annotation turns "remember to update every subclass" into "the compiler lists every subclass you missed."
+
+### 5.4 Readability and intent
+
+When you read `SssContribution` and see:
+
+```java
+@Override
+public BigDecimal monthlyEmployerShare(BigDecimal salary)
+```
+
+you know at once that this method is part of a contract defined elsewhere, in `StatutoryContribution`, and that code calling the parent type will run it. Without the annotation, you would have to open every parent class to tell a contract method from a helper like `monthlySalaryCredit()`.
+
+---
+
+## 6. What we deliberately did not build
+
+Good OOP also means not adding classes that don't earn their place.
+
+| Idea | Decision | Why |
+|---|---|---|
+| An abstract `Person` parent for `Employee` and `User` | Not built | A `User` is a login (username, password hash, role, status) that **has an** `Employee` ([User.java:19](../src/main/java/com/employger/entity/User.java#L19)). That is **composition**. They aren't two kinds of person, and making them inherit from one class would mean re-mapping two database tables for no benefit. |
+| A "deductions" class hierarchy | Not built | The `deductions` table exists but is empty and unused. The real deductions are statutory contributions, already modelled above, and attendance deductions for unpaid hours. |
+| A class for every earning type | Not built | 13th month pay, other benefits, hazard pay and taxable allowances behave alike: each is summed into its own payroll column, and the tax rules apply to the totals. Only the four de minimis kinds differ per type, so only they got subclasses. |
+| Effective-dated rates | Not built | The system keeps one current value per rate in Settings. Dated rates would be a new feature, not a refactor. |
+
+---
+
+## 7. How we know nothing changed
+
+- **Golden comparison.** Before the refactor, a temporary test recorded 360 results: statutory deductions for 27 salaries × 4 pay cycle types × with and without the minimum wage exemption, plus de minimis exemptions for every type on boundary dates like 30 June and 1 July. After each step, the same test was run again, and **all 360 lines were identical**, to the centavo, including the payroll notes.
+- **Tests.** The 204 existing tests still pass, with the same expected values. Unit tests that used to call `service.monthlySss(...)` now call `sss.monthlyEmployeeShare(...)` with the same figures. 40 new tests cover each contribution and benefit class, the polymorphic loop, the Spring wiring, and every allowed and refused lifecycle transition. Total: 244 tests, 0 failures.
+- **Database.** No entity mapping changed and no migration was added. Paid payroll #6 and `default_overtime_rate` = 1.25 were checked in the live database after the change.
+
+---
+
+## 8. Class diagram
+
+```mermaid
+classDiagram
+    direction LR
+
+    class StatutoryContribution {
+        <<abstract>>
+        -SystemSettingService settings
+        +type()* Type
+        +monthlyEmployeeShare(BigDecimal salary)* BigDecimal
+        +monthlyEmployerShare(BigDecimal salary)* BigDecimal
+        +monthlyEmployeesCompensation(BigDecimal salary) BigDecimal
+        +forPeriod(BigDecimal salary, BigDecimal periodShare) PeriodShares
+        #setting(String name) BigDecimal
+    }
+    class SssContribution {
+        +type() Type
+        +monthlyEmployeeShare(BigDecimal) BigDecimal
+        +monthlyEmployerShare(BigDecimal) BigDecimal
+        +monthlyEmployeesCompensation(BigDecimal) BigDecimal
+        +monthlySalaryCredit(BigDecimal) BigDecimal
+    }
+    class PhilHealthContribution {
+        +type() Type
+        +monthlyEmployeeShare(BigDecimal) BigDecimal
+        +monthlyEmployerShare(BigDecimal) BigDecimal
+        +monthlyPremium(BigDecimal) BigDecimal
+    }
+    class PagIbigContribution {
+        +type() Type
+        +monthlyEmployeeShare(BigDecimal) BigDecimal
+        +monthlyEmployerShare(BigDecimal) BigDecimal
+    }
+    StatutoryContribution <|-- SssContribution
+    StatutoryContribution <|-- PhilHealthContribution
+    StatutoryContribution <|-- PagIbigContribution
+
+    class StatutoryDeductionService {
+        -List~StatutoryContribution~ statutoryContributions
+        +calculate(...) StatutoryDeductions
+    }
+    StatutoryDeductionService o-- "3" StatutoryContribution : loops over
+
+    class DeMinimisBenefit {
+        <<abstract>>
+        -PayrollCalculationService rates
+        +type()* Earning.Type
+        +periodContaining(LocalDate date)* ExemptionPeriod
+        +limit(BigDecimal dailyRate)* BigDecimal
+        #setting(String name, String defaultValue) BigDecimal
+        #calendarYear(LocalDate date)$ ExemptionPeriod
+    }
+    class RiceSubsidy
+    class ClothingAllowance
+    class MedicalCashAllowance
+    class MonetizedLeave
+    DeMinimisBenefit <|-- RiceSubsidy
+    DeMinimisBenefit <|-- ClothingAllowance
+    DeMinimisBenefit <|-- MedicalCashAllowance
+    DeMinimisBenefit <|-- MonetizedLeave
+
+    class EarningsCalculator {
+        -Map~Earning.Type, DeMinimisBenefit~ deMinimisBenefits
+        +calculate(...) Result
+    }
+    EarningsCalculator o-- "4" DeMinimisBenefit : asks
+
+    class PayrollService
+    PayrollService --> StatutoryDeductionService
+    PayrollService --> EarningsCalculator
+    PayrollService ..> Payroll : process() / markPaid()
+
+    class Payroll {
+        -Status status
+        +isDraft() boolean
+        +checkCanProcess()
+        +process(User, LocalDateTime)
+        +checkCanBePaid()
+        +markPaid(String, String, LocalDateTime)
+    }
+    class Overtime {
+        -Status status
+        +checkPending()
+        +approve(User)
+        +reject(User)
+    }
+    class OvertimeService
+    OvertimeService ..> Overtime : approve() / reject()
+
+    class User {
+        -String passwordHash
+        -Employee employee
+    }
+    class Employee
+    User --> "0..1" Employee : has a (composition, not inheritance)
+
+    class UserDetailsService {
+        <<interface>>
+        +loadUserByUsername(String) UserDetails
+    }
+    class CustomUserDetailsService
+    UserDetailsService <|.. CustomUserDetailsService
+```
+
+In this diagram, `*` marks abstract methods and `$` marks static ones. `#` means protected, `-` private and `+` public. The subclasses' listed methods are the ones marked `@Override`, except `monthlySalaryCredit()` and `monthlyPremium()`, which are each class's own helpers.

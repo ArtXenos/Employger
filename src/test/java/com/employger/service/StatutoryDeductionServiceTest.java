@@ -1,6 +1,9 @@
 package com.employger.service;
 
 import com.employger.entity.PayCycle;
+import com.employger.service.contribution.PagIbigContribution;
+import com.employger.service.contribution.PhilHealthContribution;
+import com.employger.service.contribution.SssContribution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -50,6 +54,10 @@ class StatutoryDeductionServiceTest {
 
     private StatutoryDeductionService service;
 
+    private SssContribution sss;
+    private PhilHealthContribution philHealth;
+    private PagIbigContribution pagIbig;
+
     @BeforeEach
     void setUp() {
         V3_SETTINGS.forEach((name, value) ->
@@ -59,9 +67,14 @@ class StatutoryDeductionServiceTest {
         lenient().when(systemSettingService.findSettingValue("statutory_deductions_enabled"))
                 .thenReturn(Optional.of("true"));
 
+        sss = new SssContribution(systemSettingService);
+        philHealth = new PhilHealthContribution(systemSettingService);
+        pagIbig = new PagIbigContribution(systemSettingService);
+
         service = new StatutoryDeductionService(
                 systemSettingService,
-                new PayrollCalculationService(systemSettingService));
+                new PayrollCalculationService(systemSettingService),
+                List.of(sss, philHealth, pagIbig));
     }
 
     // Rows of the SSS Circular 2024-006 table: compensation -> employee total.
@@ -79,7 +92,7 @@ class StatutoryDeductionServiceTest {
             "250000.00, 1750.00",
     })
     void sssEmployeeShareMatchesOfficialTable(String salary, String expected) {
-        assertThat(service.monthlySss(new BigDecimal(salary))).isEqualByComparingTo(expected);
+        assertThat(sss.monthlyEmployeeShare(new BigDecimal(salary))).isEqualByComparingTo(expected);
     }
 
     @ParameterizedTest(name = "PhilHealth: salary {0} -> employee {1}")
@@ -91,7 +104,7 @@ class StatutoryDeductionServiceTest {
             "150000.00, 2500.00",   // ceiling 100,000 -> 5,000 premium, half
     })
     void philHealthEmployeeShare(String salary, String expected) {
-        assertThat(service.monthlyPhilHealth(new BigDecimal(salary))).isEqualByComparingTo(expected);
+        assertThat(philHealth.monthlyEmployeeShare(new BigDecimal(salary))).isEqualByComparingTo(expected);
     }
 
     @ParameterizedTest(name = "Pag-IBIG: salary {0} -> employee {1}")
@@ -102,7 +115,7 @@ class StatutoryDeductionServiceTest {
             "25000.00, 200.00",     // maximum fund salary 10,000
     })
     void pagIbigEmployeeShare(String salary, String expected) {
-        assertThat(service.monthlyPagIbig(new BigDecimal(salary))).isEqualByComparingTo(expected);
+        assertThat(pagIbig.monthlyEmployeeShare(new BigDecimal(salary))).isEqualByComparingTo(expected);
     }
 
     // Rows of the SSS Circular 2024-006 table: compensation -> employer
@@ -118,8 +131,8 @@ class StatutoryDeductionServiceTest {
             "250000.00, 3500.00, 30.00",
     })
     void sssEmployerShareAndEcMatchOfficialTable(String salary, String employer, String ec) {
-        assertThat(service.monthlySssEmployer(new BigDecimal(salary))).isEqualByComparingTo(employer);
-        assertThat(service.monthlyEc(new BigDecimal(salary))).isEqualByComparingTo(ec);
+        assertThat(sss.monthlyEmployerShare(new BigDecimal(salary))).isEqualByComparingTo(employer);
+        assertThat(sss.monthlyEmployeesCompensation(new BigDecimal(salary))).isEqualByComparingTo(ec);
     }
 
     @ParameterizedTest(name = "PhilHealth employer: salary {0} -> {1}")
@@ -129,9 +142,9 @@ class StatutoryDeductionServiceTest {
             "150000.00, 2500.00",   // premium 5,000 at the ceiling
     })
     void philHealthEmployerPaysTheOtherHalf(String salary, String expected) {
-        assertThat(service.monthlyPhilHealthEmployer(new BigDecimal(salary))).isEqualByComparingTo(expected);
-        assertThat(service.monthlyPhilHealthEmployer(new BigDecimal(salary)))
-                .isEqualByComparingTo(service.monthlyPhilHealth(new BigDecimal(salary)));
+        assertThat(philHealth.monthlyEmployerShare(new BigDecimal(salary))).isEqualByComparingTo(expected);
+        assertThat(philHealth.monthlyEmployerShare(new BigDecimal(salary)))
+                .isEqualByComparingTo(philHealth.monthlyEmployeeShare(new BigDecimal(salary)));
     }
 
     @ParameterizedTest(name = "Pag-IBIG employer: salary {0} -> {1}")
@@ -141,7 +154,7 @@ class StatutoryDeductionServiceTest {
             "25000.00, 200.00",     // maximum fund salary 10,000
     })
     void pagIbigEmployerShare(String salary, String expected) {
-        assertThat(service.monthlyPagIbigEmployer(new BigDecimal(salary))).isEqualByComparingTo(expected);
+        assertThat(pagIbig.monthlyEmployerShare(new BigDecimal(salary))).isEqualByComparingTo(expected);
     }
 
     @Test

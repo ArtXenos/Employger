@@ -84,6 +84,29 @@ public class Overtime {
         REJECTED
     }
 
+    // ---------- lifecycle: PENDING -> APPROVED or REJECTED, then final ----------
+
+    /** Throws unless this request is still pending. */
+    public void checkPending() {
+        if (status != Status.PENDING) {
+            throw new IllegalStateException("Only pending overtime can be approved or rejected");
+        }
+    }
+
+    /** PENDING -> APPROVED. */
+    public void approve(User approvedBy) {
+        checkPending();
+        this.status = Status.APPROVED;
+        this.approvedBy = approvedBy;
+    }
+
+    /** PENDING -> REJECTED. approvedBy records whoever decided. */
+    public void reject(User rejectedBy) {
+        checkPending();
+        this.status = Status.REJECTED;
+        this.approvedBy = rejectedBy;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

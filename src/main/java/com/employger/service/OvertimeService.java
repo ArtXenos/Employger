@@ -174,10 +174,7 @@ public class OvertimeService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Overtime not found"));
 
-                if (overtime.getStatus() != Overtime.Status.PENDING) {
-                        throw new IllegalStateException(
-                                        "Only pending overtime can be approved or rejected");
-                }
+                overtime.checkPending();
 
                 if (newStatus != Overtime.Status.APPROVED
                                 && newStatus != Overtime.Status.REJECTED) {
@@ -206,10 +203,11 @@ public class OvertimeService {
                         // The approved amount uses the salary and overtime rate in
                         // effect at approval, not those from when it was requested.
                         calculateOvertimeValues(overtime.getEmployee(), overtime);
-                }
 
-                overtime.setStatus(newStatus);
-                overtime.setApprovedBy(user);
+                        overtime.approve(user);
+                } else {
+                        overtime.reject(user);
+                }
 
                 auditService.record("OVERTIME_" + newStatus,
                                 newStatus + " overtime #" + overtime.getOvertimeId()

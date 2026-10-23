@@ -7,6 +7,7 @@ import com.employger.entity.Payroll;
 import com.employger.repository.EarningRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.PriorEmployerCompensationRepository;
+import com.employger.service.earning.DeMinimisBenefit;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -14,7 +15,9 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -24,7 +27,7 @@ import java.util.Objects;
  *
  *  - De minimis entries are exempt up to their limit per period (rice per
  *    month, clothing per year, medical per half-year, monetized leave per
- *    year). The limit is shared by all entries of that kind in the period,
+ *    year; each a DeMinimisBenefit subclass). The limit is shared by all entries of that kind in the period,
  *    taken in date order. Anything above it counts as an "other benefit".
  *  - 13th month pay, other benefits and that de minimis excess are exempt
  *    up to the benefits_exemption_cap (90,000) per calendar year, counting
@@ -63,17 +66,37 @@ public class EarningsCalculator {
     private final PayrollRepository payrollRepository;
     private final PriorEmployerCompensationRepository priorEmployerRepository;
     private final PayrollCalculationService rates;
+    private final Map<Earning.Type, DeMinimisBenefit> deMinimisBenefits = new EnumMap<>(Earning.Type.class);
 
+    /**
+     * @param deMinimisBenefits every DeMinimisBenefit bean; each de minimis
+     *                          type must appear exactly once
+     */
     public EarningsCalculator(
             EarningRepository earningRepository,
             PayrollRepository payrollRepository,
             PriorEmployerCompensationRepository priorEmployerRepository,
-            PayrollCalculationService rates) {
+            PayrollCalculationService rates,
+            List<DeMinimisBenefit> deMinimisBenefits) {
 
         this.earningRepository = earningRepository;
         this.payrollRepository = payrollRepository;
         this.priorEmployerRepository = priorEmployerRepository;
         this.rates = rates;
+
+        for (DeMinimisBenefit benefit : deMinimisBenefits) {
+            if (this.deMinimisBenefits.put(benefit.type(), benefit) != null) {
+                throw new IllegalStateException("More than one de minimis benefit for " + benefit.type());
+            }
+        }
+
+        for (Earning.Type type : Earning.Type.values()) {
+            if (type.isDeMinimis() != this.deMinimisBenefits.containsKey(type)) {
+                throw new IllegalStateException(type.isDeMinimis()
+                        ? "No de minimis benefit for " + type
+                        : type + " is not a de minimis type");
+            }
+        }
     }
 
     /**
@@ -110,7 +133,7 @@ public class EarningsCalculator {
                 deMinimisExempt = deMinimisExempt.add(exempt);
 
                 if (exempt.compareTo(entry.getAmount()) < 0) {
-                    notes.add(label(entry.getEarningType()) + " of " + money(entry.getAmount())
+                    notes.add(entry.getEarningType().getLabel() + " of " + money(entry.getAmount())
                             + " on " + entry.getDateGiven() + " exceeds the de minimis limit; "
                             + money(entry.getAmount().subtract(exempt))
                             + " is treated as an other benefit (90,000 cap).");
@@ -162,41 +185,18 @@ public class EarningsCalculator {
      */
     BigDecimal deMinimisExemptPart(Earning entry, BigDecimal dailyRate) {
 
-        LocalDate date = entry.getDateGiven();
-        LocalDate periodStart;
-        LocalDate periodEnd;
-        BigDecimal limit;
+        DeMinimisBenefit benefit = deMinimisBenefits.get(entry.getEarningType());
 
-        switch (entry.getEarningType()) {
-            case DE_MINIMIS_RICE -> {
-                periodStart = date.withDayOfMonth(1);
-                periodEnd = date.withDayOfMonth(date.lengthOfMonth());
-                limit = rates.decimalSetting("de_minimis_rice_monthly", "2000");
-            }
-            case DE_MINIMIS_CLOTHING -> {
-                periodStart = date.withDayOfYear(1);
-                periodEnd = date.withMonth(12).withDayOfMonth(31);
-                limit = rates.decimalSetting("de_minimis_clothing_annual", "6000");
-            }
-            case DE_MINIMIS_MEDICAL -> {
-                boolean firstHalf = date.getMonthValue() <= 6;
-                periodStart = LocalDate.of(date.getYear(), firstHalf ? 1 : 7, 1);
-                periodEnd = firstHalf ? LocalDate.of(date.getYear(), 6, 30) : LocalDate.of(date.getYear(), 12, 31);
-                limit = rates.decimalSetting("de_minimis_medical_semester", "1500");
-            }
-            case DE_MINIMIS_LEAVE -> {
-                periodStart = date.withDayOfYear(1);
-                periodEnd = date.withMonth(12).withDayOfMonth(31);
-                limit = rates.decimalSetting("de_minimis_leave_days", "10").multiply(dailyRate);
-            }
-            default -> {
-                return BigDecimal.ZERO;
-            }
+        if (benefit == null) {
+            return BigDecimal.ZERO;
         }
+
+        DeMinimisBenefit.ExemptionPeriod period = benefit.periodContaining(entry.getDateGiven());
+        BigDecimal limit = benefit.limit(dailyRate);
 
         BigDecimal usedBefore = earningRepository
                 .findByEmployeeEmployeeIdAndEarningTypeAndDateGivenBetween(
-                        entry.getEmployee().getEmployeeId(), entry.getEarningType(), periodStart, periodEnd)
+                        entry.getEmployee().getEmployeeId(), entry.getEarningType(), period.start(), period.end())
                 .stream()
                 .filter(other -> isBefore(other, entry))
                 .map(Earning::getAmount)
@@ -238,19 +238,6 @@ public class EarningsCalculator {
                 .filter(entry -> entry.getEarningType() == type)
                 .map(Earning::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    static String label(Earning.Type type) {
-        return switch (type) {
-            case THIRTEENTH_MONTH -> "13th month pay";
-            case OTHER_BENEFIT -> "Other benefit";
-            case HAZARD_PAY -> "Hazard pay";
-            case TAXABLE_ALLOWANCE -> "Taxable allowance";
-            case DE_MINIMIS_RICE -> "Rice subsidy";
-            case DE_MINIMIS_CLOTHING -> "Clothing allowance";
-            case DE_MINIMIS_MEDICAL -> "Medical cash allowance";
-            case DE_MINIMIS_LEAVE -> "Monetized unused leave";
-        };
     }
 
     private static BigDecimal money(BigDecimal amount) {

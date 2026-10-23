@@ -15,6 +15,13 @@ import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.PriorEmployerCompensationRepository;
 import com.employger.repository.UserRepository;
+import com.employger.service.contribution.PagIbigContribution;
+import com.employger.service.contribution.PhilHealthContribution;
+import com.employger.service.contribution.SssContribution;
+import com.employger.service.earning.ClothingAllowance;
+import com.employger.service.earning.MedicalCashAllowance;
+import com.employger.service.earning.MonetizedLeave;
+import com.employger.service.earning.RiceSubsidy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -98,9 +105,14 @@ class PayrollServiceTest {
                 userRepository,
                 calculationService,
                 auditService,
-                new StatutoryDeductionService(systemSettingService, calculationService),
+                new StatutoryDeductionService(systemSettingService, calculationService, List.of(
+                        new SssContribution(systemSettingService),
+                        new PhilHealthContribution(systemSettingService),
+                        new PagIbigContribution(systemSettingService))),
                 new HolidayService(holidayRepository, auditService),
-                new EarningsCalculator(earningRepository, payrollRepository, priorEmployerRepository, calculationService),
+                new EarningsCalculator(earningRepository, payrollRepository, priorEmployerRepository, calculationService,
+                        List.of(new RiceSubsidy(calculationService), new ClothingAllowance(calculationService),
+                                new MedicalCashAllowance(calculationService), new MonetizedLeave(calculationService))),
                 earningRepository,
                 new YearEndTaxService(payrollRepository, priorEmployerRepository));
 

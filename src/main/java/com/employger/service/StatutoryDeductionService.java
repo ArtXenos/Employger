@@ -1,18 +1,24 @@
 package com.employger.service;
 
 import com.employger.entity.PayCycle;
+import com.employger.service.contribution.StatutoryContribution;
+import com.employger.service.contribution.StatutoryContribution.PeriodShares;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Employee shares of Philippine statutory contributions and the withholding
- * tax for one pay period. Rates come from system settings (seeded by
- * migration V3 with the values verified 2026-10-22; see
- * docs/STATUTORY_DEDUCTIONS.md); the tax table is PhilippineWithholdingTax.
+ * tax for one pay period. Each contribution's formula lives in its own
+ * StatutoryContribution subclass (package service.contribution), with
+ * rates from system settings (seeded by migration V3 with the values
+ * verified 2026-10-22; see docs/STATUTORY_DEDUCTIONS.md); the tax table is
+ * PhilippineWithholdingTax.
  *
  * Simplifications, documented for HR:
  *  - All three contributions use the employee's monthly basic salary as the
@@ -75,13 +81,28 @@ public class StatutoryDeductionService {
 
     private final SystemSettingService systemSettingService;
     private final PayrollCalculationService payrollCalculationService;
+    private final List<StatutoryContribution> statutoryContributions;
 
+    /**
+     * @param contributions every StatutoryContribution bean; each type must
+     *                      appear exactly once
+     */
     public StatutoryDeductionService(
             SystemSettingService systemSettingService,
-            PayrollCalculationService payrollCalculationService) {
+            PayrollCalculationService payrollCalculationService,
+            List<StatutoryContribution> contributions) {
 
         this.systemSettingService = systemSettingService;
         this.payrollCalculationService = payrollCalculationService;
+        this.statutoryContributions = List.copyOf(contributions);
+
+        for (StatutoryContribution.Type type : StatutoryContribution.Type.values()) {
+            long count = this.statutoryContributions.stream().filter(c -> c.type() == type).count();
+            if (count != 1) {
+                throw new IllegalStateException(
+                        "Expected exactly one " + type + " contribution, found " + count);
+            }
+        }
     }
 
     /** Off unless the statutory_deductions_enabled setting is "true". */
@@ -140,11 +161,15 @@ public class StatutoryDeductionService {
                 10,
                 RoundingMode.HALF_UP);
 
-        BigDecimal sss = money(monthlySss(salary).multiply(periodShare));
-        BigDecimal philHealth = money(monthlyPhilHealth(salary).multiply(periodShare));
-        BigDecimal pagIbig = money(monthlyPagIbig(salary).multiply(periodShare));
+        // Every contribution is asked the same way; each answers with its own formula.
+        Map<StatutoryContribution.Type, PeriodShares> shares = new EnumMap<>(StatutoryContribution.Type.class);
+        for (StatutoryContribution contribution : statutoryContributions) {
+            shares.put(contribution.type(), contribution.forPeriod(salary, periodShare));
+        }
 
-        BigDecimal contributions = sss.add(philHealth).add(pagIbig);
+        BigDecimal contributions = shares.values().stream()
+                .map(PeriodShares::employee)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<String> notes = new ArrayList<>();
 
@@ -164,100 +189,23 @@ public class StatutoryDeductionService {
         BigDecimal tax = PhilippineWithholdingTax.forPeriod(cycleType, taxable);
 
         EmployerShares employer = new EmployerShares(
-                money(monthlySssEmployer(salary).multiply(periodShare)),
-                money(monthlyEc(salary).multiply(periodShare)),
-                money(monthlyPhilHealthEmployer(salary).multiply(periodShare)),
-                money(monthlyPagIbigEmployer(salary).multiply(periodShare)));
+                shares.get(StatutoryContribution.Type.SSS).employer(),
+                shares.values().stream()
+                        .map(PeriodShares::employeesCompensation)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add),
+                shares.get(StatutoryContribution.Type.PHILHEALTH).employer(),
+                shares.get(StatutoryContribution.Type.PAG_IBIG).employer());
 
         if (contributions.add(tax).compareTo(grossPay) > 0) {
             notes.add("Statutory deductions (" + contributions.add(tax)
                     + ") exceed gross pay (" + grossPay + "); net pay is set to zero. Review this payroll.");
         }
 
-        return new StatutoryDeductions(sss, philHealth, pagIbig, contributions, money(taxable), tax, employer, notes);
-    }
-
-    /**
-     * SSS Circular 2024-006: Monthly Salary Credit. Brackets are `step` wide
-     * and centred on each credit (e.g. 5,250 to 5,749.99 -> 5,500), clamped
-     * to [minimum, maximum]. The credit above 20,000 is the MPF part; the
-     * rates apply to the whole credit.
-     */
-    BigDecimal monthlySalaryCredit(BigDecimal salary) {
-
-        BigDecimal minimum = decimal("sss_msc_minimum");
-        BigDecimal maximum = decimal("sss_msc_maximum");
-        BigDecimal step = decimal("sss_msc_step");
-
-        BigDecimal steps = salary
-                .subtract(minimum.subtract(step.divide(BigDecimal.valueOf(2))))
-                .divide(step, 0, RoundingMode.FLOOR);
-
-        return minimum.add(step.multiply(steps)).max(minimum).min(maximum);
-    }
-
-    /** SSS employee share = rate x MSC. */
-    BigDecimal monthlySss(BigDecimal salary) {
-        return monthlySalaryCredit(salary).multiply(decimal("sss_employee_rate"));
-    }
-
-    /** SSS employer share = rate x MSC (10% in the 2025 schedule). */
-    BigDecimal monthlySssEmployer(BigDecimal salary) {
-        return monthlySalaryCredit(salary).multiply(decimal("sss_employer_rate"));
-    }
-
-    /** Employees' Compensation, paid by the employer: a flat amount by MSC. */
-    BigDecimal monthlyEc(BigDecimal salary) {
-        return monthlySalaryCredit(salary).compareTo(decimal("sss_ec_msc_threshold")) < 0
-                ? decimal("sss_ec_amount_low")
-                : decimal("sss_ec_amount_high");
-    }
-
-    /** PhilHealth premium: rate x monthly basic salary within [floor, ceiling]. */
-    BigDecimal monthlyPhilHealthPremium(BigDecimal salary) {
-
-        BigDecimal basis = salary
-                .max(decimal("philhealth_salary_floor"))
-                .min(decimal("philhealth_salary_ceiling"));
-
-        return basis.multiply(decimal("philhealth_premium_rate"));
-    }
-
-    /** PhilHealth employee share of the premium. */
-    BigDecimal monthlyPhilHealth(BigDecimal salary) {
-        return monthlyPhilHealthPremium(salary).multiply(decimal("philhealth_employee_share"));
-    }
-
-    /** PhilHealth employer share: the rest of the premium. */
-    BigDecimal monthlyPhilHealthEmployer(BigDecimal salary) {
-        return monthlyPhilHealthPremium(salary).subtract(monthlyPhilHealth(salary));
-    }
-
-    /**
-     * Pag-IBIG employer share: RA 9679 Sec. 7, 2% for every employee
-     * (including those earning 1,500 or less), on compensation up to the
-     * maximum fund salary.
-     */
-    BigDecimal monthlyPagIbigEmployer(BigDecimal salary) {
-        return salary.min(decimal("pagibig_max_fund_salary")).multiply(decimal("pagibig_employer_rate"));
-    }
-
-    /** Pag-IBIG: lower rate at or below the threshold; basis capped at the maximum fund salary. */
-    BigDecimal monthlyPagIbig(BigDecimal salary) {
-
-        BigDecimal rate = salary.compareTo(decimal("pagibig_low_salary_threshold")) <= 0
-                ? decimal("pagibig_low_salary_rate")
-                : decimal("pagibig_employee_rate");
-
-        return salary.min(decimal("pagibig_max_fund_salary")).multiply(rate);
-    }
-
-    private BigDecimal decimal(String settingName) {
-        try {
-            return new BigDecimal(systemSettingService.getSettingValue(settingName).trim());
-        } catch (NumberFormatException e) {
-            throw new IllegalStateException("Invalid " + settingName + " setting; expected a number");
-        }
+        return new StatutoryDeductions(
+                shares.get(StatutoryContribution.Type.SSS).employee(),
+                shares.get(StatutoryContribution.Type.PHILHEALTH).employee(),
+                shares.get(StatutoryContribution.Type.PAG_IBIG).employee(),
+                contributions, money(taxable), tax, employer, notes);
     }
 
     private static BigDecimal money(BigDecimal amount) {

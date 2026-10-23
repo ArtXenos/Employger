@@ -172,6 +172,45 @@ public class Payroll {
         PAID
     }
 
+    // ---------- lifecycle: DRAFT -> PROCESSED -> PAID ----------
+    // The payroll enforces its own transitions. PayrollService calls the
+    // check first (before recalculating) and the transition last.
+
+    public boolean isDraft() {
+        return status == Status.DRAFT;
+    }
+
+    /** Throws unless this payroll can be processed (only DRAFT can). */
+    public void checkCanProcess() {
+        if (status != Status.DRAFT) {
+            throw new IllegalStateException("Only DRAFT payroll can be processed");
+        }
+    }
+
+    /** DRAFT -> PROCESSED, recording who processed it and when. */
+    public void process(User processedBy, LocalDateTime processedAt) {
+        checkCanProcess();
+        this.status = Status.PROCESSED;
+        this.processedBy = processedBy;
+        this.processedAt = processedAt;
+    }
+
+    /** Throws unless this payroll can be paid (only PROCESSED can). */
+    public void checkCanBePaid() {
+        if (status != Status.PROCESSED) {
+            throw new IllegalStateException("Only PROCESSED payroll can be marked as paid");
+        }
+    }
+
+    /** PROCESSED -> PAID, recording the payment. */
+    public void markPaid(String paymentMethod, String paymentReference, LocalDateTime paymentDate) {
+        checkCanBePaid();
+        this.status = Status.PAID;
+        this.paymentMethod = paymentMethod;
+        this.paymentReference = paymentReference;
+        this.paymentDate = paymentDate;
+    }
+
     public Integer getPayrollId() {
         return payrollId;
     }

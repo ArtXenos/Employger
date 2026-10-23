@@ -46,24 +46,39 @@ public class Earning {
     @JoinColumn(name = "payroll_id")
     private Payroll payroll;
 
-    /** How each type is taxed: see docs/STATUTORY_DEDUCTIONS.md. */
+    /**
+     * How each type is taxed: see docs/STATUTORY_DEDUCTIONS.md. The de
+     * minimis limits and periods are in the DeMinimisBenefit subclasses
+     * (package service.earning).
+     */
     public enum Type {
         /** 13th month pay (PD 851); in the 90,000 cap. */
-        THIRTEENTH_MONTH,
+        THIRTEENTH_MONTH("13th month pay"),
         /** Christmas bonus, productivity incentive, loyalty award...; in the 90,000 cap. */
-        OTHER_BENEFIT,
+        OTHER_BENEFIT("Other benefit"),
         /** Taxable, except for minimum wage earners (RR 11-2018). */
-        HAZARD_PAY,
+        HAZARD_PAY("Hazard pay"),
         /** Commissions and taxable allowances: always taxable. */
-        TAXABLE_ALLOWANCE,
+        TAXABLE_ALLOWANCE("Taxable allowance"),
         /** Rice subsidy: exempt up to the monthly limit. */
-        DE_MINIMIS_RICE,
+        DE_MINIMIS_RICE("Rice subsidy"),
         /** Uniform and clothing allowance: exempt up to the yearly limit. */
-        DE_MINIMIS_CLOTHING,
+        DE_MINIMIS_CLOTHING("Clothing allowance"),
         /** Medical cash allowance to dependents: exempt up to the semester limit. */
-        DE_MINIMIS_MEDICAL,
+        DE_MINIMIS_MEDICAL("Medical cash allowance"),
         /** Monetized unused vacation leave: exempt up to the yearly number of days. */
-        DE_MINIMIS_LEAVE;
+        DE_MINIMIS_LEAVE("Monetized unused leave");
+
+        private final String label;
+
+        Type(String label) {
+            this.label = label;
+        }
+
+        /** The name shown in payroll notes and audit entries. */
+        public String getLabel() {
+            return label;
+        }
 
         public boolean isDeMinimis() {
             return name().startsWith("DE_MINIMIS_");

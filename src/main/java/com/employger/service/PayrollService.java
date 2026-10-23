@@ -942,7 +942,7 @@ public class PayrollService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Payroll not found"));
 
-                if (payroll.getStatus() != Payroll.Status.DRAFT) {
+                if (!payroll.isDraft()) {
                         throw new IllegalStateException(
                                         "Only DRAFT payroll can be updated. "
                                                         + payroll.getStatus()
@@ -965,10 +965,7 @@ public class PayrollService {
                 Payroll payroll = payrollRepository.findById(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
 
-                if (payroll.getStatus() != Payroll.Status.DRAFT) {
-                        throw new IllegalStateException(
-                                        "Only DRAFT payroll can be processed");
-                }
+                payroll.checkCanProcess();
 
                 ensureNoOverlappingPayroll(
                                 payroll.getEmployee(),
@@ -984,9 +981,7 @@ public class PayrollService {
 
                 applyCalculation(payroll);
 
-                payroll.setStatus(Payroll.Status.PROCESSED);
-                payroll.setProcessedAt(LocalDateTime.now());
-                payroll.setProcessedBy(user);
+                payroll.process(user, LocalDateTime.now());
 
                 auditService.record("PAYROLL_PROCESSED",
                                 "Processed " + describe(payroll) + " with net pay " + payroll.getNetPay()
@@ -1006,10 +1001,7 @@ public class PayrollService {
                 Payroll payroll = payrollRepository.findById(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
 
-                if (payroll.getStatus() != Payroll.Status.PROCESSED) {
-                        throw new IllegalStateException(
-                                        "Only PROCESSED payroll can be marked as paid");
-                }
+                payroll.checkCanBePaid();
 
                 if (paymentMethod == null || paymentMethod.isBlank()) {
                         throw new IllegalArgumentException(
@@ -1037,10 +1029,7 @@ public class PayrollService {
                                 payroll.getPayCycle(),
                                 payroll.getPayrollId());
 
-                payroll.setStatus(Payroll.Status.PAID);
-                payroll.setPaymentDate(java.time.LocalDateTime.now());
-                payroll.setPaymentMethod(paymentMethod);
-                payroll.setPaymentReference(paymentReference);
+                payroll.markPaid(paymentMethod, paymentReference, LocalDateTime.now());
 
                 auditService.record("PAYROLL_PAID",
                                 "Marked " + describe(payroll) + " as PAID: net pay " + payroll.getNetPay()
@@ -1060,7 +1049,7 @@ public class PayrollService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Payroll not found"));
 
-                if (payroll.getStatus() != Payroll.Status.DRAFT) {
+                if (!payroll.isDraft()) {
                         throw new IllegalStateException(
                                         "Only DRAFT payroll can be deleted. "
                                                         + payroll.getStatus()

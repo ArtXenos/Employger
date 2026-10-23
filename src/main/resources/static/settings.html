@@ -105,11 +105,11 @@
                 <label for="currency_code">Currency Code</label>
                 <select id="currency_code" name="currency_code" required>
                   <option value="PHP">PHP — Philippine Peso</option>
-                  <option value="USD">USD — US Dollar</option>
-                  <option value="EUR">EUR — Euro</option>
-                  <option value="GBP">GBP — Pound Sterling</option>
-                  <option value="SGD">SGD — Singapore Dollar</option>
                 </select>
+                <small>
+                  Fixed: Em-Ployger calculates Philippine payroll (SSS,
+                  PhilHealth, Pag-IBIG, BIR), whose rates and limits are in pesos.
+                </small>
               </div>
 
               <div class="setting-field">
@@ -118,9 +118,10 @@
                   id="currency_symbol"
                   name="currency_symbol"
                   maxlength="10"
+                  readonly
                   required
                 />
-                <small>Example: ₱ for PHP.</small>
+                <small>Fixed to ₱ with the currency.</small>
               </div>
             </div>
           </section>

@@ -16,6 +16,9 @@
 }
 
 .table-wrapper {
+  /* Keeps the absolutely positioned (visually hidden) captions inside
+     the scroll box, so they don't widen the page on phones. */
+  position: relative;
   overflow-x: auto;
 }
 

@@ -11,6 +11,8 @@ public interface OvertimeRepository
 
     List<Overtime> findByEmployeeEmployeeId(Integer employeeId);
 
+    long countByStatus(Overtime.Status status);
+
     List<Overtime> findByAttendanceAttendanceId(Integer attendanceId);
 
     List<Overtime> findByPayrollPayrollId(Integer payrollId);

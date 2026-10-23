@@ -143,6 +143,20 @@ public class Employee {
         this.dateOfBirth = dateOfBirth;
     }
 
+    /**
+     * Changes the contact details together, the way both HR and the
+     * employee (self-service) do: email is required and trimmed; a blank
+     * phone or address is stored as NULL.
+     */
+    public void updateContactDetails(String email, String phone, String address) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required.");
+        }
+        this.email = email.trim();
+        this.phone = phone == null || phone.isBlank() ? null : phone.trim();
+        this.address = address == null || address.isBlank() ? null : address.trim();
+    }
+
     public String getEmail() {
         return email;
     }

@@ -1,15 +1,25 @@
 package com.employger.controller;
 
+import com.employger.dto.ContactDetailsRequest;
+import com.employger.dto.OvertimeFilingRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
 import com.employger.entity.Payroll;
 import com.employger.entity.Payslip;
+import com.employger.service.ReportService;
 import com.employger.service.SelfServiceService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -20,8 +30,9 @@ import java.util.List;
 
 /**
  * Employee self-service: the logged-in user's own profile, payroll,
- * attendance, and overtime. Read-only. Responses are purpose-built records
- * so no other employee's or user's data is ever included.
+ * attendance, overtime and BIR 2316. Employees may also file overtime and
+ * change their contact details. Responses are purpose-built records so no
+ * other employee's or user's data is ever included.
  */
 @RestController
 @RequestMapping("/api/me")
@@ -74,11 +85,35 @@ public class SelfServiceController {
                 .toList();
     }
 
+    @PutMapping("/contact")
+    public ProfileResponse updateContact(
+            @Valid @RequestBody ContactDetailsRequest request,
+            Authentication authentication) {
+
+        return new ProfileResponse(selfServiceService.updateMyContactDetails(authentication.getName(), request));
+    }
+
+    @PostMapping("/overtime")
+    @ResponseStatus(HttpStatus.CREATED)
+    public OvertimeResponse fileOvertime(
+            @Valid @RequestBody OvertimeFilingRequest request,
+            Authentication authentication) {
+
+        return new OvertimeResponse(selfServiceService.fileOvertime(authentication.getName(), request));
+    }
+
+    @GetMapping("/bir-2316")
+    public ReportService.Form2316 getForm2316(@RequestParam int year, Authentication authentication) {
+        return selfServiceService.getMyForm2316(authentication.getName(), year);
+    }
+
     public record ProfileResponse(
             Integer employeeId,
             String firstName,
             String lastName,
             String email,
+            String phone,
+            String address,
             String department,
             String jobTitle,
             LocalDate dateHired) {
@@ -89,6 +124,8 @@ public class SelfServiceController {
                     employee.getFirstName(),
                     employee.getLastName(),
                     employee.getEmail(),
+                    employee.getPhone(),
+                    employee.getAddress(),
                     employee.getDepartment(),
                     employee.getJobTitle(),
                     employee.getDateHired());

@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.dto.ContactDetailsRequest;
 import com.employger.dto.EmployeeRequest;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Employee;
@@ -10,7 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -64,6 +67,45 @@ public class EmployeeService {
         auditService.record("EMPLOYEE_CREATED",
                 "Created employee #" + saved.getEmployeeId() + " with base salary " + saved.getBaseSalary()
                         + (saved.isMinimumWageEarner() ? ", minimum wage earner" : ""));
+
+        return saved;
+    }
+
+    /**
+     * Self-service: an employee changes their own email, phone and address.
+     * The audit entry names the fields that changed, not their values.
+     */
+    @Transactional
+    public Employee updateOwnContactDetails(Employee employee, ContactDetailsRequest request) {
+
+        if (employeeRepository.existsByEmailIgnoreCaseAndEmployeeIdNot(
+                request.email().trim(), employee.getEmployeeId())) {
+            throw new IllegalStateException("Another employee already uses this email address.");
+        }
+
+        String oldEmail = employee.getEmail();
+        String oldPhone = employee.getPhone();
+        String oldAddress = employee.getAddress();
+
+        employee.updateContactDetails(request.email(), request.phone(), request.address());
+
+        List<String> changed = new ArrayList<>();
+        if (!Objects.equals(oldEmail, employee.getEmail())) {
+            changed.add("email");
+        }
+        if (!Objects.equals(oldPhone, employee.getPhone())) {
+            changed.add("phone");
+        }
+        if (!Objects.equals(oldAddress, employee.getAddress())) {
+            changed.add("address");
+        }
+
+        Employee saved = employeeRepository.save(employee);
+
+        if (!changed.isEmpty()) {
+            auditService.record("EMPLOYEE_CONTACT_UPDATED",
+                    "Employee #" + saved.getEmployeeId() + " updated their own " + String.join(", ", changed));
+        }
 
         return saved;
     }
@@ -143,9 +185,7 @@ public class EmployeeService {
         employee.setFirstName(request.getFirstName().trim());
         employee.setLastName(request.getLastName().trim());
         employee.setDateOfBirth(request.getDateOfBirth());
-        employee.setEmail(request.getEmail().trim());
-        employee.setPhone(blankToNull(request.getPhone()));
-        employee.setAddress(blankToNull(request.getAddress()));
+        employee.updateContactDetails(request.getEmail(), request.getPhone(), request.getAddress());
         employee.setDepartment(blankToNull(request.getDepartment()));
         employee.setGender(blankToNull(request.getGender()));
         employee.setBaseSalary(request.getBaseSalary());

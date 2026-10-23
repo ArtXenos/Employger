@@ -28,6 +28,12 @@
           <a href="#overtimeSection" class="nav-item"
             ><span aria-hidden="true">↗</span>My Overtime</a
           >
+          <a href="#form2316Section" class="nav-item"
+            ><span aria-hidden="true">▤</span>My BIR 2316</a
+          >
+          <a href="#detailsSection" class="nav-item"
+            ><span aria-hidden="true">♙</span>My Details</a
+          >
         </nav>
 
         <button id="logoutButton" class="logout-button" type="button">
@@ -75,7 +81,13 @@
 
             <article id="payslipDetail" class="payslip-detail" hidden tabindex="-1"
               aria-labelledby="payslipTitle">
-              <h3 id="payslipTitle">Payslip</h3>
+              <div class="detail-header">
+                <h3 id="payslipTitle">Payslip</h3>
+                <button id="printPayslipButton" class="secondary-button print-button" type="button">
+                  Print payslip
+                </button>
+              </div>
+              <p id="payslipEmployee" class="print-only"></p>
               <dl id="payslipLines" class="payslip-lines"></dl>
             </article>
           </section>
@@ -112,9 +124,25 @@
             <div class="section-header">
               <div>
                 <h2 id="overtimeHeading">Overtime</h2>
-                <p>Your overtime requests and their status.</p>
+                <p>File overtime for a day you worked. HR approves or rejects it.</p>
               </div>
             </div>
+
+            <form id="overtimeForm" class="self-service-form" novalidate>
+              <div class="field">
+                <label for="overtimeDate">Date worked</label>
+                <input id="overtimeDate" name="date" type="date" required />
+              </div>
+              <div class="field">
+                <label for="overtimeHours">Overtime hours</label>
+                <input id="overtimeHours" name="hours" type="number" min="0.25" max="24" step="0.25"
+                  inputmode="decimal" required />
+              </div>
+              <div class="form-actions">
+                <button id="overtimeSubmit" class="primary-button" type="submit">File overtime</button>
+              </div>
+              <p id="overtimeMessage" class="form-feedback" role="status" aria-live="polite"></p>
+            </form>
 
             <div class="table-wrapper">
               <table>
@@ -132,6 +160,70 @@
                 </tbody>
               </table>
             </div>
+          </section>
+
+          <section class="section-card" id="form2316Section" aria-labelledby="form2316Heading">
+            <div class="section-header">
+              <div>
+                <h2 id="form2316Heading">BIR Form 2316</h2>
+                <p>Your yearly certificate of compensation and tax withheld, from processed and paid payroll.</p>
+              </div>
+            </div>
+
+            <form id="form2316Form" class="self-service-form" novalidate>
+              <div class="field">
+                <label for="form2316Year">Year</label>
+                <input id="form2316Year" name="year" type="number" min="2000" max="2100" step="1" required />
+              </div>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Show</button>
+                <button id="print2316Button" class="secondary-button print-button" type="button" hidden>
+                  Print 2316
+                </button>
+              </div>
+              <p id="form2316Message" class="form-feedback" role="status" aria-live="polite"></p>
+            </form>
+
+            <article id="form2316Result" class="form2316-result" hidden aria-labelledby="form2316Title">
+              <h3 id="form2316Title">BIR Form 2316</h3>
+              <ul id="form2316Notes" class="notes"></ul>
+              <div class="table-wrapper">
+                <table class="figures-table">
+                  <caption class="visually-hidden">BIR Form 2316 figures</caption>
+                  <tbody id="form2316TableBody"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          <section class="section-card" id="detailsSection" aria-labelledby="detailsHeading">
+            <div class="section-header">
+              <div>
+                <h2 id="detailsHeading">My Details</h2>
+                <p>Keep your contact details up to date. For your name, salary, department or government numbers, contact HR.</p>
+              </div>
+            </div>
+
+            <dl id="detailsReadOnly" class="details-list"></dl>
+
+            <form id="contactForm" class="self-service-form contact-form" novalidate>
+              <div class="field">
+                <label for="contactEmail">Email</label>
+                <input id="contactEmail" name="email" type="email" maxlength="150" autocomplete="email" required />
+              </div>
+              <div class="field">
+                <label for="contactPhone">Phone <span class="optional">(optional)</span></label>
+                <input id="contactPhone" name="phone" type="tel" maxlength="30" autocomplete="tel" />
+              </div>
+              <div class="field field-wide">
+                <label for="contactAddress">Address <span class="optional">(optional)</span></label>
+                <input id="contactAddress" name="address" type="text" maxlength="255" autocomplete="street-address" />
+              </div>
+              <div class="form-actions">
+                <button id="contactSubmit" class="primary-button" type="submit">Save details</button>
+              </div>
+              <p id="contactMessage" class="form-feedback" role="status" aria-live="polite"></p>
+            </form>
           </section>
         </div>
       </main>

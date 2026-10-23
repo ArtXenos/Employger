@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Payroll and overtime refuse transitions their lifecycle does not allow. */
+/** Domain methods that guard an entity's own state: payroll and overtime lifecycles, employee contact details. */
 class LifecycleTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 24, 9, 0);
@@ -84,6 +84,31 @@ class LifecycleTest {
 
         assertThat(overtime.getStatus()).isEqualTo(Overtime.Status.REJECTED);
         assertThat(overtime.getApprovedBy()).isSameAs(hr);
+    }
+
+    // ---------- employee contact details ----------
+
+    @Test
+    void contactDetailsAreTrimmedAndBlanksStoredAsNull() {
+        Employee employee = new Employee();
+
+        employee.updateContactDetails("  ana@example.test ", " 0917 123 4567 ", "   ");
+
+        assertThat(employee.getEmail()).isEqualTo("ana@example.test");
+        assertThat(employee.getPhone()).isEqualTo("0917 123 4567");
+        assertThat(employee.getAddress()).isNull();
+    }
+
+    @Test
+    void contactDetailsNeedAnEmail() {
+        Employee employee = new Employee();
+        employee.setEmail("kept@example.test");
+
+        assertThatThrownBy(() -> employee.updateContactDetails(" ", "0917", "Cebu"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Email is required.");
+        assertThat(employee.getEmail()).isEqualTo("kept@example.test");
+        assertThat(employee.getPhone()).isNull();
     }
 
     @ParameterizedTest

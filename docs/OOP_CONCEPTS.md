@@ -40,6 +40,21 @@ public abstract class DeMinimisBenefit {
 
 > "BIR rules let some small benefits be tax-free up to a limit, for example rice subsidy, clothing, medical allowance and monetized leave. Each has its own period and limit, but the calculator treats them all the same way: find the period, find the limit, and see how much is still unused."
 
+### `PayrollMetric`: "an amount the company overview totals"
+
+[src/main/java/com/employger/service/metric/PayrollMetric.java:15](../src/main/java/com/employger/service/metric/PayrollMetric.java#L15)
+
+```java
+public abstract class PayrollMetric {
+    public abstract String key();
+    public abstract String label();
+    public abstract BigDecimal amountOf(Payroll payroll);
+    public final BigDecimal total(Collection<Payroll> payrolls) { ... }
+}
+```
+
+> "The general manager's dashboard shows gross pay, overtime pay, employer contributions and labor cost, per month, per department and over six months. That's 4 metrics × 3 views. Instead of writing 12 loops, every metric answers one question, 'what does this one payroll contribute?', and the parent's `total()` does the adding and rounding for all of them."
+
 ---
 
 ## 2. Inheritance
@@ -66,6 +81,28 @@ public abstract class DeMinimisBenefit {
 | `MonetizedLeave` | [MonetizedLeave.java:12](../src/main/java/com/employger/service/earning/MonetizedLeave.java#L12) | Year (inherited `calendarYear()` helper) | 10 days × daily rate |
 
 The limits shown are the defaults. HR can change them in Settings.
+
+### Four metrics extend `PayrollMetric`
+
+| Class | Line | `amountOf(payroll)` returns |
+|---|---|---|
+| `GrossPayMetric` | [GrossPayMetric.java:12](../src/main/java/com/employger/service/metric/GrossPayMetric.java#L12) | Gross pay |
+| `OvertimePayMetric` | [OvertimePayMetric.java:12](../src/main/java/com/employger/service/metric/OvertimePayMetric.java#L12) | Overtime pay |
+| `EmployerContributionsMetric` | [EmployerContributionsMetric.java:16](../src/main/java/com/employger/service/metric/EmployerContributionsMetric.java#L16) | Employer SSS + EC + PhilHealth + Pag-IBIG (missing values on older payroll count as zero, via the inherited `orZero()` helper) |
+| `LaborCostMetric` | [LaborCostMetric.java:16](../src/main/java/com/employger/service/metric/LaborCostMetric.java#L16) | Gross pay + employer contributions |
+
+### Composition instead of inheritance: `LaborCostMetric`
+
+Labor cost is gross pay plus employer contributions. It would be easy to write `LaborCostMetric extends EmployerContributionsMetric` and add gross pay, but labor cost **is not a kind of** employer contribution. It is **made of** two other metrics. So `LaborCostMetric` extends only the general `PayrollMetric` and **holds** the two metrics it adds up ([LaborCostMetric.java:38](../src/main/java/com/employger/service/metric/LaborCostMetric.java#L38)):
+
+```java
+@Override
+public BigDecimal amountOf(Payroll payroll) {
+    return grossPay.amountOf(payroll).add(employerContributions.amountOf(payroll));
+}
+```
+
+> "Inheritance means 'is a'; composition means 'has a'. Labor cost has a gross pay part and an employer-contribution part, so it holds them instead of extending one."
 
 ---
 
@@ -99,6 +136,17 @@ BigDecimal limit = benefit.limit(dailyRate);
 ```
 
 Before the refactor, this was a `switch` over the four types, each case with its own period and limit.
+
+### The company overview totals any metric the same way
+
+[src/main/java/com/employger/service/ExecutiveDashboardService.java:79](../src/main/java/com/employger/service/ExecutiveDashboardService.java#L79)
+
+```java
+metrics.stream()
+        .map(metric -> new MetricTotal(metric.key(), metric.label(), metric.total(monthPayroll)))
+```
+
+The same call fills the month totals, every department row and every month of the six-month trend. Adding a new figure to the dashboard, e.g. net pay, means adding one `PayrollMetric` subclass; the service, the API and the table code don't change.
 
 ### Overriding a default: only SSS has EC
 
@@ -140,10 +188,31 @@ public void markPaid(String paymentMethod, String paymentReference, LocalDateTim
 
 [src/main/java/com/employger/entity/Overtime.java:90-108](../src/main/java/com/employger/entity/Overtime.java#L90-L108). `approve()` and `reject()` both refuse a request that has already been decided.
 
+### Employee contact details change together, through the object
+
+[src/main/java/com/employger/entity/Employee.java:151](../src/main/java/com/employger/entity/Employee.java#L151)
+
+```java
+public void updateContactDetails(String email, String phone, String address) {
+    if (email == null || email.isBlank()) {
+        throw new IllegalArgumentException("Email is required.");
+    }
+    ...
+}
+```
+
+Employees can now change their own email, phone and address on **My Details**, and HR can change them on the Employees page. Both go through this one method, so the rules are the same either way: email required and trimmed, a blank phone or address stored as empty. Before, HR's code set the three fields one by one.
+
+### Requests that only accept what the user may change
+
+- `ContactDetailsRequest` ([ContactDetailsRequest.java:12](../src/main/java/com/employger/dto/ContactDetailsRequest.java#L12)) has exactly three fields: email, phone and address. If an employee's browser sends `"baseSalary": 999999` or `"department": "Executive"`, there's nowhere for it to go, so it's ignored. A test proves the salary stays unchanged.
+- `OvertimeFilingRequest` ([OvertimeFilingRequest.java:15](../src/main/java/com/employger/dto/OvertimeFilingRequest.java#L15)) has only the date and the hours. The employee comes from the login, and the status, rate and amount are set by the server, so an employee can't file overtime for someone else or mark it approved.
+
 ### Hidden data
 
 - Every entity field is `private`. For example, `User.passwordHash` ([User.java:26](../src/main/java/com/employger/entity/User.java#L26)) is never sent to the browser.
 - Response DTOs such as `EmployeeResponse` and `EmployeeSummary` choose what leaves the server. Payroll lists show an employee's ID, name, department and job title, but never their salary, birth date, address or photo.
+- The company overview for general managers returns totals only: no names, salaries or government numbers. A test checks the response contains none of them.
 - Each `Earning.Type` keeps its own display label ([Earning.java:72-81](../src/main/java/com/employger/entity/Earning.java#L72-L81)) instead of a `switch` elsewhere.
 - The contribution classes read rates only through the parent's `protected final setting()` method. The settings object itself is `private` to the parent.
 
@@ -244,6 +313,8 @@ Good OOP also means not adding classes that don't earn their place.
 
 ## 7. How we know nothing changed
 
+*(This section is about the 2026-10-24 refactor. The role features added afterwards are covered by their own tests: 23 more, 267 in total.)*
+
 - **Golden comparison.** Before the refactor, a temporary test recorded 360 results: statutory deductions for 27 salaries × 4 pay cycle types × with and without the minimum wage exemption, plus de minimis exemptions for every type on boundary dates like 30 June and 1 July. After each step, the same test was run again, and **all 360 lines were identical**, to the centavo, including the payroll notes.
 - **Tests.** The 204 existing tests still pass, with the same expected values. Unit tests that used to call `service.monthlySss(...)` now call `sss.monthlyEmployeeShare(...)` with the same figures. 40 new tests cover each contribution and benefit class, the polymorphic loop, the Spring wiring, and every allowed and refused lifecycle transition. Total: 244 tests, 0 failures.
 - **Database.** No entity mapping changed and no migration was added. Paid payroll #6 and `default_overtime_rate` = 1.25 were checked in the live database after the change.
@@ -318,6 +389,35 @@ classDiagram
     }
     EarningsCalculator o-- "4" DeMinimisBenefit : asks
 
+    class PayrollMetric {
+        <<abstract>>
+        +key()* String
+        +label()* String
+        +amountOf(Payroll payroll)* BigDecimal
+        +total(Collection~Payroll~ payrolls) BigDecimal
+        #orZero(BigDecimal amount)$ BigDecimal
+    }
+    class GrossPayMetric
+    class OvertimePayMetric
+    class EmployerContributionsMetric
+    class LaborCostMetric {
+        -GrossPayMetric grossPay
+        -EmployerContributionsMetric employerContributions
+        +amountOf(Payroll) BigDecimal
+    }
+    PayrollMetric <|-- GrossPayMetric
+    PayrollMetric <|-- OvertimePayMetric
+    PayrollMetric <|-- EmployerContributionsMetric
+    PayrollMetric <|-- LaborCostMetric
+    LaborCostMetric *-- GrossPayMetric : made of
+    LaborCostMetric *-- EmployerContributionsMetric : made of
+
+    class ExecutiveDashboardService {
+        -List~PayrollMetric~ metrics
+        +summary(YearMonth month) ExecutiveSummary
+    }
+    ExecutiveDashboardService o-- "4" PayrollMetric : totals
+
     class PayrollService
     PayrollService --> StatutoryDeductionService
     PayrollService --> EarningsCalculator
@@ -344,7 +444,12 @@ classDiagram
         -String passwordHash
         -Employee employee
     }
-    class Employee
+    class Employee {
+        -String email
+        -String phone
+        -String address
+        +updateContactDetails(String, String, String)
+    }
     User --> "0..1" Employee : has a (composition, not inheritance)
 
     class UserDetailsService {
@@ -355,4 +460,4 @@ classDiagram
     UserDetailsService <|.. CustomUserDetailsService
 ```
 
-In this diagram, `*` marks abstract methods and `$` marks static ones. `#` means protected, `-` private and `+` public. The subclasses' listed methods are the ones marked `@Override`, except `monthlySalaryCredit()` and `monthlyPremium()`, which are each class's own helpers.
+`LaborCostMetric *-- GrossPayMetric` is a composition arrow: labor cost is built from the other two metrics rather than inheriting from them. In this diagram, `*` after a method marks abstract methods and `$` marks static ones. `#` means protected, `-` private and `+` public. The subclasses' listed methods are the ones marked `@Override`, except `monthlySalaryCredit()` and `monthlyPremium()`, which are each class's own helpers.

@@ -1,5 +1,7 @@
 package com.employger.service;
 
+import com.employger.dto.ContactDetailsRequest;
+import com.employger.dto.OvertimeFilingRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
@@ -20,10 +22,14 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Read-only access for a logged-in user to the records of the employee
- * linked to their account. The employee is always taken from the login,
- * never from the request, so one employee cannot read another's data.
+ * Self-service for a logged-in user, on the records of the employee linked
+ * to their account. The employee is always taken from the login, never from
+ * the request, so one employee cannot read or change another's data.
  * DRAFT payroll is not shown: it is not final.
+ *
+ * Read-only except three actions, each delegated to the service that owns
+ * the rules: filing overtime (OvertimeService), changing contact details
+ * (EmployeeService) and the yearly BIR 2316 (ReportService).
  */
 @Service
 @Transactional(readOnly = true)
@@ -34,19 +40,31 @@ public class SelfServiceService {
     private final PayslipRepository payslipRepository;
     private final AttendanceRepository attendanceRepository;
     private final OvertimeRepository overtimeRepository;
+    private final OvertimeService overtimeService;
+    private final EmployeeService employeeService;
+    private final ReportService reportService;
+    private final AuditService auditService;
 
     public SelfServiceService(
             UserRepository userRepository,
             PayrollRepository payrollRepository,
             PayslipRepository payslipRepository,
             AttendanceRepository attendanceRepository,
-            OvertimeRepository overtimeRepository) {
+            OvertimeRepository overtimeRepository,
+            OvertimeService overtimeService,
+            EmployeeService employeeService,
+            ReportService reportService,
+            AuditService auditService) {
 
         this.userRepository = userRepository;
         this.payrollRepository = payrollRepository;
         this.payslipRepository = payslipRepository;
         this.attendanceRepository = attendanceRepository;
         this.overtimeRepository = overtimeRepository;
+        this.overtimeService = overtimeService;
+        this.employeeService = employeeService;
+        this.reportService = reportService;
+        this.auditService = auditService;
     }
 
     public Employee getMyEmployee(String username) {
@@ -109,5 +127,45 @@ public class SelfServiceService {
                 .stream()
                 .sorted(Comparator.comparing(Overtime::getOvertimeDate).reversed())
                 .toList();
+    }
+
+    /**
+     * Files a PENDING overtime request for the employee's own worked day.
+     * OvertimeService applies the same rules as when HR files it: the day
+     * must be worked, not locked by processed or paid payroll, and within
+     * the daily hour limit. HR then approves or rejects it.
+     */
+    @Transactional
+    public Overtime fileOvertime(String username, OvertimeFilingRequest request) {
+
+        Employee employee = getMyEmployee(username);
+
+        Attendance attendance = attendanceRepository
+                .findByEmployeeEmployeeIdAndAttendanceDate(employee.getEmployeeId(), request.date())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No attendance is recorded for " + request.date()
+                                + ". Overtime can only be filed for a day you worked."));
+
+        Overtime overtime = new Overtime();
+        overtime.setOvertimeDate(request.date());
+        overtime.setHours(request.hours());
+        overtime.setAttendance(attendance);
+
+        Overtime saved = overtimeService.createOvertime(employee.getEmployeeId(), overtime);
+
+        auditService.record("OVERTIME_REQUESTED",
+                "Employee #" + employee.getEmployeeId() + " filed overtime #" + saved.getOvertimeId()
+                        + " (" + saved.getOvertimeDate() + ", " + saved.getHours() + " h)");
+
+        return saved;
+    }
+
+    @Transactional
+    public Employee updateMyContactDetails(String username, ContactDetailsRequest request) {
+        return employeeService.updateOwnContactDetails(getMyEmployee(username), request);
+    }
+
+    public ReportService.Form2316 getMyForm2316(String username, int year) {
+        return reportService.form2316(year, getMyEmployee(username).getEmployeeId());
     }
 }

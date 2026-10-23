@@ -115,3 +115,203 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ---------- self-service forms (file overtime, BIR 2316, my details) ---------- */
+
+.self-service-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin: 0 0 18px;
+}
+
+.self-service-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.self-service-form .field-wide {
+  flex: 1 1 320px;
+}
+
+.self-service-form label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.self-service-form .optional {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.self-service-form input {
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.self-service-form input:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+  border-color: var(--blue);
+}
+
+.self-service-form input[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+
+.self-service-form .form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.form-feedback {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 14px;
+}
+
+.form-feedback:empty {
+  display: none;
+}
+
+.form-feedback.error {
+  color: #b91c1c;
+}
+
+.form-feedback.success {
+  color: #047857;
+}
+
+.contact-form {
+  margin-top: 16px;
+}
+
+.details-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 20px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.details-list dt {
+  color: var(--muted);
+}
+
+.details-list dd {
+  margin: 0;
+}
+
+.detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.detail-header h3 {
+  margin: 0;
+}
+
+.form2316-result h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.notes {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.notes:empty {
+  display: none;
+}
+
+.figures-table th {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text);
+  white-space: normal;
+}
+
+.figures-table .figures-heading th {
+  padding-top: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.figures-table .total-row :is(th, td) {
+  font-weight: 700;
+}
+
+.print-only {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .self-service-form .field {
+    flex: 1 1 100%;
+  }
+}
+
+/* Printing: my-payroll.js sets data-print on <body> to the one document
+   being printed (payslip or form2316); everything else is hidden. */
+@media print {
+  body {
+    background: white;
+  }
+
+  .sidebar,
+  .topbar,
+  .page-message,
+  .print-button,
+  .self-service-form,
+  body[data-print] .section-card {
+    display: none !important;
+  }
+
+  body[data-print="payslip"] #payrollSection,
+  body[data-print="form2316"] #form2316Section {
+    display: block !important;
+    border: none;
+    box-shadow: none;
+  }
+
+  body[data-print] #payrollSection > :not(#payslipDetail),
+  body[data-print] #form2316Section > :not(#form2316Result) {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block;
+    margin: 0 0 12px;
+  }
+
+  .payslip-detail {
+    border: none;
+    background: white;
+  }
+
+  .main-content,
+  .dashboard-content {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}

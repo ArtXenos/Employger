@@ -87,6 +87,13 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/reports/**")
                                                 .hasAnyRole("ADMINISTRATOR", "HR_MANAGER")
 
+                                                // Company overview: totals only, no personal data.
+                                                .requestMatchers(HttpMethod.GET, "/api/dashboard/**")
+                                                .hasAnyRole(
+                                                                "ADMINISTRATOR",
+                                                                "HR_MANAGER",
+                                                                "GENERAL_MANAGER")
+
                                                 // Self-service: any logged-in user, limited by
                                                 // the service to the employee linked to that login.
                                                 .requestMatchers("/api/me/**")

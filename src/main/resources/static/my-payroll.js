@@ -1,6 +1,10 @@
 // Employee self-service page. All data comes from /api/me/*, which the
 // server limits to the employee linked to the logged-in account.
 // Values are rendered with textContent only.
+//
+// Employees can also file overtime, print a payslip, view and print their
+// BIR 2316, and change their contact details. csrf.js adds the security
+// token to every write request.
 
 const payrollTableBody = document.getElementById("payrollTableBody");
 const attendanceTableBody = document.getElementById("attendanceTableBody");
@@ -9,6 +13,8 @@ const payslipDetail = document.getElementById("payslipDetail");
 const payslipTitle = document.getElementById("payslipTitle");
 const payslipLines = document.getElementById("payslipLines");
 const pageMessage = document.getElementById("pageMessage");
+
+let profile = null;
 
 const peso = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
 
@@ -27,6 +33,51 @@ async function getJson(url) {
 
   return response.json();
 }
+
+// Writes JSON; on failure throws the server's plain-text message.
+async function sendJson(method, url, body) {
+  const response = await fetch(url, {
+    method,
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (response.status === 401) {
+    window.location.href = "/";
+    throw new Error("Please log in.");
+  }
+
+  if (!response.ok) {
+    const message = (await response.text()).trim();
+    throw new Error(message || `Request failed (HTTP ${response.status}).`);
+  }
+
+  return response.json();
+}
+
+function setFeedback(element, message, kind) {
+  element.textContent = message || "";
+  element.className = "form-feedback" + (kind ? " " + kind : "");
+}
+
+function localDate(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+// Prints one document: my-payroll.css hides everything else.
+function printOnly(name) {
+  document.body.dataset.print = name;
+  window.print();
+}
+
+window.addEventListener("afterprint", () => {
+  delete document.body.dataset.print;
+});
 
 function money(value) {
   return value === null || value === undefined ? "—" : peso.format(Number(value));
@@ -106,6 +157,9 @@ function showPayslip(payroll, row) {
 
   payslipTitle.textContent =
     `Payslip — ${payroll.payCycleName} (${payroll.cycleStartDate} to ${payroll.cycleEndDate})`;
+  document.getElementById("payslipEmployee").textContent = profile
+    ? `${profile.firstName} ${profile.lastName} · Employee #${profile.employeeId}`
+    : "";
 
   const lines = [
     ["Base pay", money(payroll.basePay)],
@@ -194,21 +248,245 @@ function renderOvertime(records) {
   );
 }
 
+// ---------- filing overtime ----------
+
+const overtimeForm = document.getElementById("overtimeForm");
+const overtimeDate = document.getElementById("overtimeDate");
+const overtimeHours = document.getElementById("overtimeHours");
+const overtimeMessage = document.getElementById("overtimeMessage");
+const overtimeSubmit = document.getElementById("overtimeSubmit");
+
+overtimeDate.max = localDate(new Date());
+
+overtimeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const hours = Number(overtimeHours.value);
+  overtimeDate.removeAttribute("aria-invalid");
+  overtimeHours.removeAttribute("aria-invalid");
+
+  if (!overtimeDate.value) {
+    overtimeDate.setAttribute("aria-invalid", "true");
+    setFeedback(overtimeMessage, "Choose the date you worked overtime.", "error");
+    overtimeDate.focus();
+    return;
+  }
+
+  if (!overtimeHours.value || !(hours > 0) || hours > 24) {
+    overtimeHours.setAttribute("aria-invalid", "true");
+    setFeedback(overtimeMessage, "Enter overtime hours greater than 0 and at most 24.", "error");
+    overtimeHours.focus();
+    return;
+  }
+
+  overtimeSubmit.disabled = true;
+  setFeedback(overtimeMessage, "Filing...", null);
+
+  try {
+    const filed = await sendJson("POST", "/api/me/overtime", { date: overtimeDate.value, hours });
+
+    overtimeForm.reset();
+    renderOvertime(await getJson("/api/me/overtime"));
+    setFeedback(
+      overtimeMessage,
+      `Overtime filed for ${filed.date} (${filed.hours} h, ${money(filed.amount)}). Waiting for HR approval.`,
+      "success",
+    );
+  } catch (error) {
+    setFeedback(overtimeMessage, error.message, "error");
+  } finally {
+    overtimeSubmit.disabled = false;
+  }
+});
+
+// ---------- payslip printing ----------
+
+document.getElementById("printPayslipButton").addEventListener("click", () => printOnly("payslip"));
+
+// ---------- BIR 2316 ----------
+
+const form2316Form = document.getElementById("form2316Form");
+const form2316Year = document.getElementById("form2316Year");
+const form2316Message = document.getElementById("form2316Message");
+const form2316Result = document.getElementById("form2316Result");
+const print2316Button = document.getElementById("print2316Button");
+
+form2316Year.value = new Date().getFullYear();
+
+form2316Form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const year = Number(form2316Year.value);
+  form2316Result.hidden = true;
+  print2316Button.hidden = true;
+
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    form2316Year.setAttribute("aria-invalid", "true");
+    setFeedback(form2316Message, "Enter a year between 2000 and 2100.", "error");
+    return;
+  }
+
+  form2316Year.removeAttribute("aria-invalid");
+  setFeedback(form2316Message, "Loading...", null);
+
+  try {
+    render2316(await getJson(`/api/me/bir-2316?year=${encodeURIComponent(year)}`));
+    setFeedback(form2316Message, "", null);
+  } catch (error) {
+    setFeedback(form2316Message, error.message, "error");
+  }
+});
+
+print2316Button.addEventListener("click", () => printOnly("form2316"));
+
+function render2316(form) {
+  document.getElementById("form2316Title").textContent = `BIR Form 2316 — ${form.year}`;
+
+  document.getElementById("form2316Notes").replaceChildren(
+    ...(form.notes || []).map((note) => {
+      const item = document.createElement("li");
+      item.textContent = note;
+      return item;
+    }),
+  );
+
+  const rows = [
+    ["Part I - Employee", null, "heading"],
+    ["Name", text(form.employeeName)],
+    ["TIN", form.tin ? form.tin : "Missing — please give your TIN to HR"],
+    ["Address", text(form.address)],
+    ["Date of birth", text(form.dateOfBirth)],
+    ["Minimum wage earner", form.minimumWageEarner ? "Yes" : "No"],
+    ["Period", `${text(form.periodFrom)} to ${text(form.periodTo)} (${form.payrollCount} payroll)`],
+    ["Part II - Employer", null, "heading"],
+    ["Present employer", text(form.employerName)],
+    ["Previous employer", form.priorEmployerName || "None"],
+    ["Part IV-A - Summary", null, "heading"],
+    ["Gross compensation, present employer", money(form.grossCompensation)],
+    ["Less: total non-taxable compensation", money(form.totalNonTaxable)],
+    ["Taxable compensation, present employer", money(form.taxablePresentEmployer)],
+    ["Add: taxable compensation, previous employer", money(form.taxablePriorEmployer)],
+    ["Gross taxable compensation", money(form.totalTaxable), "total"],
+    [form.annualized ? "Tax due (annualized)" : "Tax due (not yet annualized)", money(form.taxDue), "total"],
+    ["Tax withheld, present employer", money(form.taxWithheldPresentEmployer)],
+    ["Tax withheld, previous employer", money(form.taxWithheldPriorEmployer)],
+    ["Total tax withheld", money(form.totalTaxWithheld), "total"],
+    ["Part IV-B - Details of non-taxable compensation", null, "heading"],
+    ["Basic salary", money(form.basicSalary)],
+    ["Statutory minimum wage (MWE)", money(form.mweStatutoryMinimumWage)],
+    ["Holiday, overtime, night differential and hazard pay (MWE)", money(form.mweHolidayOvertimeNightHazardPay)],
+    ["13th month pay and other benefits", money(form.exemptThirteenthMonthAndBenefits)],
+    ["De minimis benefits", money(form.deMinimisBenefits)],
+    ["SSS, PhilHealth and Pag-IBIG employee contributions", money(form.employeeContributions)],
+  ];
+
+  document.getElementById("form2316TableBody").replaceChildren(
+    ...rows.map(([label, value, kind]) => {
+      const row = document.createElement("tr");
+      const th = document.createElement("th");
+
+      th.textContent = label;
+
+      if (kind === "heading") {
+        row.className = "figures-heading";
+        th.colSpan = 2;
+        th.scope = "colgroup";
+        row.appendChild(th);
+        return row;
+      }
+
+      th.scope = "row";
+      row.className = kind === "total" ? "total-row" : "";
+      row.append(th, cell(value, "amount"));
+      return row;
+    }),
+  );
+
+  form2316Result.hidden = false;
+  print2316Button.hidden = false;
+}
+
+// ---------- my details ----------
+
+const contactForm = document.getElementById("contactForm");
+const contactEmail = document.getElementById("contactEmail");
+const contactPhone = document.getElementById("contactPhone");
+const contactAddress = document.getElementById("contactAddress");
+const contactMessage = document.getElementById("contactMessage");
+const contactSubmit = document.getElementById("contactSubmit");
+
+function renderProfile(data) {
+  profile = data;
+
+  document.getElementById("profileSummary").textContent =
+    [`${data.firstName} ${data.lastName}`, data.jobTitle, data.department].filter(Boolean).join(" · ");
+
+  const details = [
+    ["Name", `${data.firstName} ${data.lastName}`],
+    ["Employee number", `#${data.employeeId}`],
+    ["Department", text(data.department)],
+    ["Job title", text(data.jobTitle)],
+    ["Date hired", text(data.dateHired)],
+  ];
+
+  document.getElementById("detailsReadOnly").replaceChildren(
+    ...details.flatMap(([label, value]) => {
+      const dt = document.createElement("dt");
+      const dd = document.createElement("dd");
+      dt.textContent = label;
+      dd.textContent = value;
+      return [dt, dd];
+    }),
+  );
+
+  contactEmail.value = data.email || "";
+  contactPhone.value = data.phone || "";
+  contactAddress.value = data.address || "";
+}
+
+contactForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const email = contactEmail.value.trim();
+  contactEmail.removeAttribute("aria-invalid");
+
+  if (!email || !contactEmail.checkValidity()) {
+    contactEmail.setAttribute("aria-invalid", "true");
+    setFeedback(contactMessage, "Enter a valid email address.", "error");
+    contactEmail.focus();
+    return;
+  }
+
+  contactSubmit.disabled = true;
+  setFeedback(contactMessage, "Saving...", null);
+
+  try {
+    renderProfile(await sendJson("PUT", "/api/me/contact", {
+      email,
+      phone: contactPhone.value.trim(),
+      address: contactAddress.value.trim(),
+    }));
+    setFeedback(contactMessage, "Your contact details were saved.", "success");
+  } catch (error) {
+    setFeedback(contactMessage, error.message, "error");
+  } finally {
+    contactSubmit.disabled = false;
+  }
+});
+
 // ---------- page ----------
 
 async function loadPage() {
   try {
-    const profile = await getJson("/api/me/profile");
-
-    document.getElementById("profileSummary").textContent =
-      [`${profile.firstName} ${profile.lastName}`, profile.jobTitle, profile.department]
-        .filter(Boolean)
-        .join(" · ");
+    renderProfile(await getJson("/api/me/profile"));
   } catch (error) {
     showError(error.message);
     showEmpty(payrollTableBody, 6, "Unavailable.");
     showEmpty(attendanceTableBody, 6, "Unavailable.");
     showEmpty(overtimeTableBody, 4, "Unavailable.");
+    overtimeForm.hidden = true;
+    form2316Form.hidden = true;
+    contactForm.hidden = true;
     return;
   }
 

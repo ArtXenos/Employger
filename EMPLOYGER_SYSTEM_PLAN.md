@@ -52,11 +52,31 @@ The course grades encapsulation, inheritance, polymorphism and abstraction. On 2
 - `Overtime`: `checkPending()`, `approve(user)` and `reject(user)` (PENDING → APPROVED or REJECTED).
 - The services call the check first, before any recalculation, and the transition last. The error messages are exactly as before.
 
-### 3.4 `@Override`
+### 3.4 Company overview metrics: abstraction, inheritance, polymorphism, composition
+
+- `PayrollMetric` (abstract) declares `key()`, `label()` and `amountOf(payroll)`, and a `final` `total(payrolls)` that sums and rounds.
+- `GrossPayMetric`, `OvertimePayMetric` and `EmployerContributionsMetric` each return their own part of a payroll.
+- `LaborCostMetric` is gross pay plus employer contributions, built by **holding** those two metrics (composition), not by extending one.
+- `ExecutiveDashboardService` totals every metric the same way for the month, each department and a six-month trend.
+
+### 3.5 Employee contact details: encapsulation
+
+`Employee.updateContactDetails(email, phone, address)` is the one way HR and self-service change contact details. `ContactDetailsRequest` and `OvertimeFilingRequest` accept only the fields an employee may set.
+
+### 3.6 `@Override`
 
 Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.md` §5 explains why, with a compiler-verified example of the silent bug it prevents.
 
-## 4. Design decisions
+## 4. What each role can do
+
+| Role | Pages | Can change |
+|---|---|---|
+| Employee | My Payroll: payslips (printable), attendance, overtime, BIR 2316 (printable), My Details | Files their own overtime (PENDING until HR decides), changes their own email, phone and address |
+| HR Manager | All staff pages except Settings, Users and the audit log; dashboard with **Pending Approvals** and **Company Overview** | Employees, attendance, overtime decisions, pay cycles, payroll, benefits, reports |
+| General Manager | Staff pages read-only (no Reports); dashboard **Company Overview** (totals by month and department, six-month labor cost trend) | Nothing |
+| Administrator | Everything, including Settings, Users and the audit log | Everything |
+
+## 5. Design decisions
 
 | Decision | Reason |
 |---|---|
@@ -66,8 +86,11 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 | Behaviour classes beside the `Earning.Type` enum, not in the entity | The `bonuses` table keeps storing the type name unchanged. The benefit classes need settings, which belong in the service layer, not in a JPA entity. |
 | Setters kept on `Payroll` and `Overtime` | Hibernate, JSON request binding (overtime) and test fixtures use them. The lifecycle methods are the path the application uses for status changes. |
 | No effective-dated rates | Settings hold one current value per rate. Dated rates would be new functionality. |
+| Employees change contact details directly, without HR approval | Only email, phone and address, and each change is audited (`EMPLOYEE_CONTACT_UPDATED`, field names only). Salary, department, government numbers and bank details stay HR-only. |
+| Company overview shows the whole company | Em-Ployger has no "reports to" field, so a manager can't be limited to their own team. Totals only, no personal data, so a company-wide view is safe for general managers. |
+| No leave requests or GM payroll sign-off yet | Both need database changes (a `leave_requests` table; a new payroll approval step), planned separately. |
 
-## 5. Invariants that must not change
+## 6. Invariants that must not change
 
 - Payroll amounts: `BigDecimal`, final amounts rounded `HALF_UP` to 2 decimal places.
 - Processed and paid payroll are never recalculated. Paid payroll #6 (net pay ₱12,212.64) is historical.
@@ -75,15 +98,17 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 - No overlapping pay cycles for one employee.
 - Schema changes only through reviewed migrations in `db/migrations` (V2–V6 applied). The 2026-10-24 refactor added none.
 
-## 6. Verification of the 2026-10-24 refactor
+## 7. Verification of the 2026-10-24 refactor
 
 - A temporary golden test recorded 360 statutory and de minimis results before the change. They were identical after each step and the test was then removed.
 - Test suite: 244 tests, 0 failures. That's the original 204, unchanged in expected values, plus 40 new.
 - The refactored build started against the live database with Hibernate schema validation passing. Payroll #6 and `default_overtime_rate` were confirmed unchanged.
 
-## 7. Known limitations
+## 8. Known limitations
 
 - `Payroll.setStatus()` and `Overtime.setStatus()` are still public (see §4), so code could bypass the lifecycle methods. In the services, every status *change* goes through a lifecycle method. `setStatus` is only used to set the starting DRAFT or PENDING status when a record is created.
 - `DeMinimisBenefit.limit(dailyRate)` takes the daily rate because monetized leave needs it. The other three benefits ignore it.
 - Adding a fourth statutory contribution would need a new field in the `StatutoryDeductions` and `EmployerShares` results, because each contribution is reported separately on payroll. The totals already come from the loop.
+- The company overview counts each payroll under the employee's **current** department, so moving an employee moves their past cost too.
+- The overtime approval panel loads all overtime and filters PENDING in the browser. Fine for a small company; a server-side filter would be needed for thousands of records.
 - From earlier work: login-attempt counters reset on restart, there's no real-browser CSRF test, and the stale XAMPP MariaDB 10.4 on port 3306 is kept only as a fallback.

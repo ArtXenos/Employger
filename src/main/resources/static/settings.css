@@ -146,16 +146,6 @@
   cursor: pointer;
 }
 
-.settings-secondary-button {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #334155;
-}
-
-.settings-secondary-button:hover {
-  background: #f8fafc;
-}
-
 .settings-save-button:disabled,
 .settings-secondary-button:disabled {
   opacity: 0.6;

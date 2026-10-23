@@ -113,24 +113,6 @@
    BUTTONS
    ========================= */
 
-.secondary-button {
-  border: none;
-  border-radius: 7px;
-  padding: 10px 16px;
-  font-size: 13px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.secondary-button {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.secondary-button:hover {
-  background: #d1d5db;
-}
-
 /* =========================
    FILTERS
    ========================= */
@@ -242,20 +224,6 @@ input:focus {
   color: #166534;
 }
 
-.view-button {
-  border: none;
-  background: #eff6ff;
-  color: #2563eb;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 11px;
-}
-
-.view-button:hover {
-  background: #dbeafe;
-}
-
 /* =========================
    MODAL
    ========================= */
@@ -302,19 +270,6 @@ input:focus {
 .modal-header p {
   color: #6b7280;
   font-size: 12px;
-}
-
-.close-button {
-  border: none;
-  background: transparent;
-  font-size: 27px;
-  color: #6b7280;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.close-button:hover {
-  color: #111827;
 }
 
 /* =========================
@@ -438,63 +393,6 @@ input:focus {
   white-space: nowrap;
 }
 
-.action-buttons button {
-  border: none;
-  border-radius: 6px;
-  padding: 7px 11px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.action-buttons .view-button {
-  background: #eef4ff;
-  color: #2563eb;
-}
-
-.action-buttons .view-button:hover {
-  background: #dbe8ff;
-}
-
-.action-buttons .delete-button {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.action-buttons .delete-button:hover {
-  background: #fecaca;
-}
-
-.process-button,
-.pay-button {
-  border: none;
-  border-radius: 6px;
-  padding: 7px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-left: 4px;
-}
-
-.process-button {
-  background: #2563eb;
-  color: white;
-}
-
-.process-button:hover {
-  background: #1d4ed8;
-}
-
-.pay-button {
-  background: #16a34a;
-  color: white;
-}
-
-.pay-button:hover {
-  background: #15803d;
-}
-
 .action-buttons {
   white-space: nowrap;
 }
@@ -582,16 +480,6 @@ input:focus {
   justify-content: flex-end;
   gap: 10px;
   padding: 18px 28px 24px;
-}
-
-.delete-confirm-modal .danger-button {
-  background: #dc2626;
-  color: #ffffff;
-  border: none;
-}
-
-.delete-confirm-modal .danger-button:hover {
-  background: #b91c1c;
 }
 
 /* Mark as Paid Modal */
@@ -684,16 +572,6 @@ input:focus {
   justify-content: flex-end;
   gap: 10px;
   padding: 18px 28px 24px;
-}
-
-.payment-modal .success-button {
-  border: none;
-  background: #16a34a;
-  color: #fff;
-}
-
-.payment-modal .success-button:hover {
-  background: #15803d;
 }
 
 .payslip-button {

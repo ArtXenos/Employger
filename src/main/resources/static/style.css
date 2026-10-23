@@ -4,15 +4,16 @@
     padding: 0;
 }
 
+/* Same font and navy as the app's sidebar (dashboard.css). */
 body {
-    font-family: Arial, sans-serif;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
     min-height: 100vh;
 
     background:
         linear-gradient(
             135deg,
-            #1e293b,
-            #334155
+            #172033,
+            #26344d
         );
 
     display: flex;
@@ -50,18 +51,19 @@ body {
     justify-content: center;
     align-items: center;
 
-    border-radius: 14px;
+    border-radius: 16px;
 
     background: #2563eb;
     color: white;
 
     font-size: 24px;
-    font-weight: bold;
+    font-weight: 800;
 }
 
 .login-header h1 {
     font-size: 28px;
-    color: #1e293b;
+    color: #0f172a;
+    letter-spacing: -0.4px;
     margin-bottom: 8px;
 }
 
@@ -108,6 +110,11 @@ body {
         0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+input,
+button {
+    font-family: inherit;
+}
+
 button {
     width: 100%;
 
@@ -129,6 +136,11 @@ button {
 
 button:hover {
     background: #1d4ed8;
+}
+
+button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
 }
 
 button:disabled {

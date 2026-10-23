@@ -218,6 +218,135 @@ textarea {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Confirm buttons in dialogs: same shape as the main buttons. */
+.danger-button,
+.success-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.danger-button {
+  background: #dc2626;
+}
+.danger-button:hover {
+  background: #b91c1c;
+}
+.success-button {
+  background: #16a34a;
+}
+.success-button:hover {
+  background: #15803d;
+}
+
+/* Secondary buttons (Cancel, Clear Filters, Reload). */
+.secondary-button,
+.cancel-button,
+.settings-secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  color: #334155;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.secondary-button:hover,
+.cancel-button:hover,
+.settings-secondary-button:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.secondary-button:focus-visible,
+.cancel-button:focus-visible,
+.settings-secondary-button:focus-visible,
+.danger-button:focus-visible,
+.success-button:focus-visible,
+.close-button:focus-visible,
+.modal-close:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.danger-button:disabled,
+.success-button:disabled,
+.secondary-button:disabled,
+.cancel-button:disabled,
+.settings-secondary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Small buttons in table rows, colour-coded by what they do. */
+:is(td, .action-buttons) :is(.action-button, .edit-button, .delete-button, .view-button, .process-button, .pay-button) {
+  display: inline-flex;
+  align-items: center;
+  margin: 2px 6px 2px 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+}
+:is(td, .action-buttons) :is(.edit-button, .action-edit, .view-button) {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+:is(td, .action-buttons) :is(.action-approve, .process-button, .pay-button) {
+  background: #ecfdf5;
+  color: #047857;
+}
+:is(td, .action-buttons) .action-reject {
+  background: #fff7ed;
+  color: #c2410c;
+}
+:is(td, .action-buttons) :is(.delete-button, .action-delete) {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+:is(td, .action-buttons) :is(.action-button, .edit-button, .delete-button, .view-button, .process-button, .pay-button):hover {
+  filter: brightness(0.95);
+}
+:is(td, .action-buttons) :is(.action-button, .edit-button, .delete-button, .view-button, .process-button, .pay-button):focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/* The x that closes a dialog. */
+.close-button,
+.modal-close {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+.close-button:hover,
+.modal-close:hover {
+  background: #f1f5f9;
+  color: var(--text);
+}
 .dashboard-container .topbar {
   min-height: 86px;
   display: flex;

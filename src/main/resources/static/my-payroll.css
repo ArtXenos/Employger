@@ -63,22 +63,6 @@
   background: #eff6ff;
 }
 
-.view-button {
-  padding: 6px 12px;
-  border: 1px solid var(--blue);
-  border-radius: 6px;
-  background: white;
-  color: var(--blue);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.view-button:hover {
-  background: var(--blue);
-  color: white;
-}
-
 .view-button:focus-visible,
 .payslip-detail:focus-visible {
   outline: 3px solid #93c5fd;

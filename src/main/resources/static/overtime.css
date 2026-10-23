@@ -18,25 +18,6 @@
    BUTTONS
 ================================ */
 
-.secondary-button,
-.action-button {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.secondary-button {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.secondary-button:hover {
-  background: #e5e7eb;
-}
-
 /* ================================
    SUMMARY CARDS
 ================================ */
@@ -185,16 +166,6 @@ td .action-buttons {
   gap: 6px;
 }
 
-td .action-button {
-  display: inline-block;
-  width: auto;
-  height: auto;
-  padding: 6px 9px;
-  margin: 0;
-  line-height: 1.4;
-  font-size: 12px;
-}
-
 /* ================================
    STATUS BADGES
 ================================ */
@@ -233,35 +204,6 @@ td .action-button {
 .action-buttons {
   display: flex;
   gap: 6px;
-}
-
-.action-button {
-  padding: 7px 10px;
-  font-size: 12px;
-}
-
-.action-edit {
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.action-approve {
-  background: #ecfdf5;
-  color: #047857;
-}
-
-.action-reject {
-  background: #fff7ed;
-  color: #c2410c;
-}
-
-.action-delete {
-  background: #fef2f2;
-  color: #b91c1c;
-}
-
-.action-button:hover {
-  opacity: 0.8;
 }
 
 /* ================================
@@ -327,18 +269,6 @@ td .action-button {
   margin: 0;
   color: #6b7280;
   font-size: 13px;
-}
-
-.close-button {
-  border: none;
-  background: transparent;
-
-  font-size: 28px;
-  line-height: 1;
-
-  color: #6b7280;
-
-  cursor: pointer;
 }
 
 /* ================================
@@ -491,18 +421,3 @@ td .action-button {
   line-height: 1.4 !important;
 }
 
-.table-card table tbody td button.action-button,
-.table-card table tbody td .action-button {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-sizing: border-box !important;
-  width: auto !important;
-  height: auto !important;
-  min-height: 0 !important;
-  padding: 6px 9px !important;
-  margin: 0 !important;
-  line-height: 1.4 !important;
-  flex: 0 0 auto !important;
-  align-self: center !important;
-}

@@ -17,17 +17,6 @@
    Buttons
 ================================ */
 
-.secondary-button {
-  border: 1px solid #cbd5e1;
-  background: white;
-  color: #334155;
-  padding: 11px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 /* ================================
    Summary Cards
 ================================ */
@@ -130,16 +119,6 @@ tbody tr:hover {
   background: #f8fafc;
 }
 
-td .action-button {
-  display: inline-block;
-  width: auto;
-  height: auto;
-  padding: 6px 8px;
-  margin: 0 6px 0 0;
-  line-height: 1.4;
-  vertical-align: middle;
-}
-
 /* ================================
    Status
 ================================ */
@@ -175,22 +154,6 @@ td .action-button {
 /* ================================
    Action Buttons
 ================================ */
-
-.action-button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-weight: 600;
-  margin-right: 10px;
-}
-
-.edit-button {
-  color: #2864e8;
-}
-
-.delete-button {
-  color: #dc2626;
-}
 
 /* ================================
    Modal
@@ -235,14 +198,6 @@ td .action-button {
   margin-top: 5px;
   color: #64748b;
   font-size: 13px;
-}
-
-.close-button {
-  border: none;
-  background: transparent;
-  font-size: 28px;
-  color: #64748b;
-  cursor: pointer;
 }
 
 /* ================================
@@ -410,19 +365,6 @@ td .action-button {
   display: flex;
   gap: 10px;
   margin-top: 22px;
-}
-
-.cancel-button {
-  border: 1px solid #cbd5e1;
-  background: white;
-  color: #475569;
-  padding: 10px 18px;
-  border-radius: 7px;
-  cursor: pointer;
-}
-
-.cancel-button:hover {
-  background: #f1f5f9;
 }
 
 #attendanceMessage {

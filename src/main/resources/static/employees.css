@@ -23,17 +23,6 @@
    BUTTONS
 ========================= */
 
-.secondary-button {
-  border: 1px solid #d1d7e2;
-  background: white;
-  color: #39445a;
-
-  padding: 12px 20px;
-  border-radius: 8px;
-
-  cursor: pointer;
-}
-
 /* =========================
    SUMMARY CARDS
 ========================= */
@@ -180,26 +169,6 @@ tbody tr:hover {
    ACTIONS
 ========================= */
 
-.action-button {
-  border: none;
-  background: none;
-
-  cursor: pointer;
-
-  margin-right: 10px;
-
-  font-size: 13px;
-  font-weight: bold;
-}
-
-.edit-button {
-  color: #2864e8;
-}
-
-.delete-button {
-  color: #d64545;
-}
-
 /* =========================
    MODAL
 ========================= */
@@ -255,16 +224,6 @@ tbody tr:hover {
 .modal-header p {
   color: #7b8497;
   font-size: 14px;
-}
-
-.close-button {
-  border: none;
-  background: none;
-
-  font-size: 28px;
-  color: #70798a;
-
-  cursor: pointer;
 }
 
 /* =========================

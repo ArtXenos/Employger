@@ -105,15 +105,6 @@ tr:last-child td {
   border-bottom: none;
 }
 
-td .action-button {
-  display: inline-block;
-  width: auto;
-  height: auto;
-  padding: 6px 8px;
-  margin-right: 6px;
-  line-height: 1.4;
-}
-
 /* Status */
 
 .status {
@@ -145,23 +136,6 @@ td .action-button {
 }
 
 /* Actions */
-
-.action-button {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  margin-right: 14px;
-}
-
-.edit-button {
-  color: #2563eb;
-}
-
-.delete-button {
-  color: #dc2626;
-}
 
 /* Modal */
 
@@ -206,15 +180,6 @@ td .action-button {
 .modal-header p {
   margin: 0;
   color: #64748b;
-}
-
-.close-button {
-  border: none;
-  background: transparent;
-  font-size: 28px;
-  color: #64748b;
-  cursor: pointer;
-  line-height: 1;
 }
 
 /* Form */
@@ -284,24 +249,6 @@ td .action-button {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 20px;
-}
-
-.cancel-button {
-  border: none;
-  border-radius: 8px;
-  padding: 11px 18px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.cancel-button {
-  background: #e2e8f0;
-  color: #334155;
-}
-
-.cancel-button:hover {
-  background: #cbd5e1;
 }
 
 /* Responsive */

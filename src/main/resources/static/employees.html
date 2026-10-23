@@ -271,6 +271,47 @@
                 <option value="INACTIVE">Inactive</option>
               </select>
             </div>
+
+            <div class="form-group full-width checkbox-group">
+              <label for="managerial">
+                <input type="checkbox" id="managerial" />
+                Managerial employee
+              </label>
+
+              <small>
+                Tick for managers who set management policies or can hire and
+                fire. They are not entitled to mandatory 13th month pay
+                (PD 851), so 13th month generation skips them.
+              </small>
+            </div>
+
+            <div class="form-group full-width form-subheading">
+              <h4>Government numbers</h4>
+              <small>
+                Used on the remittance reports and BIR Form 2316. Digits and
+                dashes only; leave blank if not yet known.
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="sssNumber">SSS Number</label>
+              <input type="text" id="sssNumber" maxlength="20" pattern="[0-9\-]*" inputmode="numeric" placeholder="34-1234567-8" />
+            </div>
+
+            <div class="form-group">
+              <label for="philHealthNumber">PhilHealth Number</label>
+              <input type="text" id="philHealthNumber" maxlength="20" pattern="[0-9\-]*" inputmode="numeric" placeholder="12-345678901-2" />
+            </div>
+
+            <div class="form-group">
+              <label for="pagIbigNumber">Pag-IBIG MID Number</label>
+              <input type="text" id="pagIbigNumber" maxlength="20" pattern="[0-9\-]*" inputmode="numeric" placeholder="1234-5678-9012" />
+            </div>
+
+            <div class="form-group">
+              <label for="tin">TIN</label>
+              <input type="text" id="tin" maxlength="20" pattern="[0-9\-]*" inputmode="numeric" placeholder="123-456-789-000" />
+            </div>
           </div>
 
           <div id="formMessage" class="form-message"></div>

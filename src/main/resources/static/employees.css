@@ -474,6 +474,23 @@ tbody tr:hover {
   color: #5b6475;
 }
 
+.form-subheading {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.form-subheading h4 {
+  margin: 0;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.form-subheading small {
+  font-size: 12px;
+  color: #5b6475;
+}
+
 .form-message {
   margin-top: 15px;
 

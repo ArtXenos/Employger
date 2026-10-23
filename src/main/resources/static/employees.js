@@ -224,6 +224,12 @@ window.editEmployee = function (employeeId) {
   document.getElementById("employmentStatus").value =
     employee.employmentStatus || "ACTIVE";
 
+  document.getElementById("managerial").checked = employee.managerial === true;
+
+  ["sssNumber", "philHealthNumber", "pagIbigNumber", "tin"].forEach((field) => {
+    document.getElementById(field).value = employee[field] || "";
+  });
+
   formMessage.textContent = "";
 
   employeeModal.classList.add("show");
@@ -268,6 +274,17 @@ employeeForm.addEventListener("submit", async (event) => {
     dateHired: document.getElementById("dateHired").value,
 
     jobTitle: document.getElementById("jobTitle").value.trim(),
+
+    managerial: document.getElementById("managerial").checked,
+
+    // Blank clears the number on the server.
+    sssNumber: document.getElementById("sssNumber").value.trim(),
+
+    philHealthNumber: document.getElementById("philHealthNumber").value.trim(),
+
+    pagIbigNumber: document.getElementById("pagIbigNumber").value.trim(),
+
+    tin: document.getElementById("tin").value.trim(),
   };
 
   try {

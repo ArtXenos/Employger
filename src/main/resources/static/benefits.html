@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Benefits &amp; Holidays - Em-Ployger</title>
+
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/pay-cycles.css" />
+    <link rel="stylesheet" href="/benefits.css" />
+  </head>
+
+  <body>
+    <div class="app-layout">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-logo">EP</div>
+
+          <div>
+            <h1>Em-Ployger</h1>
+            <p>Payroll Management</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard.html" class="nav-item"><span>▦</span><span>Dashboard</span></a>
+          <a href="/employees.html" class="nav-item"><span>♙</span><span>Employees</span></a>
+          <a href="/attendance.html" class="nav-item"><span>◷</span><span>Attendance</span></a>
+          <a href="/pay-cycles.html" class="nav-item"><span>□</span><span>Pay Cycles</span></a>
+          <a href="/overtime.html" class="nav-item"><span>↗</span><span>Overtime</span></a>
+          <a href="/payroll.html" class="nav-item"><span>₱</span><span>Payroll</span></a>
+          <a href="/benefits.html" class="nav-item active"><span>✦</span><span>Benefits</span></a>
+          <a href="/settings.html" class="nav-item"><span>⚙</span><span>Settings</span></a>
+        </nav>
+
+        <div class="sidebar-bottom">
+          <a href="#" id="logoutButton"> Logout </a>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT -->
+      <main class="main-content">
+        <header class="page-header">
+          <div>
+            <h2>Benefits &amp; Holidays</h2>
+            <p>
+              Holidays, bonuses, hazard pay, allowances, de minimis benefits,
+              13th month pay and previous-employer income. Each earning is paid
+              by the payroll whose pay cycle contains its date.
+            </p>
+          </div>
+        </header>
+
+        <!-- HOLIDAYS -->
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>Holidays</h3>
+              <p>
+                Enter each year's proclaimed holidays. Regular 200% if worked,
+                special 130%, double 300% (200% if not worked). Saved payroll
+                is not recalculated.
+              </p>
+            </div>
+
+            <div class="section-actions">
+              <label for="holidayYear" class="inline-label">Year</label>
+              <input type="number" id="holidayYear" min="2000" max="2100" class="year-input" />
+              <button type="button" class="add-button" id="addHolidayButton">+ Add Holiday</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Day</th>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="holidayTableBody">
+                <tr><td colspan="5" class="empty-row">Loading holidays...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- EARNINGS -->
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>Bonuses &amp; Other Earnings</h3>
+              <p>
+                Locked once the payroll that paid them is processed. De minimis
+                amounts above their limits, 13th month pay and other benefits
+                are tax-exempt up to ₱90,000 a year.
+              </p>
+            </div>
+
+            <div class="section-actions">
+              <button type="button" class="add-button" id="addEarningButton">+ Add Earning</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Employee</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Description</th>
+                  <th>Paid By</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="earningTableBody">
+                <tr><td colspan="7" class="empty-row">Loading earnings...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 13TH MONTH -->
+        <section class="records-section">
+          <div class="section-header">
+            <div>
+              <h3>13th Month Pay</h3>
+              <p>
+                Basic salary earned in the year (regular pay of processed and
+                paid payroll) divided by 12, for every rank-and-file employee
+                who worked at least a month (PD 851). Running it again tops up
+                instead of paying twice. Pay it on or before December 24.
+              </p>
+            </div>
+          </div>
+
+          <form id="thirteenthForm" class="inline-form">
+            <div class="form-group">
+              <label for="thirteenthYear">Year</label>
+              <input type="number" id="thirteenthYear" min="2000" max="2100" required />
+            </div>
+
+            <div class="form-group">
+              <label for="thirteenthDate">Payment date</label>
+              <input type="date" id="thirteenthDate" required />
+            </div>
+
+            <button type="submit" class="save-button" id="generateThirteenthButton">Generate 13th Month Pay</button>
+          </form>
+
+          <p id="thirteenthMessage" class="form-message" role="status" aria-live="polite"></p>
+
+          <div class="table-container hidden" id="thirteenthResults">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Basic Salary Earned</th>
+                  <th>13th Month Pay</th>
+                  <th>Already Paid</th>
+                  <th>Entered Now</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody id="thirteenthTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- PREVIOUS EMPLOYERS -->
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>Previous Employers</h3>
+              <p>
+                For employees hired this year: copy the figures from the BIR
+                Form 2316 their previous employer issued. Used in the year-end
+                tax adjustment and the ₱90,000 benefits exemption.
+              </p>
+            </div>
+
+            <div class="section-actions">
+              <button type="button" class="add-button" id="addPriorButton">+ Add Record</button>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>Employee</th>
+                  <th>Previous Employer</th>
+                  <th>Taxable Compensation</th>
+                  <th>Non-taxable Benefits</th>
+                  <th>Tax Withheld</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="priorTableBody">
+                <tr><td colspan="7" class="empty-row">Loading records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- HOLIDAY MODAL -->
+        <div class="modal" id="holidayModal" aria-hidden="true">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div>
+                <h3 id="holidayModalTitle">Add Holiday</h3>
+                <p>From the presidential proclamation for the year.</p>
+              </div>
+              <button type="button" class="close-button" data-close="holidayModal">&times;</button>
+            </div>
+
+            <form id="holidayForm" class="modal-form">
+              <input type="hidden" id="holidayId" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="holidayDate">Date</label>
+                  <input type="date" id="holidayDate" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="holidayType">Type</label>
+                  <select id="holidayType" required>
+                    <option value="REGULAR">Regular holiday</option>
+                    <option value="SPECIAL">Special non-working day</option>
+                    <option value="DOUBLE">Double holiday (two regular holidays)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="holidayName">Name</label>
+                <input type="text" id="holidayName" maxlength="100" required />
+              </div>
+
+              <p class="form-message" id="holidayMessage"></p>
+
+              <div class="modal-actions">
+                <button type="button" class="cancel-button" data-close="holidayModal">Cancel</button>
+                <button type="submit" class="save-button">Save Holiday</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- EARNING MODAL -->
+        <div class="modal" id="earningModal" aria-hidden="true">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div>
+                <h3 id="earningModalTitle">Add Earning</h3>
+                <p>Paid with the payroll whose pay cycle contains the date.</p>
+              </div>
+              <button type="button" class="close-button" data-close="earningModal">&times;</button>
+            </div>
+
+            <form id="earningForm" class="modal-form">
+              <input type="hidden" id="earningId" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="earningEmployee">Employee</label>
+                  <select id="earningEmployee" required></select>
+                </div>
+
+                <div class="form-group">
+                  <label for="earningType">Type</label>
+                  <select id="earningType" required>
+                    <option value="OTHER_BENEFIT">Other benefit (Christmas bonus, incentive, award)</option>
+                    <option value="THIRTEENTH_MONTH">13th month pay</option>
+                    <option value="HAZARD_PAY">Hazard pay</option>
+                    <option value="TAXABLE_ALLOWANCE">Commission / taxable allowance</option>
+                    <option value="DE_MINIMIS_RICE">De minimis: rice subsidy</option>
+                    <option value="DE_MINIMIS_CLOTHING">De minimis: uniform / clothing</option>
+                    <option value="DE_MINIMIS_MEDICAL">De minimis: medical cash allowance to dependents</option>
+                    <option value="DE_MINIMIS_LEAVE">De minimis: monetized unused vacation leave</option>
+                  </select>
+                </div>
+              </div>
+
+              <p class="type-hint" id="earningTypeHint"></p>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="earningAmount">Amount (₱)</label>
+                  <input type="number" id="earningAmount" min="0.01" step="0.01" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="earningDate">Date</label>
+                  <input type="date" id="earningDate" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="earningDescription">Description (optional)</label>
+                <input type="text" id="earningDescription" maxlength="255" />
+              </div>
+
+              <p class="form-message" id="earningMessage"></p>
+
+              <div class="modal-actions">
+                <button type="button" class="cancel-button" data-close="earningModal">Cancel</button>
+                <button type="submit" class="save-button">Save Earning</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- PREVIOUS EMPLOYER MODAL -->
+        <div class="modal" id="priorModal" aria-hidden="true">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div>
+                <h3 id="priorModalTitle">Add Previous Employer</h3>
+                <p>From the previous employer's BIR Form 2316 for the same year.</p>
+              </div>
+              <button type="button" class="close-button" data-close="priorModal">&times;</button>
+            </div>
+
+            <form id="priorForm" class="modal-form">
+              <input type="hidden" id="priorId" />
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="priorEmployee">Employee</label>
+                  <select id="priorEmployee" required></select>
+                </div>
+
+                <div class="form-group">
+                  <label for="priorYear">Tax year</label>
+                  <input type="number" id="priorYear" min="2000" max="2100" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="priorEmployerName">Previous employer</label>
+                  <input type="text" id="priorEmployerName" maxlength="150" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="priorEmployerTin">Previous employer's TIN (optional)</label>
+                  <input type="text" id="priorEmployerTin" maxlength="20" />
+                </div>
+              </div>
+
+              <div class="form-row three">
+                <div class="form-group">
+                  <label for="priorTaxable">Taxable compensation (₱)</label>
+                  <input type="number" id="priorTaxable" min="0" step="0.01" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="priorExempt">Non-taxable 13th month &amp; benefits (₱)</label>
+                  <input type="number" id="priorExempt" min="0" step="0.01" required />
+                </div>
+
+                <div class="form-group">
+                  <label for="priorWithheld">Tax withheld (₱)</label>
+                  <input type="number" id="priorWithheld" min="0" step="0.01" required />
+                </div>
+              </div>
+
+              <p class="form-message" id="priorMessage"></p>
+
+              <div class="modal-actions">
+                <button type="button" class="cancel-button" data-close="priorModal">Cancel</button>
+                <button type="submit" class="save-button">Save Record</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/csrf.js"></script>
+    <script src="/session.js"></script>
+    <script src="/benefits.js"></script>
+  </body>
+</html>

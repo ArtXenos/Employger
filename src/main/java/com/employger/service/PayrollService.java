@@ -270,7 +270,6 @@ public class PayrollService {
 
                 payroll.setEmployee(employee);
                 payroll.setPayCycle(payCycle);
-                payroll.setStatus(Payroll.Status.DRAFT);
 
                 // Save first so the new ID can be linked to its overtime.
                 Payroll saved = payrollRepository.save(payroll);

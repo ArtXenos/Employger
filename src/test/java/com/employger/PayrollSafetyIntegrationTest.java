@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -88,7 +89,7 @@ class PayrollSafetyIntegrationTest {
         alicePaidFirstHalf = new Payroll();
         alicePaidFirstHalf.setEmployee(alice);
         alicePaidFirstHalf.setPayCycle(firstHalf);
-        alicePaidFirstHalf.setStatus(Payroll.Status.PAID);
+        ReflectionTestUtils.setField(alicePaidFirstHalf, "status", Payroll.Status.PAID);
         alicePaidFirstHalf.setNetPay(new BigDecimal("12500.00"));
         alicePaidFirstHalf = payrollRepository.save(alicePaidFirstHalf);
     }

@@ -107,9 +107,6 @@ public class OvertimeService {
                                 employee,
                                 overtimeDetails);
 
-                overtimeDetails.setStatus(
-                                Overtime.Status.PENDING);
-
                 return overtimeRepository.save(overtimeDetails);
         }
 

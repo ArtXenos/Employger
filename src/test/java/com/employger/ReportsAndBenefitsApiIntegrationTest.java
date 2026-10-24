@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -83,7 +84,7 @@ class ReportsAndBenefitsApiIntegrationTest {
     @Test
     void csvDownloadEscapesFormulasInNames() throws Exception {
         // Ben's payroll must count, so process it for this test.
-        payrollRepository.findAll().forEach(payroll -> payroll.setStatus(Payroll.Status.PAID));
+        payrollRepository.findAll().forEach(payroll -> ReflectionTestUtils.setField(payroll, "status", Payroll.Status.PAID));
 
         mockMvc.perform(get("/api/reports/monthly/sss.csv").param("year", "2026").param("month", "10"))
                 .andExpect(status().isOk())
@@ -202,7 +203,7 @@ class ReportsAndBenefitsApiIntegrationTest {
         Payroll payroll = new Payroll();
         payroll.setEmployee(employee);
         payroll.setPayCycle(cycle);
-        payroll.setStatus(status);
+        ReflectionTestUtils.setField(payroll, "status", status);
         payroll.setGrossPay(new BigDecimal("12500.00"));
         payroll.setRegularPay(new BigDecimal("12500.00"));
         payroll.setSssContribution(new BigDecimal(sssEe));

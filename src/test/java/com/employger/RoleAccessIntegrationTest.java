@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -218,7 +219,7 @@ class RoleAccessIntegrationTest {
         Payroll payroll = new Payroll();
         payroll.setEmployee(employee);
         payroll.setPayCycle(cycle);
-        payroll.setStatus(status);
+        ReflectionTestUtils.setField(payroll, "status", status);
         payroll.setNetPay(new BigDecimal(netPay));
         return payrollRepository.save(payroll);
     }

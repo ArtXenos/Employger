@@ -181,14 +181,14 @@ public class UserService {
         userRepository.delete(user);
     }
 
-    public void updateLastLogin(String username) {
+    public User updateLastLogin(String username) {
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         user.setLastLogin(java.time.LocalDateTime.now());
 
-        userRepository.save(user);
+        return userRepository.save(user);
     }
 
     static void checkPasswordStrength(String password) {

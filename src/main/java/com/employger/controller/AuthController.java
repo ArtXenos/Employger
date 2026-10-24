@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.config.ActiveAccountFilter;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.dto.LoginRequest;
 import com.employger.entity.User;
@@ -130,8 +131,14 @@ public class AuthController {
                                         request,
                                         null);
 
-                        userService.updateLastLogin(
+                        User user = userService.updateLastLogin(
                                         authentication.getName());
+
+                        // Lets ActiveAccountFilter end this session if the login
+                        // is later deactivated, deleted or given another role.
+                        request.getSession().setAttribute(
+                                        ActiveAccountFilter.USER_ID_ATTRIBUTE,
+                                        user.getUserId());
 
                         return ResponseEntity.ok("Login successful");
                 }

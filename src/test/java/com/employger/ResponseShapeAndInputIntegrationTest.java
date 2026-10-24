@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -107,7 +108,7 @@ class ResponseShapeAndInputIntegrationTest {
         payroll = new Payroll();
         payroll.setEmployee(employee);
         payroll.setPayCycle(cycle);
-        payroll.setStatus(Payroll.Status.PROCESSED);
+        ReflectionTestUtils.setField(payroll, "status", Payroll.Status.PROCESSED);
         payroll.setNetPay(new BigDecimal("12000.00"));
         payroll.setProcessedBy(processor);
         payroll = payrollRepository.save(payroll);

@@ -97,6 +97,46 @@ class AuthAndErrorHandlingIntegrationTest {
         assertThat(result.getRequest().getSession(false).getId()).isNotEqualTo(idBeforeLogin);
     }
 
+    // ---------- open sessions follow changes to the login ----------
+
+    @Test
+    void deactivatingALoginEndsItsOpenSession() throws Exception {
+        MockHttpSession session = loggedInSession("active.admin");
+        mockMvc.perform(get("/api/users").session(session)).andExpect(status().isOk());
+
+        User login = userRepository.findByUsername("active.admin").orElseThrow();
+        login.deactivate();
+        userRepository.save(login);
+
+        mockMvc.perform(get("/api/users").session(session))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string("Please log in."));
+        assertThat(session.isInvalid()).isTrue();
+    }
+
+    @Test
+    void changingTheRoleEndsTheOpenSessionButRenamingDoesNot() throws Exception {
+        MockHttpSession session = loggedInSession("active.admin");
+        User login = userRepository.findByUsername("active.admin").orElseThrow();
+
+        login.setUsername("renamed.admin");
+        userRepository.save(login);
+        mockMvc.perform(get("/api/users").session(session)).andExpect(status().isOk());
+
+        login.setRole(User.Role.HR_MANAGER);
+        userRepository.save(login);
+        mockMvc.perform(get("/api/users").session(session)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void deletingALoginEndsItsOpenSession() throws Exception {
+        MockHttpSession session = loggedInSession("active.admin");
+
+        userRepository.delete(userRepository.findByUsername("active.admin").orElseThrow());
+
+        mockMvc.perform(get("/api/users").session(session)).andExpect(status().isUnauthorized());
+    }
+
     @Test
     void malformedLoginBodyReturns400NotForbidden() throws Exception {
         mockMvc.perform(post("/api/auth/login")
@@ -227,6 +267,14 @@ class AuthAndErrorHandlingIntegrationTest {
         return mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(credentials(username, password)));
+    }
+
+    private MockHttpSession loggedInSession(String username) throws Exception {
+        MvcResult result = login(username, "correct-horse")
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return (MockHttpSession) result.getRequest().getSession(false);
     }
 
     private static String credentials(String username, String password) {

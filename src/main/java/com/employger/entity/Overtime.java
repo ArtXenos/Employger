@@ -1,6 +1,7 @@
 package com.employger.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -58,6 +59,9 @@ public class Overtime {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    // Starts PENDING and changes only through approve() or reject().
+    // READ_ONLY: a "status" sent by the browser is ignored.
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Status status = Status.PENDING;
 
     @ManyToOne
@@ -170,10 +174,6 @@ public class Overtime {
 
     public Status getStatus() {
         return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
     }
 
     public User getApprovedBy() {

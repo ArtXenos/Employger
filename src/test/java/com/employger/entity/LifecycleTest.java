@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 import java.time.LocalDateTime;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,7 +43,7 @@ class LifecycleTest {
     @EnumSource(value = Payroll.Status.class, names = {"PROCESSED", "PAID"})
     void onlyDraftPayrollCanBeProcessed(Payroll.Status status) {
         Payroll payroll = new Payroll();
-        payroll.setStatus(status);
+        ReflectionTestUtils.setField(payroll, "status", status);
 
         assertThatThrownBy(() -> payroll.process(hr, NOW))
                 .isInstanceOf(IllegalStateException.class)
@@ -55,7 +56,7 @@ class LifecycleTest {
     @EnumSource(value = Payroll.Status.class, names = {"DRAFT", "PAID"})
     void onlyProcessedPayrollCanBePaid(Payroll.Status status) {
         Payroll payroll = new Payroll();
-        payroll.setStatus(status);
+        ReflectionTestUtils.setField(payroll, "status", status);
 
         assertThatThrownBy(() -> payroll.markPaid("Cash", null, NOW))
                 .isInstanceOf(IllegalStateException.class)
@@ -115,7 +116,7 @@ class LifecycleTest {
     @EnumSource(value = Overtime.Status.class, names = {"APPROVED", "REJECTED"})
     void decidedOvertimeCannotBeDecidedAgain(Overtime.Status status) {
         Overtime overtime = new Overtime();
-        overtime.setStatus(status);
+        ReflectionTestUtils.setField(overtime, "status", status);
 
         assertThatThrownBy(() -> overtime.approve(hr))
                 .isInstanceOf(IllegalStateException.class)

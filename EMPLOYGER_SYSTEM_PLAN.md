@@ -50,6 +50,7 @@ The course grades encapsulation, inheritance, polymorphism and abstraction. On 2
 
 - `Payroll`: `checkCanProcess()` / `process(user, time)` (DRAFT → PROCESSED) and `checkCanBePaid()` / `markPaid(method, reference, time)` (PROCESSED → PAID). There is also `isDraft()`.
 - `Overtime`: `checkPending()`, `approve(user)` and `reject(user)` (PENDING → APPROVED or REJECTED).
+- Neither has a `setStatus()` (removed 2026-10-25): a new payroll starts DRAFT and new overtime PENDING, and a `status` sent by the browser for overtime is ignored. Tests that need a PAID or APPROVED record as setup data set the stored field with `ReflectionTestUtils`.
 - The services call the check first, before any recalculation, and the transition last. The error messages are exactly as before.
 
 ### 3.4 Company overview metrics: abstraction, inheritance, polymorphism, composition
@@ -106,7 +107,6 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 
 ## 8. Known limitations
 
-- `Payroll.setStatus()` and `Overtime.setStatus()` are still public (see §4), so code could bypass the lifecycle methods. In the services, every status *change* goes through a lifecycle method. `setStatus` is only used to set the starting DRAFT or PENDING status when a record is created.
 - `DeMinimisBenefit.limit(dailyRate)` takes the daily rate because monetized leave needs it. The other three benefits ignore it.
 - Adding a fourth statutory contribution would need a new field in the `StatutoryDeductions` and `EmployerShares` results, because each contribution is reported separately on payroll. The totals already come from the loop.
 - The company overview counts each payroll under the employee's **current** department, so moving an employee moves their past cost too.

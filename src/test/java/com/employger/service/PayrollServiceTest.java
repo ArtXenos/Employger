@@ -33,6 +33,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -519,7 +520,7 @@ class PayrollServiceTest {
         payroll.setPayrollId(id);
         payroll.setEmployee(employee);
         payroll.setPayCycle(cycle);
-        payroll.setStatus(status);
+        ReflectionTestUtils.setField(payroll, "status", status);
         return payroll;
     }
 
@@ -535,7 +536,7 @@ class PayrollServiceTest {
     private Overtime approvedOvertime(String amount) {
         Overtime overtime = new Overtime();
         overtime.setEmployee(employee);
-        overtime.setStatus(Overtime.Status.APPROVED);
+        ReflectionTestUtils.setField(overtime, "status", Overtime.Status.APPROVED);
         overtime.setOvertimeDate(LocalDate.of(2026, 10, 3));
         overtime.setOvertimeAmount(new BigDecimal(amount));
         return overtime;

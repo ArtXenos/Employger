@@ -26,6 +26,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -134,7 +135,7 @@ class SelfServiceActionsIntegrationTest {
         Payroll paid = new Payroll();
         paid.setEmployee(alice);
         paid.setPayCycle(cycle);
-        paid.setStatus(Payroll.Status.PAID);
+        ReflectionTestUtils.setField(paid, "status", Payroll.Status.PAID);
         payrollRepository.save(paid);
 
         fileOvertime(OCT_6, "2").andExpect(status().isConflict());

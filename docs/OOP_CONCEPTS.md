@@ -104,6 +104,23 @@ public BigDecimal amountOf(Payroll payroll) {
 
 > "Inheritance means 'is a'; composition means 'has a'. Labor cost has a gross pay part and an employer-contribution part, so it holds them instead of extending one."
 
+### Extending a framework class: `ActiveAccountFilter`
+
+[src/main/java/com/employger/config/ActiveAccountFilter.java](../src/main/java/com/employger/config/ActiveAccountFilter.java)
+
+```java
+public class ActiveAccountFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+            HttpServletResponse response, FilterChain filterChain) { ... }
+}
+```
+
+Spring's `OncePerRequestFilter` already knows how to run exactly once per request. Our filter inherits all of that and overrides only `doFilterInternal()`, the check itself: is this session's login still active, still there, and still in the same role? If not, the session ends and the person has to log in again.
+
+> "We didn't write any of the filter machinery. We extended Spring's class and filled in the one method that is different for us."
+
 ---
 
 ## 3. Polymorphism
@@ -182,11 +199,17 @@ public void markPaid(String paymentMethod, String paymentReference, LocalDateTim
 
 > "A payroll can't be paid before it's processed, and a paid payroll can't be processed again. Before, only the service checked this, and it then set the status field directly. Now the payroll object enforces the rule itself, so any code that uses `process()` or `markPaid()` gets the check automatically."
 
+There is **no `setStatus()`**: a new payroll starts as DRAFT, and `process()` and `markPaid()` are the only ways to change it. Code that tried to jump straight to PAID would not compile.
+
 `PayrollService` calls `checkCanProcess()` first, before recalculating anything, and `process()` last ([PayrollService.java:968](../src/main/java/com/employger/service/PayrollService.java#L968), [:984](../src/main/java/com/employger/service/PayrollService.java#L984)).
 
 ### Overtime: PENDING → APPROVED or REJECTED, then final
 
-[src/main/java/com/employger/entity/Overtime.java:90-108](../src/main/java/com/employger/entity/Overtime.java#L90-L108). `approve()` and `reject()` both refuse a request that has already been decided.
+[src/main/java/com/employger/entity/Overtime.java](../src/main/java/com/employger/entity/Overtime.java). `approve()` and `reject()` both refuse a request that has already been decided. There is no `setStatus()` either: new overtime starts PENDING. The status field is also marked `@JsonProperty(access = READ_ONLY)`, so a browser that sends `"status": "APPROVED"` is ignored, and a test proves it.
+
+### A login can't outlive its permission
+
+`User.deactivate()` switches a login off, and returns `false` if it was already off. `EmployeeService` calls it when an employee leaves the company, instead of setting the status field itself. `ActiveAccountFilter` (see Inheritance) then ends any session still open for that login.
 
 ### Employee contact details change together, through the object
 
@@ -424,7 +447,7 @@ classDiagram
     PayrollService ..> Payroll : process() / markPaid()
 
     class Payroll {
-        -Status status
+        -Status status = DRAFT
         +isDraft() boolean
         +checkCanProcess()
         +process(User, LocalDateTime)
@@ -432,7 +455,7 @@ classDiagram
         +markPaid(String, String, LocalDateTime)
     }
     class Overtime {
-        -Status status
+        -Status status = PENDING
         +checkPending()
         +approve(User)
         +reject(User)
@@ -443,6 +466,8 @@ classDiagram
     class User {
         -String passwordHash
         -Employee employee
+        -Status status
+        +deactivate() boolean
     }
     class Employee {
         -String email
@@ -458,6 +483,16 @@ classDiagram
     }
     class CustomUserDetailsService
     UserDetailsService <|.. CustomUserDetailsService
+
+    class OncePerRequestFilter {
+        <<abstract>>
+        #doFilterInternal(request, response, chain)*
+    }
+    class ActiveAccountFilter {
+        #doFilterInternal(request, response, chain)
+    }
+    OncePerRequestFilter <|-- ActiveAccountFilter
+    ActiveAccountFilter ..> User : still ACTIVE, same role?
 ```
 
 `LaborCostMetric *-- GrossPayMetric` is a composition arrow: labor cost is built from the other two metrics rather than inheriting from them. In this diagram, `*` after a method marks abstract methods and `$` marks static ones. `#` means protected, `-` private and `+` public. The subclasses' listed methods are the ones marked `@Override`, except `monthlySalaryCredit()` and `monthlyPremium()`, which are each class's own helpers.

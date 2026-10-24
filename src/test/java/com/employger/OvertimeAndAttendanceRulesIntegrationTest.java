@@ -23,6 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -130,6 +131,16 @@ class OvertimeAndAttendanceRulesIntegrationTest {
     }
 
     @Test
+    void statusSentByTheBrowserIsIgnoredSoNewOvertimeIsPending() throws Exception {
+        mockMvc.perform(post("/api/overtime/employee/{id}", employee.getEmployeeId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"overtimeDate\": \"" + OCT_6 + "\", \"hours\": 2, \"status\": \"APPROVED\","
+                                + " \"attendance\": {\"attendanceId\": " + workedDay.getAttendanceId() + "}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
     void approvalUsesOvertimeRateInEffectAtApproval() throws Exception {
         Overtime pending = pendingOvertime(OCT_6, "2", workedDay);
         assertThat(pending.getOvertimeAmount()).isEqualByComparingTo("359.20");
@@ -155,7 +166,7 @@ class OvertimeAndAttendanceRulesIntegrationTest {
     void daysCoveredByPaidPayrollCannotChange() throws Exception {
         Overtime pending = pendingOvertime(OCT_6, "1", workedDay);
         Overtime approved = pendingOvertime(OCT_6, "1", workedDay);
-        approved.setStatus(Overtime.Status.APPROVED);
+        ReflectionTestUtils.setField(approved, "status", Overtime.Status.APPROVED);
         overtimeRepository.save(approved);
 
         paidPayroll();
@@ -274,7 +285,7 @@ class OvertimeAndAttendanceRulesIntegrationTest {
         Payroll payroll = new Payroll();
         payroll.setEmployee(employee);
         payroll.setPayCycle(firstHalf);
-        payroll.setStatus(Payroll.Status.PAID);
+        ReflectionTestUtils.setField(payroll, "status", Payroll.Status.PAID);
         payrollRepository.save(payroll);
     }
 

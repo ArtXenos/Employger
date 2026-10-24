@@ -1,5 +1,6 @@
 package com.employger.config;
 
+import com.employger.repository.UserRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,6 +13,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfException;
 
 import java.io.IOException;
@@ -44,10 +46,17 @@ public class SecurityConfig {
         }
 
         @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http)
-                        throws Exception {
+        public SecurityFilterChain securityFilterChain(
+                        HttpSecurity http,
+                        UserRepository userRepository) throws Exception {
 
                 http
+                                // Before the anonymous filter, so a session it ends
+                                // continues as a visitor and gets 401.
+                                .addFilterBefore(
+                                                new ActiveAccountFilter(userRepository),
+                                                AnonymousAuthenticationFilter.class)
+
                                 // Session cookies are sent automatically, so a page on another
                                 // site could otherwise submit changes as the logged-in user.
                                 // spa(): the token travels in the XSRF-TOKEN cookie, and csrf.js

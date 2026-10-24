@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -379,7 +380,7 @@ class HolidayBenefitsAndYearEndIntegrationTest {
         overtime.setHours(new BigDecimal(hours));
         overtime.setOvertimeRate(new BigDecimal("187.50"));
         overtime.setOvertimeAmount(new BigDecimal(amount));
-        overtime.setStatus(Overtime.Status.APPROVED);
+        ReflectionTestUtils.setField(overtime, "status", Overtime.Status.APPROVED);
         overtimeRepository.save(overtime);
     }
 
@@ -410,7 +411,7 @@ class HolidayBenefitsAndYearEndIntegrationTest {
         Payroll payroll = new Payroll();
         payroll.setEmployee(employee);
         payroll.setPayCycle(earlier);
-        payroll.setStatus(Payroll.Status.PAID);
+        ReflectionTestUtils.setField(payroll, "status", Payroll.Status.PAID);
         payroll.setTaxableCompensation(new BigDecimal(taxable));
         payroll.setTaxAmount(new BigDecimal(tax));
         payrollRepository.save(payroll);
@@ -420,7 +421,7 @@ class HolidayBenefitsAndYearEndIntegrationTest {
         Payroll payroll = new Payroll();
         payroll.setEmployee(owner);
         payroll.setPayCycle(cycle);
-        payroll.setStatus(Payroll.Status.PAID);
+        ReflectionTestUtils.setField(payroll, "status", Payroll.Status.PAID);
         payroll.setRegularPay(new BigDecimal(regularPay));
         payrollRepository.save(payroll);
     }

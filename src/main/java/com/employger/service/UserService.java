@@ -1,6 +1,7 @@
 package com.employger.service;
 
 import com.employger.exception.ResourceNotFoundException;
+import com.employger.dto.ChangePasswordRequest;
 import com.employger.dto.CreateUserRequest;
 import com.employger.entity.Employee;
 import com.employger.entity.User;
@@ -179,6 +180,29 @@ public class UserService {
                 "Deleted user #" + id + " '" + user.getUsername() + "' with role " + user.getRole());
 
         userRepository.delete(user);
+    }
+
+    @Transactional
+    public void changeOwnPassword(String username, ChangePasswordRequest request) {
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Your current password is incorrect.");
+        }
+
+        if (request.newPassword().equals(request.currentPassword())) {
+            throw new IllegalArgumentException("Choose a new password that is different from your current one.");
+        }
+
+        checkPasswordStrength(request.newPassword());
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+
+        auditService.record("PASSWORD_CHANGED",
+                "User #" + user.getUserId() + " '" + user.getUsername() + "' changed their own password", user);
     }
 
     public User updateLastLogin(String username) {

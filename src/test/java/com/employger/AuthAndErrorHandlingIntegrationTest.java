@@ -2,6 +2,7 @@ package com.employger;
 
 import com.employger.entity.Employee;
 import com.employger.entity.User;
+import com.employger.entity.AuditLog;
 import com.employger.repository.AuditLogRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.UserRepository;
@@ -27,6 +28,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -135,6 +137,53 @@ class AuthAndErrorHandlingIntegrationTest {
         userRepository.delete(userRepository.findByUsername("active.admin").orElseThrow());
 
         mockMvc.perform(get("/api/users").session(session)).andExpect(status().isUnauthorized());
+    }
+
+    // ---------- changing your own password ----------
+
+    @Test
+    void anyLoginCanChangeItsOwnPasswordWithTheCurrentOne() throws Exception {
+        MockHttpSession session = loggedInSession("active.admin");
+
+        changePassword(session, "correct-horse", "a-brand-new-passphrase")
+                .andExpect(status().isOk())
+                .andExpect(content().string("Your password has been changed."));
+
+        login("active.admin", "correct-horse").andExpect(status().isUnauthorized());
+        login("active.admin", "a-brand-new-passphrase").andExpect(status().isOk());
+
+        AuditLog entry = auditLogRepository.findTop200ByOrderByAuditIdDesc().stream()
+                .filter(log -> log.getAction().equals("PASSWORD_CHANGED"))
+                .findFirst().orElseThrow();
+        assertThat(entry.getDescription()).contains("'active.admin'")
+                .doesNotContain("correct-horse", "a-brand-new-passphrase");
+    }
+
+    @Test
+    void passwordChangeNeedsTheRightCurrentPasswordAndAStrongNewOne() throws Exception {
+        MockHttpSession session = loggedInSession("active.admin");
+
+        changePassword(session, "wrong-current", "a-brand-new-passphrase")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Your current password is incorrect."));
+
+        changePassword(session, "correct-horse", "correct-horse")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("different from your current one")));
+
+        changePassword(session, "correct-horse", "too-short")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("Password must be at least 12 characters."));
+
+        login("active.admin", "correct-horse").andExpect(status().isOk());
+    }
+
+    @Test
+    void passwordChangeRequiresLogin() throws Exception {
+        mockMvc.perform(put("/api/me/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentPassword\": \"x\", \"newPassword\": \"y\"}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -267,6 +316,14 @@ class AuthAndErrorHandlingIntegrationTest {
         return mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(credentials(username, password)));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions changePassword(
+            MockHttpSession session, String current, String next) throws Exception {
+        return mockMvc.perform(put("/api/me/password")
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\": \"" + current + "\", \"newPassword\": \"" + next + "\"}"));
     }
 
     private MockHttpSession loggedInSession(String username) throws Exception {

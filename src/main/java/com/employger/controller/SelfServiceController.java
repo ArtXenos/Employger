@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.dto.ChangePasswordRequest;
 import com.employger.dto.ContactDetailsRequest;
 import com.employger.dto.OvertimeFilingRequest;
 import com.employger.entity.Attendance;
@@ -9,6 +10,7 @@ import com.employger.entity.Payroll;
 import com.employger.entity.Payslip;
 import com.employger.service.ReportService;
 import com.employger.service.SelfServiceService;
+import com.employger.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -39,9 +41,11 @@ import java.util.List;
 public class SelfServiceController {
 
     private final SelfServiceService selfServiceService;
+    private final UserService userService;
 
-    public SelfServiceController(SelfServiceService selfServiceService) {
+    public SelfServiceController(SelfServiceService selfServiceService, UserService userService) {
         this.selfServiceService = selfServiceService;
+        this.userService = userService;
     }
 
     @GetMapping("/profile")
@@ -91,6 +95,16 @@ public class SelfServiceController {
             Authentication authentication) {
 
         return new ProfileResponse(selfServiceService.updateMyContactDetails(authentication.getName(), request));
+    }
+
+    // Every role, not only employees: any login may change its own password.
+    @PutMapping("/password")
+    public String changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
+
+        userService.changeOwnPassword(authentication.getName(), request);
+        return "Your password has been changed.";
     }
 
     @PostMapping("/overtime")

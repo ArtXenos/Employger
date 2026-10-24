@@ -173,6 +173,21 @@ The parent's `monthlyEmployeesCompensation()` is a **concrete** method that retu
 
 `CustomUserDetailsService implements UserDetailsService` ([CustomUserDetailsService.java:14](../src/main/java/com/employger/service/CustomUserDetailsService.java#L14)). Spring Security calls `loadUserByUsername()` through the interface and runs our version.
 
+### Our own interface: `LoginAttemptStore`
+
+[src/main/java/com/employger/service/login/LoginAttemptStore.java](../src/main/java/com/employger/service/login/LoginAttemptStore.java)
+
+The password-guessing limit counts failed logins in memory, which is fast, and keeps a copy in a `LoginAttemptStore` so a restart doesn't clear a lockout early. `LoginAttemptStore` is an **interface**: it says *what* a store must do (`failureCounted()`, `locked()`, `forget()`, `loadActive()`...), not *how*. There are two implementations:
+
+| Class | What it does | Used by |
+|---|---|---|
+| `DatabaseLoginAttemptStore` | Writes each change to the `login_attempts` table and reads it back at startup | The running app (Spring injects it) |
+| `MemoryOnlyLoginAttemptStore` | Remembers nothing | Unit tests of the counting rules, which need no database |
+
+`LoginAttemptService` only ever calls `store.failureCounted(...)` and so on. It doesn't know, or check, which store it was given: that's the same polymorphism as the contribution loop, through an interface instead of an abstract class.
+
+> "The counting rules are written once. Where the counts are kept is a separate decision, behind an interface, so the tests can swap in a store with no database and the rules stay exactly the same."
+
 ---
 
 ## 4. Encapsulation
@@ -483,6 +498,20 @@ classDiagram
     }
     class CustomUserDetailsService
     UserDetailsService <|.. CustomUserDetailsService
+
+    class LoginAttemptStore {
+        <<interface>>
+        +loadActive(Instant, Instant) List~Saved~
+        +failureCounted(Kind, String, Instant)
+        +locked(Kind, String, Instant, Instant)
+        +forget(Kind, String)
+    }
+    class DatabaseLoginAttemptStore
+    class MemoryOnlyLoginAttemptStore
+    LoginAttemptStore <|.. DatabaseLoginAttemptStore
+    LoginAttemptStore <|.. MemoryOnlyLoginAttemptStore
+    class LoginAttemptService
+    LoginAttemptService --> LoginAttemptStore : keeps a copy in
 
     class OncePerRequestFilter {
         <<abstract>>

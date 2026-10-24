@@ -1,5 +1,12 @@
 package com.employger.service;
 
+import com.employger.entity.LoginAttempt;
+import com.employger.service.login.LoginAttemptStore;
+import com.employger.service.login.MemoryOnlyLoginAttemptStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -21,8 +28,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * password until the lock expires.
  *
  * Usernames are counted whether or not they exist, so a lock never reveals
- * which usernames are real. State is kept in memory: it is cleared when the
- * application restarts, which is acceptable for a single-server deployment.
+ * which usernames are real. Counting happens in memory; every change is also
+ * written to a LoginAttemptStore (the login_attempts table in the app) and
+ * read back at startup, so a restart doesn't clear a lock early.
  */
 @Service
 public class LoginAttemptService {
@@ -35,16 +43,26 @@ public class LoginAttemptService {
     // Upper bound on tracked keys, so random usernames cannot exhaust memory.
     private static final int MAX_TRACKED_KEYS = 10_000;
 
+    private static final Logger log = LoggerFactory.getLogger(LoginAttemptService.class);
+
     private final Clock clock;
+    private final LoginAttemptStore store;
     private final Map<String, Tracker> usernames = new ConcurrentHashMap<>();
     private final Map<String, Tracker> addresses = new ConcurrentHashMap<>();
 
-    public LoginAttemptService() {
-        this(Clock.systemUTC());
+    @Autowired
+    public LoginAttemptService(LoginAttemptStore store) {
+        this(Clock.systemUTC(), store);
     }
 
     LoginAttemptService(Clock clock) {
+        this(clock, new MemoryOnlyLoginAttemptStore());
+    }
+
+    LoginAttemptService(Clock clock, LoginAttemptStore store) {
         this.clock = clock;
+        this.store = store;
+        restore();
     }
 
     /** Why a login attempt is refused before the password is checked. */
@@ -82,15 +100,28 @@ public class LoginAttemptService {
 
         evictExpiredIfFull(now);
 
-        boolean usernameLocked = usernames
-                .computeIfAbsent(normalize(username), key -> new Tracker())
-                .fail(now, MAX_FAILURES_PER_USERNAME);
-
-        boolean addressLocked = addresses
-                .computeIfAbsent(String.valueOf(address), key -> new Tracker())
-                .fail(now, MAX_FAILURES_PER_ADDRESS);
+        boolean usernameLocked = fail(LoginAttempt.Kind.USERNAME, normalize(username), now);
+        boolean addressLocked = fail(LoginAttempt.Kind.ADDRESS, String.valueOf(address), now);
 
         return usernameLocked || addressLocked;
+    }
+
+    private boolean fail(LoginAttempt.Kind kind, String key, Instant now) {
+
+        int limit = kind == LoginAttempt.Kind.USERNAME ? MAX_FAILURES_PER_USERNAME : MAX_FAILURES_PER_ADDRESS;
+        Tracker tracker = trackers(kind).computeIfAbsent(key, k -> new Tracker());
+
+        Outcome outcome = tracker.fail(now, limit);
+
+        switch (outcome) {
+            case COUNTED -> save(() -> store.failureCounted(kind, key, now));
+            case LOCKED -> save(() -> store.locked(kind, key, now, now.plus(LOCK_DURATION)));
+            case IGNORED -> {
+                // already locked: nothing changes
+            }
+        }
+
+        return outcome == Outcome.LOCKED;
     }
 
     /**
@@ -99,13 +130,18 @@ public class LoginAttemptService {
      * reset the limit while guessing others.
      */
     public void recordSuccess(String username) {
-        usernames.remove(normalize(username));
+        String key = normalize(username);
+
+        if (usernames.remove(key) != null) {
+            save(() -> store.forget(LoginAttempt.Kind.USERNAME, key));
+        }
     }
 
     /** Forgets all failures and locks. Intended for tests. */
     public void reset() {
         usernames.clear();
         addresses.clear();
+        save(store::forgetAll);
     }
 
     // Usernames are matched case-insensitively by the database collation,
@@ -143,7 +179,44 @@ public class LoginAttemptService {
         // which bound the attack, are kept.
         if (usernames.size() + addresses.size() >= MAX_TRACKED_KEYS) {
             usernames.clear();
+            save(() -> store.forgetAll(LoginAttempt.Kind.USERNAME));
         }
+    }
+
+    private Map<String, Tracker> trackers(LoginAttempt.Kind kind) {
+        return kind == LoginAttempt.Kind.USERNAME ? usernames : addresses;
+    }
+
+    // Rebuilds the counters from the store after a restart.
+    private void restore() {
+
+        Instant now = clock.instant();
+
+        try {
+            for (LoginAttemptStore.Saved saved : store.loadActive(now.minus(WINDOW), now)) {
+                trackers(saved.kind())
+                        .computeIfAbsent(saved.key(), k -> new Tracker())
+                        .restore(saved.failedAt(), saved.lockedUntil());
+            }
+        } catch (DataAccessException e) {
+            log.warn("Could not load saved login failures; counting starts from zero", e);
+        }
+    }
+
+    // The in-memory count already decided the outcome; a database problem
+    // must not break logging in.
+    private static void save(Runnable write) {
+        try {
+            write.run();
+        } catch (DataAccessException e) {
+            log.warn("Could not save a login failure or lock", e);
+        }
+    }
+
+    private enum Outcome {
+        IGNORED,
+        COUNTED,
+        LOCKED
     }
 
     private static final class Tracker {
@@ -151,12 +224,12 @@ public class LoginAttemptService {
         private final Deque<Instant> failures = new ArrayDeque<>();
         private Instant lockedUntil;
 
-        synchronized boolean fail(Instant now, int limit) {
+        synchronized Outcome fail(Instant now, int limit) {
 
             prune(now);
 
             if (lockedUntil != null) {
-                return false;
+                return Outcome.IGNORED;
             }
 
             failures.addLast(now);
@@ -164,10 +237,19 @@ public class LoginAttemptService {
             if (failures.size() >= limit) {
                 lockedUntil = now.plus(LOCK_DURATION);
                 failures.clear();
-                return true;
+                return Outcome.LOCKED;
             }
 
-            return false;
+            return Outcome.COUNTED;
+        }
+
+        synchronized void restore(Instant failedAt, Instant savedLockedUntil) {
+            if (savedLockedUntil != null) {
+                lockedUntil = savedLockedUntil;
+                failures.clear();
+            } else if (lockedUntil == null) {
+                failures.addLast(failedAt);
+            }
         }
 
         synchronized Instant lockedUntil(Instant now) {

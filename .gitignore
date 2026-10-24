@@ -36,3 +36,6 @@ build/
 *.sql
 !scripts/*.sql
 !db/migrations/*.sql
+
+# Classpath file from scripts/csrf-browser-check
+cp.txt

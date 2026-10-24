@@ -176,6 +176,47 @@ class EmployeeAndUserValidationIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void employeeLeavingSwitchesTheirLoginOffAndComingBackDoesNot() throws Exception {
+        Employee maria = employee("maria@example.test");
+        User login = user("maria.hr", User.Role.HR_MANAGER, maria);
+        String leaving = VALID_EMPLOYEE.replace("\"employmentStatus\": \"ACTIVE\"", "\"employmentStatus\": \"INACTIVE\"");
+
+        sendEmployee(put("/api/employees/{id}", maria.getEmployeeId()), leaving)
+                .andExpect(status().isOk());
+
+        assertThat(userRepository.findById(login.getUserId()).orElseThrow().getStatus())
+                .isEqualTo(User.Status.INACTIVE);
+        assertThat(auditLogRepository.findTop200ByOrderByAuditIdDesc())
+                .anySatisfy(entry -> {
+                    assertThat(entry.getAction()).isEqualTo("USER_DEACTIVATED");
+                    assertThat(entry.getDescription()).contains("'maria.hr'", "no longer works for the company");
+                });
+
+        sendEmployee(put("/api/employees/{id}", maria.getEmployeeId()), VALID_EMPLOYEE)
+                .andExpect(status().isOk());
+
+        assertThat(userRepository.findById(login.getUserId()).orElseThrow().getStatus())
+                .isEqualTo(User.Status.INACTIVE);
+    }
+
+    @Test
+    void onlyActiveAdministratorsEmployeeCannotLeave() throws Exception {
+        Employee adminEmployee = actingAdmin.getEmployee();
+        String leaving = VALID_EMPLOYEE
+                .replace("maria@example.test", "acting.admin@example.test")
+                .replace("\"employmentStatus\": \"ACTIVE\"", "\"employmentStatus\": \"INACTIVE\"");
+
+        sendEmployee(put("/api/employees/{id}", adminEmployee.getEmployeeId()), leaving)
+                .andExpect(status().isConflict())
+                .andExpect(content().string(containsString("only active administrator")));
+
+        assertThat(employeeRepository.findById(adminEmployee.getEmployeeId()).orElseThrow().getEmploymentStatus())
+                .isEqualTo(Employee.EmploymentStatus.ACTIVE);
+        assertThat(userRepository.findById(actingAdmin.getUserId()).orElseThrow().getStatus())
+                .isEqualTo(User.Status.ACTIVE);
+    }
+
     // ---------- users ----------
 
     @Test

@@ -3,6 +3,7 @@ package com.employger.repository;
 import com.employger.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Integer> {
@@ -12,6 +13,8 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByUsernameIgnoreCase(String username);
 
     boolean existsByUsernameIgnoreCaseAndUserIdNot(String username, Integer userId);
+
+    List<User> findByEmployeeEmployeeId(Integer employeeId);
 
     boolean existsByEmployeeEmployeeId(Integer employeeId);
 

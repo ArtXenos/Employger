@@ -104,6 +104,16 @@ public class User {
         this.status = status;
     }
 
+    // Switches the login off. Returns false if it was already off.
+    public boolean deactivate() {
+        if (status == Status.INACTIVE) {
+            return false;
+        }
+
+        status = Status.INACTIVE;
+        return true;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }

@@ -4,8 +4,10 @@ import com.employger.dto.ContactDetailsRequest;
 import com.employger.dto.EmployeeRequest;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.entity.Employee;
+import com.employger.entity.User;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayrollRepository;
+import com.employger.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +23,18 @@ public class EmployeeService {
 
     private final EmployeeRepository employeeRepository;
     private final PayrollRepository payrollRepository;
+    private final UserRepository userRepository;
 
     private final AuditService auditService;
 
     public EmployeeService(
             EmployeeRepository employeeRepository,
             PayrollRepository payrollRepository,
+            UserRepository userRepository,
             AuditService auditService) {
         this.employeeRepository = employeeRepository;
         this.payrollRepository = payrollRepository;
+        this.userRepository = userRepository;
         this.auditService = auditService;
     }
 
@@ -124,6 +129,16 @@ public class EmployeeService {
             throw new IllegalStateException("Another employee already uses this email address.");
         }
 
+        boolean leavesCompany = employee.isEmployed()
+                && request.getEmploymentStatus() == Employee.EmploymentStatus.INACTIVE;
+        List<User> logins = userRepository.findByEmployeeEmployeeId(id);
+
+        if (leavesCompany && logins.stream().anyMatch(this::isLastActiveAdministrator)) {
+            throw new IllegalStateException(
+                    "This employee's login is the only active administrator. Make another user an "
+                            + "active administrator first, so nobody is locked out of user management.");
+        }
+
         BigDecimal previousSalary = employee.getBaseSalary();
         BigDecimal newSalary = request.getBaseSalary();
 
@@ -144,6 +159,20 @@ public class EmployeeService {
             auditService.record("EMPLOYEE_STATUS_CHANGED",
                     "Employee #" + id + " employment status: " + previousStatus
                             + " -> " + employee.getEmploymentStatus());
+        }
+
+        // Logins are only for people who work for the company, so leaving
+        // switches the login off. Coming back does not switch it on again:
+        // an administrator decides that on the Users page.
+        if (leavesCompany) {
+            for (User login : logins) {
+                if (login.deactivate()) {
+                    userRepository.save(login);
+                    auditService.record("USER_DEACTIVATED",
+                            "User #" + login.getUserId() + " '" + login.getUsername()
+                                    + "' deactivated: employee #" + id + " no longer works for the company");
+                }
+            }
         }
 
         // Changes withholding tax on future payroll, so it is audited.
@@ -233,5 +262,11 @@ public class EmployeeService {
         auditService.record("EMPLOYEE_DELETED", "Deleted employee #" + id);
 
         employeeRepository.deleteById(id);
+    }
+
+    private boolean isLastActiveAdministrator(User user) {
+        return user.getRole() == User.Role.ADMINISTRATOR
+                && user.getStatus() == User.Status.ACTIVE
+                && userRepository.countByRoleAndStatus(User.Role.ADMINISTRATOR, User.Status.ACTIVE) <= 1;
     }
 }

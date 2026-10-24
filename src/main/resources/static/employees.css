@@ -285,9 +285,15 @@ tbody tr:hover {
   margin: 0;
 }
 
-.checkbox-group small {
+.checkbox-group small,
+.form-group > small {
   font-size: 12px;
   color: #5b6475;
+}
+
+.form-group label .optional {
+  color: #5b6475;
+  font-weight: 400;
 }
 
 .form-subheading {

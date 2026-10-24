@@ -90,6 +90,7 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 | Employees change contact details directly, without HR approval | Only email, phone and address, and each change is audited (`EMPLOYEE_CONTACT_UPDATED`, field names only). Salary, department, government numbers and bank details stay HR-only. |
 | Company overview shows the whole company | Em-Ployger has no "reports to" field, so a manager can't be limited to their own team. Totals only, no personal data, so a company-wide view is safe for general managers. |
 | Leave: Paid and Unpaid, 5 paid days a year (V9) | Owner's decision 2026-10-25. Approval marks each working day (Mon–Fri, not a holiday) LEAVE (paid, no deduction) or ABSENT (unpaid, a day deducted), so payroll needs no new rule. The limit is the setting `paid_leave_days_per_year` (Service Incentive Leave, Labor Code Art. 95). A day already worked or covered by final payroll can't be taken as leave. |
+| Separation date only prorates final pay (V11) | Owner's decision 2026-10-25. The final cycle's base pay stops at the employee's last day, like a new hire's starts at the date hired; later days get no deductions, holiday pay or missing-attendance warnings. HR still sets the employee INACTIVE by hand (which switches the login off); an INACTIVE leaver can still get payroll for cycles that start on or before their last day. |
 
 ## 6. Invariants that must not change
 

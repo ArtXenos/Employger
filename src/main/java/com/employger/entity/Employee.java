@@ -86,6 +86,11 @@ public class Employee {
     @Column(name = "date_hired", nullable = false)
     private LocalDate dateHired;
 
+    // Last day of work (migration V11). The final pay cycle's
+    // base pay stops here; NULL while the employee still works here.
+    @Column(name = "separation_date")
+    private LocalDate separationDate;
+
     @Column(name = "job_title", length = 100)
     private String jobTitle;
 
@@ -223,6 +228,14 @@ public class Employee {
 
     public boolean isManagerial() {
         return managerial;
+    }
+
+    public LocalDate getSeparationDate() {
+        return separationDate;
+    }
+
+    public void setSeparationDate(LocalDate separationDate) {
+        this.separationDate = separationDate;
     }
 
     // Still working for the company: only then may they have an active login.

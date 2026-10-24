@@ -109,6 +109,27 @@ class EmployeeAndUserValidationIntegrationTest {
     }
 
     @Test
+    void lastDayMustNotBeBeforeHireDateAndChangesAreAudited() throws Exception {
+        sendEmployee(post("/api/employees"),
+                VALID_EMPLOYEE.replace("\"dateHired\"", "\"separationDate\": \"2026-08-31\", \"dateHired\""))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string("The last day cannot be before the date hired."));
+
+        Employee leaver = employee("maria@example.test");
+
+        sendEmployee(put("/api/employees/{id}", leaver.getEmployeeId()),
+                VALID_EMPLOYEE.replace("\"dateHired\"", "\"separationDate\": \"2026-12-15\", \"dateHired\""))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.separationDate").value("2026-12-15"));
+
+        assertThat(auditLogRepository.findTop200ByOrderByAuditIdDesc())
+                .anySatisfy(entry -> {
+                    assertThat(entry.getAction()).isEqualTo("EMPLOYEE_SEPARATION_CHANGED");
+                    assertThat(entry.getDescription()).endsWith("last day: null -> 2026-12-15");
+                });
+    }
+
+    @Test
     void duplicateEmailIsRejectedIgnoringCaseButOwnEmailIsFine() throws Exception {
         Employee existing = employee("taken@example.test");
         Employee other = employee("other@example.test");

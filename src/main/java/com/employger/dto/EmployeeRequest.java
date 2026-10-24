@@ -91,6 +91,9 @@ public class EmployeeRequest {
     @NotNull(message = "Date hired is required.")
     private LocalDate dateHired;
 
+    // Optional last day of work; empty means still employed.
+    private LocalDate separationDate;
+
     @Size(max = 100, message = "Job title must be at most 100 characters.")
     private String jobTitle;
 
@@ -240,6 +243,14 @@ public class EmployeeRequest {
 
     public LocalDate getDateHired() {
         return dateHired;
+    }
+
+    public LocalDate getSeparationDate() {
+        return separationDate;
+    }
+
+    public void setSeparationDate(LocalDate separationDate) {
+        this.separationDate = separationDate;
     }
 
     public void setDateHired(LocalDate dateHired) {

@@ -148,8 +148,15 @@ public class EmployeeService {
         }
 
         Employee.EmploymentStatus previousStatus = employee.getEmploymentStatus();
+        LocalDate previousSeparation = employee.getSeparationDate();
 
         copyFields(request, employee);
+
+        // Changes how much the final payroll pays, so it is audited.
+        if (!Objects.equals(previousSeparation, employee.getSeparationDate())) {
+            auditService.record("EMPLOYEE_SEPARATION_CHANGED",
+                    "Employee #" + id + " last day: " + previousSeparation + " -> " + employee.getSeparationDate());
+        }
 
         if (request.getEmploymentStatus() != null) {
             employee.setEmploymentStatus(request.getEmploymentStatus());
@@ -208,6 +215,10 @@ public class EmployeeService {
         if (request.getDateHired().isAfter(LocalDate.now().plusYears(1))) {
             throw new IllegalArgumentException("Date hired cannot be more than a year in the future.");
         }
+
+        if (request.getSeparationDate() != null && request.getSeparationDate().isBefore(request.getDateHired())) {
+            throw new IllegalArgumentException("The last day cannot be before the date hired.");
+        }
     }
 
     private static void copyFields(EmployeeRequest request, Employee employee) {
@@ -221,6 +232,7 @@ public class EmployeeService {
         employee.setPostalCode(blankToNull(request.getPostalCode()));
         employee.setDesignation(blankToNull(request.getDesignation()));
         employee.setDateHired(request.getDateHired());
+        employee.setSeparationDate(request.getSeparationDate());
         employee.setJobTitle(blankToNull(request.getJobTitle()));
         // Government numbers: left out = keep, empty = clear.
         if (request.getSssNumber() != null) {

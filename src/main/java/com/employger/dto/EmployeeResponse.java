@@ -32,6 +32,7 @@ public class EmployeeResponse {
     private final String designation;
     private final String employmentStatus;
     private final LocalDate dateHired;
+    private final LocalDate separationDate;
     private final String jobTitle;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
@@ -68,6 +69,7 @@ public class EmployeeResponse {
                 ? employee.getEmploymentStatus().name()
                 : null;
         this.dateHired = employee.getDateHired();
+        this.separationDate = employee.getSeparationDate();
         this.jobTitle = employee.getJobTitle();
         this.createdAt = employee.getCreatedAt();
         this.updatedAt = employee.getUpdatedAt();
@@ -151,6 +153,10 @@ public class EmployeeResponse {
 
     public LocalDate getDateHired() {
         return dateHired;
+    }
+
+    public LocalDate getSeparationDate() {
+        return separationDate;
     }
 
     public String getJobTitle() {

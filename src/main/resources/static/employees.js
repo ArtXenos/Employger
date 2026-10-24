@@ -221,6 +221,8 @@ window.editEmployee = function (employeeId) {
 
   document.getElementById("dateHired").value = employee.dateHired || "";
 
+  document.getElementById("separationDate").value = employee.separationDate || "";
+
   document.getElementById("employmentStatus").value =
     employee.employmentStatus || "ACTIVE";
 
@@ -272,6 +274,9 @@ employeeForm.addEventListener("submit", async (event) => {
     employmentStatus: document.getElementById("employmentStatus").value,
 
     dateHired: document.getElementById("dateHired").value,
+
+    // Empty = still employed.
+    separationDate: document.getElementById("separationDate").value || null,
 
     jobTitle: document.getElementById("jobTitle").value.trim(),
 

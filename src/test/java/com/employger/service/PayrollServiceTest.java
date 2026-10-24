@@ -206,6 +206,42 @@ class PayrollServiceTest {
     }
 
     @Test
+    void calculation_proratesLeaverUpToTheirLastDay() {
+        employee.setSeparationDate(LocalDate.of(2026, 10, 9));
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        // Oct 1-15 has 11 working days; Oct 1-9 has 7.
+        // 12,500 x 7 / 11 = 7,954.545454... -> 7,954.55
+        assertThat(payroll.getWorkingDaysEmployed()).isEqualTo(7);
+        assertThat(payroll.getBasePay()).isEqualByComparingTo("7954.55");
+        assertThat(payroll.getCalculationNotes())
+                .contains("to 2026-10-09 (last day)")
+                // Days after the last day aren't reported as missing attendance.
+                .contains("7 working day(s)");
+    }
+
+    @Test
+    void createPayroll_paysAnInactiveLeaverTheirFinalCycleOnly() {
+        employee.setEmploymentStatus(Employee.EmploymentStatus.INACTIVE);
+        employee.setSeparationDate(LocalDate.of(2026, 10, 9));
+
+        assertThat(payrollService.createPayroll(35, 1).getWorkingDaysEmployed()).isEqualTo(7);
+
+        employee.setSeparationDate(LocalDate.of(2026, 9, 30));
+
+        assertThatThrownBy(() -> payrollService.createPayroll(35, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("ACTIVE");
+
+        employee.setEmploymentStatus(Employee.EmploymentStatus.ACTIVE);
+
+        assertThatThrownBy(() -> payrollService.createPayroll(35, 1))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("last day was 2026-09-30");
+    }
+
+    @Test
     void createPayroll_appliesStatutoryDeductionsWhenEnabled() {
         enableStatutoryDeductions();
 

@@ -302,9 +302,24 @@ public class PayrollService {
                                                         + ". Payroll can only be generated for OPEN or PROCESSING pay cycles.");
                 }
 
-                if (employee.getEmploymentStatus() != Employee.EmploymentStatus.ACTIVE) {
+                // A leaver set to INACTIVE still gets their final payroll, for
+                // pay cycles that start on or before their last day.
+                boolean finalPayForLeaver = employee.getSeparationDate() != null
+                                && !employee.getSeparationDate().isBefore(payCycle.getStartDate());
+
+                if (employee.getEmploymentStatus() != Employee.EmploymentStatus.ACTIVE && !finalPayForLeaver) {
                         throw new IllegalStateException(
-                                        "Payroll can only be generated for ACTIVE employees.");
+                                        "Payroll can only be generated for ACTIVE employees, or for a leaver's "
+                                                        + "final pay cycle once their last day is entered.");
+                }
+
+                if (employee.getSeparationDate() != null
+                                && employee.getSeparationDate().isBefore(payCycle.getStartDate())) {
+
+                        throw new IllegalStateException(
+                                        "The employee's last day was " + employee.getSeparationDate()
+                                                        + ", before this pay cycle starts ("
+                                                        + payCycle.getStartDate() + ").");
                 }
 
                 if (employee.getDateHired() != null
@@ -358,7 +373,9 @@ public class PayrollService {
          * recalculate, and process. Policy decided 2026-10-22:
          *
          *  - Base pay = annual salary / periods per year, prorated by
-         *    working days for an employee hired after the cycle starts.
+         *    working days for an employee hired after the cycle starts or
+         *    whose last day (separation date) is before it ends.
+         *    Decided 2026-10-25 for leavers.
          *  - Rest days (rest_days setting, default Saturday and Sunday) never
          *    produce attendance deductions.
          *  - Working days: ABSENT = full regular day unpaid; PRESENT/LATE =
@@ -393,11 +410,16 @@ public class PayrollService {
                                                 ? employee.getDateHired()
                                                 : cycleStart;
 
+                LocalDate employedUntil = employee.getSeparationDate() != null
+                                && employee.getSeparationDate().isBefore(cycleEnd)
+                                                ? employee.getSeparationDate()
+                                                : cycleEnd;
+
                 int workingDaysInCycle = rates.countWorkingDays(cycleStart, cycleEnd, restDays);
 
-                int workingDaysEmployed = employedFrom.isAfter(cycleEnd)
+                int workingDaysEmployed = employedFrom.isAfter(employedUntil)
                                 ? 0
-                                : rates.countWorkingDays(employedFrom, cycleEnd, restDays);
+                                : rates.countWorkingDays(employedFrom, employedUntil, restDays);
 
                 List<String> notes = new ArrayList<>();
 
@@ -418,6 +440,7 @@ public class PayrollService {
                                                         RoundingMode.HALF_UP);
 
                         notes.add("Base pay prorated: employed from " + employedFrom
+                                        + (employedUntil.isBefore(cycleEnd) ? " to " + employedUntil + " (last day)" : "")
                                         + ", paid for " + workingDaysEmployed + " of "
                                         + workingDaysInCycle + " working days.");
                 }
@@ -490,7 +513,7 @@ public class PayrollService {
 
                         LocalDate date = attendance.getAttendanceDate();
 
-                        if (date.isBefore(employedFrom)) {
+                        if (date.isBefore(employedFrom) || date.isAfter(employedUntil)) {
                                 continue;
                         }
 
@@ -553,7 +576,7 @@ public class PayrollService {
 
                 // ---------- holidays: unworked pay and the day-before rule ----------
 
-                for (LocalDate date = employedFrom; !date.isAfter(cycleEnd); date = date.plusDays(1)) {
+                for (LocalDate date = employedFrom; !date.isAfter(employedUntil); date = date.plusDays(1)) {
 
                         Holiday.Type holidayType = holidays.get(date);
 
@@ -600,7 +623,7 @@ public class PayrollService {
 
                 List<LocalDate> missingAttendanceDates = new ArrayList<>();
 
-                for (LocalDate date = employedFrom; !date.isAfter(cycleEnd); date = date.plusDays(1)) {
+                for (LocalDate date = employedFrom; !date.isAfter(employedUntil); date = date.plusDays(1)) {
                         if (rates.isWorkingDay(date, restDays)
                                         && !holidays.containsKey(date)
                                         && !attendanceByDate.containsKey(date)) {

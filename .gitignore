@@ -36,6 +36,7 @@ build/
 *.sql
 !scripts/*.sql
 !db/migrations/*.sql
+!scripts/csrf-browser-check/seed.sql
 
 # Classpath file from scripts/csrf-browser-check
 cp.txt

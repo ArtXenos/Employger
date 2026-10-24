@@ -200,6 +200,18 @@ class HolidayBenefitsAndYearEndIntegrationTest {
         assertThat(preview.get("nonTaxableEarnings")).isEqualTo(money("80000.00"));
     }
 
+    @Test
+    void calculatingPayrollRecordsTheEmployeesDepartmentForTheCompanyOverview() {
+        employee.setDepartment("Sales");
+        employeeRepository.save(employee);
+        PayCycle november = cycle("November 2026", LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30),
+                PayCycle.CycleType.MONTHLY);
+
+        Payroll payroll = payrollService.createPayroll(employee.getEmployeeId(), november.getPayCycleId());
+
+        assertThat(payroll.getDepartment()).isEqualTo("Sales");
+    }
+
     // ---------- year-end annualization ----------
 
     @Test

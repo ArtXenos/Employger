@@ -878,6 +878,7 @@ public class PayrollService {
                                 ? null
                                 : String.join("\n", breakdown.notes()));
                 payroll.setCalculatedAt(LocalDateTime.now());
+                payroll.setDepartment(payroll.getEmployee().getDepartment());
 
                 payroll.setSssContribution(breakdown.statutory().sss());
                 payroll.setPhilHealthContribution(breakdown.statutory().philHealth());

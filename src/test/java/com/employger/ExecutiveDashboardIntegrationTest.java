@@ -112,6 +112,32 @@ class ExecutiveDashboardIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "HR_MANAGER")
+    void movingAnEmployeeLeavesTheirPastPayrollInItsDepartment() throws Exception {
+        Employee ana = employeeRepository.findAll().stream()
+                .filter(e -> "ana@example.test".equals(e.getEmail())).findFirst().orElseThrow();
+        payrollRepository.findAll().stream()
+                .filter(p -> p.getEmployee().getEmployeeId().equals(ana.getEmployeeId()))
+                .forEach(p -> {
+                    p.setDepartment("Operations");
+                    payrollRepository.save(p);
+                });
+
+        ana.setDepartment("Finance");
+        employeeRepository.save(ana);
+
+        mockMvc.perform(get("/api/dashboard/executive").param("year", "2026").param("month", "10"))
+                .andExpect(status().isOk())
+                // Ben's payroll has no recorded department (before V8): his current one.
+                .andExpect(jsonPath("$.departments[0].department").value("Finance"))
+                .andExpect(jsonPath("$.departments[0].activeEmployees").value(2))
+                .andExpect(jsonPath("$.departments[0].amounts.laborCost").value(20000.00))
+                .andExpect(jsonPath("$.departments[1].department").value("Operations"))
+                .andExpect(jsonPath("$.departments[1].activeEmployees").value(0))
+                .andExpect(jsonPath("$.departments[1].amounts.laborCost").value(11480.00));
+    }
+
+    @Test
     @WithMockUser(roles = "ADMINISTRATOR")
     void trendCoversSixMonthsEndingWithTheChosenMonth() throws Exception {
         mockMvc.perform(get("/api/dashboard/executive").param("year", "2026").param("month", "10"))

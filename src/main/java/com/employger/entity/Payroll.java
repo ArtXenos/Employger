@@ -99,6 +99,11 @@ public class Payroll {
     @Column(name = "calculated_at")
     private LocalDateTime calculatedAt;
 
+    // The employee's department when this payroll was calculated (migration
+    // V8), so moving the employee later doesn't move this cost.
+    @Column(length = 100)
+    private String department;
+
     // Employee statutory contributions and tax basis (migration V3).
     // deduction_amount is their sum; tax_amount is the withholding tax.
 
@@ -398,6 +403,14 @@ public class Payroll {
 
     public void setCalculationNotes(String calculationNotes) {
         this.calculationNotes = calculationNotes;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
     }
 
     public LocalDateTime getCalculatedAt() {

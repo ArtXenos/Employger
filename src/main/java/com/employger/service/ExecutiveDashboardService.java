@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  *
  * A payroll belongs to the month its pay cycle ends in, as on the Reports
  * page, and DRAFT payroll is left out because it is not final. Each
- * payroll counts under its employee's current department.
+ * payroll counts under the department it was calculated in.
  */
 @Service
 @Transactional(readOnly = true)
@@ -87,7 +87,7 @@ public class ExecutiveDashboardService {
                 .collect(Collectors.groupingBy(employee -> department(employee), Collectors.counting()));
 
         Map<String, List<Payroll>> payrollByDepartment = monthPayroll.stream()
-                .collect(Collectors.groupingBy(payroll -> department(payroll.getEmployee())));
+                .collect(Collectors.groupingBy(ExecutiveDashboardService::department));
 
         // Every department with active employees or payroll this month, A to Z.
         Map<String, Long> departments = new TreeMap<>(headcount);
@@ -144,7 +144,18 @@ public class ExecutiveDashboardService {
     }
 
     private static String department(Employee employee) {
-        String name = employee.getDepartment();
+        return departmentName(employee.getDepartment());
+    }
+
+    // Recorded on the payroll when it was calculated; payroll from before
+    // V8 that has none falls back to the employee's current department.
+    private static String department(Payroll payroll) {
+        return departmentName(payroll.getDepartment() != null
+                ? payroll.getDepartment()
+                : payroll.getEmployee().getDepartment());
+    }
+
+    private static String departmentName(String name) {
         return name == null || name.isBlank() ? UNASSIGNED : name.trim();
     }
 }

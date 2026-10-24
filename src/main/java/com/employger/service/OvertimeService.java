@@ -1,6 +1,7 @@
 package com.employger.service;
 
 import com.employger.exception.ResourceNotFoundException;
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Holiday;
@@ -62,7 +63,7 @@ public class OvertimeService {
                 return overtimeRepository.findAll();
         }
 
-        public List<Overtime> getOvertimeByStatus(Overtime.Status status) {
+        public List<Overtime> getOvertimeByStatus(ApprovalRequest.Status status) {
                 return overtimeRepository.findByStatusOrderByOvertimeDateAsc(status);
         }
 
@@ -125,7 +126,7 @@ public class OvertimeService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Overtime not found"));
 
-                if (overtime.getStatus() != Overtime.Status.PENDING) {
+                if (overtime.getStatus() != ApprovalRequest.Status.PENDING) {
                         throw new IllegalStateException(
                                         "Only pending overtime can be edited");
                 }
@@ -167,7 +168,7 @@ public class OvertimeService {
         @Transactional
         public Overtime updateOvertimeStatus(
                         Integer overtimeId,
-                        Overtime.Status newStatus,
+                        ApprovalRequest.Status newStatus,
                         String username) {
 
                 Overtime overtime = overtimeRepository
@@ -177,8 +178,8 @@ public class OvertimeService {
 
                 overtime.checkPending();
 
-                if (newStatus != Overtime.Status.APPROVED
-                                && newStatus != Overtime.Status.REJECTED) {
+                if (newStatus != ApprovalRequest.Status.APPROVED
+                                && newStatus != ApprovalRequest.Status.REJECTED) {
 
                         throw new IllegalArgumentException(
                                         "Invalid overtime status");
@@ -189,7 +190,7 @@ public class OvertimeService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "User not found"));
 
-                if (newStatus == Overtime.Status.APPROVED) {
+                if (newStatus == ApprovalRequest.Status.APPROVED) {
 
                         // Attendance or other overtime may have changed since the
                         // request was filed, so check again before approving.
@@ -210,12 +211,7 @@ public class OvertimeService {
                         overtime.reject(user);
                 }
 
-                auditService.record("OVERTIME_" + newStatus,
-                                newStatus + " overtime #" + overtime.getOvertimeId()
-                                                + " (employee #" + overtime.getEmployee().getEmployeeId()
-                                                + ", " + overtime.getOvertimeDate() + ", "
-                                                + overtime.getHours() + " h, amount "
-                                                + overtime.getOvertimeAmount() + ")");
+                auditService.record("OVERTIME_" + newStatus, newStatus + " " + overtime.describe());
 
                 return overtimeRepository.save(overtime);
         }
@@ -228,7 +224,7 @@ public class OvertimeService {
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Overtime not found"));
 
-                if (overtime.getStatus() == Overtime.Status.APPROVED
+                if (overtime.getStatus() == ApprovalRequest.Status.APPROVED
                                 && payrollRepository.isDateLockedForEmployee(
                                                 overtime.getEmployee().getEmployeeId(),
                                                 overtime.getOvertimeDate())) {
@@ -239,11 +235,7 @@ public class OvertimeService {
                 }
 
                 auditService.record("OVERTIME_DELETED",
-                                "Deleted " + overtime.getStatus() + " overtime #" + overtime.getOvertimeId()
-                                                + " (employee #" + overtime.getEmployee().getEmployeeId()
-                                                + ", " + overtime.getOvertimeDate() + ", "
-                                                + overtime.getHours() + " h, amount "
-                                                + overtime.getOvertimeAmount() + ")");
+                                "Deleted " + overtime.getStatus() + " " + overtime.describe());
 
                 overtimeRepository.delete(overtime);
         }
@@ -297,7 +289,7 @@ public class OvertimeService {
                                                 attendance.getAttendanceDate())
                                 .stream()
                                 .filter(other -> !other.getOvertimeId().equals(excludedOvertimeId))
-                                .filter(other -> other.getStatus() != Overtime.Status.REJECTED)
+                                .filter(other -> other.getStatus() != ApprovalRequest.Status.REJECTED)
                                 .map(Overtime::getHours)
                                 .reduce(ZERO, BigDecimal::add);
 

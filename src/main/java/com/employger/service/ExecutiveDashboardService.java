@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
 import com.employger.entity.Payroll;
@@ -120,7 +121,7 @@ public class ExecutiveDashboardService {
         return new ExecutiveSummary(
                 month,
                 active.size(),
-                overtimeRepository.countByStatus(Overtime.Status.PENDING),
+                overtimeRepository.countByStatus(ApprovalRequest.Status.PENDING),
                 totals,
                 rows,
                 trend,

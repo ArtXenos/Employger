@@ -2,18 +2,22 @@ package com.employger.controller;
 
 import com.employger.dto.ChangePasswordRequest;
 import com.employger.dto.ContactDetailsRequest;
+import com.employger.dto.LeaveFilingRequest;
+import com.employger.dto.LeaveResponse;
 import com.employger.dto.OvertimeFilingRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
 import com.employger.entity.Payroll;
 import com.employger.entity.Payslip;
+import com.employger.service.LeaveService;
 import com.employger.service.ReportService;
 import com.employger.service.SelfServiceService;
 import com.employger.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,10 +46,15 @@ public class SelfServiceController {
 
     private final SelfServiceService selfServiceService;
     private final UserService userService;
+    private final LeaveService leaveService;
 
-    public SelfServiceController(SelfServiceService selfServiceService, UserService userService) {
+    public SelfServiceController(
+            SelfServiceService selfServiceService,
+            UserService userService,
+            LeaveService leaveService) {
         this.selfServiceService = selfServiceService;
         this.userService = userService;
+        this.leaveService = leaveService;
     }
 
     @GetMapping("/profile")
@@ -95,6 +104,35 @@ public class SelfServiceController {
             Authentication authentication) {
 
         return new ProfileResponse(selfServiceService.updateMyContactDetails(authentication.getName(), request));
+    }
+
+    // Own leave requests plus this year's paid leave balance.
+    @GetMapping("/leave")
+    public MyLeave getLeave(Authentication authentication) {
+        Employee employee = selfServiceService.getMyEmployee(authentication.getName());
+
+        return new MyLeave(
+                leaveService.paidLeaveBalance(employee, LocalDate.now().getYear()),
+                leaveService.getLeaveOf(employee).stream().map(LeaveResponse::new).toList());
+    }
+
+    @PostMapping("/leave")
+    @ResponseStatus(HttpStatus.CREATED)
+    public LeaveResponse fileLeave(
+            @Valid @RequestBody LeaveFilingRequest request,
+            Authentication authentication) {
+
+        return new LeaveResponse(
+                leaveService.fileLeave(selfServiceService.getMyEmployee(authentication.getName()), request));
+    }
+
+    @DeleteMapping("/leave/{leaveId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancelLeave(@PathVariable Integer leaveId, Authentication authentication) {
+        leaveService.cancel(selfServiceService.getMyEmployee(authentication.getName()), leaveId);
+    }
+
+    public record MyLeave(LeaveService.PaidLeaveBalance paidLeave, List<LeaveResponse> requests) {
     }
 
     // Every role, not only employees: any login may change its own password.

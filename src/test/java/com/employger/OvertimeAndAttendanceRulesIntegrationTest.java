@@ -1,5 +1,6 @@
 package com.employger;
 
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
@@ -186,7 +187,7 @@ class OvertimeAndAttendanceRulesIntegrationTest {
     void daysCoveredByPaidPayrollCannotChange() throws Exception {
         Overtime pending = pendingOvertime(OCT_6, "1", workedDay);
         Overtime approved = pendingOvertime(OCT_6, "1", workedDay);
-        ReflectionTestUtils.setField(approved, "status", Overtime.Status.APPROVED);
+        ReflectionTestUtils.setField(approved, "status", ApprovalRequest.Status.APPROVED);
         overtimeRepository.save(approved);
 
         paidPayroll();

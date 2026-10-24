@@ -49,7 +49,7 @@ The course grades encapsulation, inheritance, polymorphism and abstraction. On 2
 ### 3.3 Domain lifecycle methods: encapsulation
 
 - `Payroll`: `checkCanProcess()` / `process(user, time)` (DRAFT → PROCESSED) and `checkCanBePaid()` / `markPaid(method, reference, time)` (PROCESSED → PAID). There is also `isDraft()`.
-- `Overtime`: `checkPending()`, `approve(user)` and `reject(user)` (PENDING → APPROVED or REJECTED).
+- `Overtime` and `LeaveRequest` extend the abstract `ApprovalRequest`, which holds `checkPending()` and the `final` `approve(user)` and `reject(user)` (PENDING → APPROVED or REJECTED). Each subclass supplies only `requestKind()` and `describe()`.
 - Neither has a `setStatus()` (removed 2026-10-25): a new payroll starts DRAFT and new overtime PENDING, and a `status` sent by the browser for overtime is ignored. Tests that need a PAID or APPROVED record as setup data set the stored field with `ReflectionTestUtils`.
 - The services call the check first, before any recalculation, and the transition last. The error messages are exactly as before.
 
@@ -72,7 +72,7 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 
 | Role | Pages | Can change |
 |---|---|---|
-| Employee | My Payroll: payslips (printable), attendance, overtime, BIR 2316 (printable), My Details | Files their own overtime (PENDING until HR decides), changes their own email, phone and address |
+| Employee | My Payroll: payslips (printable), attendance, overtime, leave, BIR 2316 (printable), My Details | Files their own overtime and leave (PENDING until HR decides), cancels pending leave, changes their own email, phone and address and their password |
 | HR Manager | All staff pages except Settings, Users and the audit log; dashboard with **Pending Approvals** and **Company Overview** | Employees, attendance, overtime decisions, pay cycles, payroll, benefits, reports |
 | General Manager | Staff pages read-only (no Reports); dashboard **Company Overview** (totals by month and department, six-month labor cost trend) | Nothing |
 | Administrator | Everything, including Settings, Users and the audit log | Everything |
@@ -89,7 +89,7 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 | No effective-dated rates | Settings hold one current value per rate. Dated rates would be new functionality. |
 | Employees change contact details directly, without HR approval | Only email, phone and address, and each change is audited (`EMPLOYEE_CONTACT_UPDATED`, field names only). Salary, department, government numbers and bank details stay HR-only. |
 | Company overview shows the whole company | Em-Ployger has no "reports to" field, so a manager can't be limited to their own team. Totals only, no personal data, so a company-wide view is safe for general managers. |
-| No leave requests or GM payroll sign-off yet | Both need database changes (a `leave_requests` table; a new payroll approval step), planned separately. |
+| Leave: Paid and Unpaid, 5 paid days a year (V9) | Owner's decision 2026-10-25. Approval marks each working day (Mon–Fri, not a holiday) LEAVE (paid, no deduction) or ABSENT (unpaid, a day deducted), so payroll needs no new rule. The limit is the setting `paid_leave_days_per_year` (Service Incentive Leave, Labor Code Art. 95). A day already worked or covered by final payroll can't be taken as leave. |
 
 ## 6. Invariants that must not change
 

@@ -1,5 +1,6 @@
 package com.employger.service;
 
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
@@ -276,7 +277,7 @@ class PayrollServiceTest {
         Overtime unpaid = approvedOvertime("100.00");
 
         when(overtimeRepository.findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
-                35, OCT_1, OCT_15, Overtime.Status.APPROVED)).thenReturn(List.of(alreadyPaid, unpaid));
+                35, OCT_1, OCT_15, ApprovalRequest.Status.APPROVED)).thenReturn(List.of(alreadyPaid, unpaid));
 
         Payroll payroll = payrollService.createPayroll(35, 1);
 
@@ -498,7 +499,7 @@ class PayrollServiceTest {
                 approvedOvertime("359.20"));
 
         when(overtimeRepository.findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
-                35, OCT_1, OCT_15, Overtime.Status.APPROVED)).thenReturn(overtime);
+                35, OCT_1, OCT_15, ApprovalRequest.Status.APPROVED)).thenReturn(overtime);
 
         return overtime;
     }
@@ -536,7 +537,7 @@ class PayrollServiceTest {
     private Overtime approvedOvertime(String amount) {
         Overtime overtime = new Overtime();
         overtime.setEmployee(employee);
-        ReflectionTestUtils.setField(overtime, "status", Overtime.Status.APPROVED);
+        ReflectionTestUtils.setField(overtime, "status", ApprovalRequest.Status.APPROVED);
         overtime.setOvertimeDate(LocalDate.of(2026, 10, 3));
         overtime.setOvertimeAmount(new BigDecimal(amount));
         return overtime;

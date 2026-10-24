@@ -82,6 +82,36 @@ public abstract class PayrollMetric {
 
 The limits shown are the defaults. HR can change them in Settings.
 
+### Overtime and leave extend `ApprovalRequest`
+
+[src/main/java/com/employger/entity/ApprovalRequest.java](../src/main/java/com/employger/entity/ApprovalRequest.java)
+
+Overtime and leave are both *requests that HR approves or rejects*. Before leave existed, overtime held that lifecycle itself. Now it lives once, in an abstract parent, and both extend it:
+
+| Class | Inherits | Adds or overrides |
+|---|---|---|
+| `Overtime` | `status`, `approvedBy`, `checkPending()`, `approve()`, `reject()`, `isPending()` | hours, rate and amount; `requestKind()` = "overtime"; `describe()` |
+| `LeaveRequest` | the same | leave type, dates, working days, reason; `requestKind()` = "leave"; `describe()` |
+
+```java
+public abstract class ApprovalRequest {
+    protected abstract String requestKind();   // "overtime" or "leave"
+    public abstract String describe();         // one line for the audit log
+
+    public final void approve(User decidedBy) {
+        checkPending();                        // "Only pending leave can be approved or rejected"
+        this.status = Status.APPROVED;
+        this.approvedBy = decidedBy;
+    }
+}
+```
+
+`approve()` and `reject()` are `final`, so no subclass can skip the "only pending" check. The parent only asks each subclass for its name and its one-line description, the two things that differ. This pattern is called a *template method*. It's a `@MappedSuperclass`, so there's no extra table: the `overtime` and `leave_requests` tables each have the `status` and `approved_by` columns declared once in the parent.
+
+> "Overtime and leave go through exactly the same approval steps, so those steps are written once, in the parent, and can't be changed by the children. Each child only says what it's called and how to describe itself."
+
+`LeaveRequest.LeaveType` also carries its own behaviour: `PAID` knows its days are recorded as `LEAVE` in attendance, and `UNPAID` knows its days are recorded as `ABSENT`. The service asks the type instead of using an `if`.
+
 ### Four metrics extend `PayrollMetric`
 
 | Class | Line | `amountOf(payroll)` returns |
@@ -218,9 +248,9 @@ There is **no `setStatus()`**: a new payroll starts as DRAFT, and `process()` an
 
 `PayrollService` calls `checkCanProcess()` first, before recalculating anything, and `process()` last ([PayrollService.java:968](../src/main/java/com/employger/service/PayrollService.java#L968), [:984](../src/main/java/com/employger/service/PayrollService.java#L984)).
 
-### Overtime: PENDING → APPROVED or REJECTED, then final
+### Overtime and leave: PENDING → APPROVED or REJECTED, then final
 
-[src/main/java/com/employger/entity/Overtime.java](../src/main/java/com/employger/entity/Overtime.java). `approve()` and `reject()` both refuse a request that has already been decided. There is no `setStatus()` either: new overtime starts PENDING. The status field is also marked `@JsonProperty(access = READ_ONLY)`, so a browser that sends `"status": "APPROVED"` is ignored, and a test proves it.
+[src/main/java/com/employger/entity/ApprovalRequest.java](../src/main/java/com/employger/entity/ApprovalRequest.java), inherited by `Overtime` and `LeaveRequest`. `approve()` and `reject()` both refuse a request that has already been decided. There is no `setStatus()` either: new overtime starts PENDING. The status field is also marked `@JsonProperty(access = READ_ONLY)`, so a browser that sends `"status": "APPROVED"` is ignored, and a test proves it.
 
 ### A login can't outlive its permission
 
@@ -469,14 +499,32 @@ classDiagram
         +checkCanBePaid()
         +markPaid(String, String, LocalDateTime)
     }
-    class Overtime {
+    class ApprovalRequest {
+        <<abstract>>
         -Status status = PENDING
+        -User approvedBy
+        #requestKind()* String
+        +describe()* String
         +checkPending()
         +approve(User)
         +reject(User)
     }
+    class Overtime {
+        #requestKind() String
+        +describe() String
+    }
+    class LeaveRequest {
+        -LeaveType leaveType
+        -int workingDays
+        #requestKind() String
+        +describe() String
+    }
+    ApprovalRequest <|-- Overtime
+    ApprovalRequest <|-- LeaveRequest
     class OvertimeService
     OvertimeService ..> Overtime : approve() / reject()
+    class LeaveService
+    LeaveService ..> LeaveRequest : approve() / reject()
 
     class User {
         -String passwordHash

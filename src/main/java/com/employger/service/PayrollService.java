@@ -1,6 +1,7 @@
 package com.employger.service;
 
 import com.employger.exception.ResourceNotFoundException;
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Employee;
 import com.employger.entity.PayCycle;
 import com.employger.entity.Payroll;
@@ -432,7 +433,7 @@ public class PayrollService {
                                                 employee.getEmployeeId(),
                                                 cycleStart,
                                                 cycleEnd,
-                                                Overtime.Status.APPROVED)
+                                                ApprovalRequest.Status.APPROVED)
                                 .stream()
                                 .filter(record -> record.getPayroll() == null
                                                 || record.getPayroll().getPayrollId().equals(existingPayrollId))

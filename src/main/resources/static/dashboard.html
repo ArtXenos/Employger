@@ -123,11 +123,12 @@
             <div class="section-header">
               <div>
                 <h2 id="approvalsHeading">Pending Approvals</h2>
-                <p>Overtime waiting for a decision, including requests employees filed themselves.</p>
+                <p>Overtime and leave waiting for a decision, including requests employees filed themselves.</p>
               </div>
               <a class="secondary-button" href="/overtime.html">All overtime</a>
             </div>
             <p id="approvalsMessage" class="overview-feedback" role="status" aria-live="polite"></p>
+            <h3 class="approvals-subheading">Overtime</h3>
             <div class="overview-table">
               <table>
                 <caption class="visually-hidden">Pending overtime requests</caption>
@@ -141,6 +142,25 @@
                   </tr>
                 </thead>
                 <tbody id="approvalsTableBody">
+                  <tr><td colspan="5" class="empty">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="approvals-subheading">Leave</h3>
+            <div class="overview-table">
+              <table>
+                <caption class="visually-hidden">Pending leave requests</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Employee</th>
+                    <th scope="col">Dates</th>
+                    <th scope="col">Type</th>
+                    <th scope="col" class="amount">Working days</th>
+                    <th scope="col"><span class="visually-hidden">Decision</span></th>
+                  </tr>
+                </thead>
+                <tbody id="leaveApprovalsTableBody">
                   <tr><td colspan="5" class="empty">Loading...</td></tr>
                 </tbody>
               </table>

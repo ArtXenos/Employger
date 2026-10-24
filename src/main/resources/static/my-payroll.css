@@ -148,7 +148,8 @@
   font-weight: 400;
 }
 
-.self-service-form input {
+.self-service-form input,
+.self-service-form select {
   padding: 9px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -157,7 +158,8 @@
   font-size: 14px;
 }
 
-.self-service-form input:focus-visible {
+.self-service-form input:focus-visible,
+.self-service-form select:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 1px;
   border-color: var(--blue);
@@ -165,6 +167,16 @@
 
 .self-service-form input[aria-invalid="true"] {
   border-color: #dc2626;
+}
+
+.leave-balance {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.leave-balance strong {
+  color: var(--text);
 }
 
 .self-service-form .form-actions {

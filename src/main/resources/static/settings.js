@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   night_differential_start: "22:00",
   night_differential_end: "06:00",
   rest_days: "SATURDAY,SUNDAY",
+  paid_leave_days_per_year: "5",
   statutory_deductions_enabled: "true",
   sss_employee_rate: "0.05",
   sss_msc_minimum: "5000",
@@ -206,6 +207,7 @@ function validateSettings(values) {
     ["absent_deduction_amount", "Legacy absence deduction"],
     ["unpaid_break_minutes", "Unpaid break"],
     ["late_grace_period_minutes", "Late grace period"],
+    ["paid_leave_days_per_year", "Paid leave days per year"],
     ["night_differential_rate", "Night differential rate"],
   ];
 

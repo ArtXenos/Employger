@@ -1,5 +1,6 @@
 package com.employger;
 
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Earning;
 import com.employger.entity.Employee;
@@ -444,7 +445,7 @@ class HolidayBenefitsAndYearEndIntegrationTest {
         overtime.setHours(new BigDecimal(hours));
         overtime.setOvertimeRate(new BigDecimal("187.50"));
         overtime.setOvertimeAmount(new BigDecimal(amount));
-        ReflectionTestUtils.setField(overtime, "status", Overtime.Status.APPROVED);
+        ReflectionTestUtils.setField(overtime, "status", ApprovalRequest.Status.APPROVED);
         overtimeRepository.save(overtime);
     }
 

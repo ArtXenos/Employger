@@ -179,6 +179,10 @@ public class SystemSettingService {
                 validateInteger(name, value, 0, 360);
                 break;
 
+            case "paid_leave_days_per_year":
+                validateInteger(name, value, 0, 366);
+                break;
+
             case "late_grace_period_minutes":
                 validateInteger(name, value, 0, 120);
                 break;

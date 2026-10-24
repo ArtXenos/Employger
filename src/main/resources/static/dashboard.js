@@ -222,6 +222,85 @@ async function loadApprovals() {
   }
 }
 
+// Pending leave, oldest first, with the same Approve and Reject buttons.
+async function loadLeaveApprovals() {
+  const body = $("leaveApprovalsTableBody");
+
+  try {
+    const pending = asArray(await fetchJson("/api/leave?status=PENDING"));
+
+    if (pending.length === 0) {
+      emptyRow(body, 5, "No leave is waiting for approval.");
+      return;
+    }
+
+    body.replaceChildren(
+      ...pending.map((leave) => {
+        const row = document.createElement("tr");
+        const actions = document.createElement("div");
+        const dates = leave.startDate === leave.endDate ? leave.startDate : `${leave.startDate} to ${leave.endDate}`;
+        const type = leave.reason ? `${leave.leaveTypeLabel}: ${leave.reason}` : leave.leaveTypeLabel;
+
+        actions.className = "action-buttons";
+        actions.append(
+          leaveDecisionButton(leave, dates, "APPROVED", "Approve", "action-approve"),
+          leaveDecisionButton(leave, dates, "REJECTED", "Reject", "action-reject"),
+        );
+
+        row.append(
+          tableCell(leave.employeeName),
+          tableCell(dates),
+          tableCell(type),
+          tableCell(String(leave.workingDays), "amount"),
+          tableCell(actions),
+        );
+
+        return row;
+      }),
+    );
+  } catch (error) {
+    emptyRow(body, 5, "Unavailable.");
+    feedback("approvalsMessage", error.message, "error");
+  }
+}
+
+function leaveDecisionButton(leave, dates, status, label, className) {
+  const button = document.createElement("button");
+
+  button.type = "button";
+  button.className = `action-button ${className}`;
+  button.textContent = label;
+  button.setAttribute("aria-label", `${label} leave of ${leave.employeeName}, ${dates}`);
+  button.addEventListener("click", () => decideLeave(leave, dates, status));
+
+  return button;
+}
+
+async function decideLeave(leave, dates, status) {
+  const verb = status === "APPROVED" ? "Approve" : "Reject";
+  const days = `${leave.workingDays} working day${leave.workingDays === 1 ? "" : "s"}`;
+
+  if (!confirm(`${verb} ${leave.leaveTypeLabel.toLowerCase()} for ${leave.employeeName}, ${dates} (${days})?`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `/api/leave/${encodeURIComponent(leave.leaveId)}/status?status=${status}`,
+      { method: "PUT", credentials: "same-origin" },
+    );
+
+    if (!response.ok) {
+      throw new Error(await readError(response, `Unable to ${verb.toLowerCase()} this leave.`));
+    }
+
+    await loadLeaveApprovals();
+    feedback("approvalsMessage", `Leave for ${leave.employeeName}, ${dates}, ${status.toLowerCase()}.`, "success");
+  } catch (error) {
+    feedback("approvalsMessage", error.message, "error");
+  }
+}
+
 function decisionButton(record, status, label, className, who) {
   const button = document.createElement("button");
 
@@ -465,7 +544,7 @@ async function initializeDashboard() {
     // Approving is for administrators and HR; general managers only read.
     if (user.role === "ADMINISTRATOR" || user.role === "HR_MANAGER") {
       $("approvalsSection").hidden = false;
-      tasks.push(loadApprovals());
+      tasks.push(loadApprovals(), loadLeaveApprovals());
     }
 
     await Promise.all(tasks);

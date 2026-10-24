@@ -9,6 +9,7 @@
 const payrollTableBody = document.getElementById("payrollTableBody");
 const attendanceTableBody = document.getElementById("attendanceTableBody");
 const overtimeTableBody = document.getElementById("overtimeTableBody");
+const leaveTableBody = document.getElementById("leaveTableBody");
 const payslipDetail = document.getElementById("payslipDetail");
 const payslipTitle = document.getElementById("payslipTitle");
 const payslipLines = document.getElementById("payslipLines");
@@ -474,6 +475,131 @@ contactForm.addEventListener("submit", async (event) => {
   }
 });
 
+// ---------- leave ----------
+
+const leaveForm = document.getElementById("leaveForm");
+const leaveType = document.getElementById("leaveType");
+const leaveStart = document.getElementById("leaveStart");
+const leaveEnd = document.getElementById("leaveEnd");
+const leaveReason = document.getElementById("leaveReason");
+const leaveMessage = document.getElementById("leaveMessage");
+const leaveSubmit = document.getElementById("leaveSubmit");
+const leaveBalance = document.getElementById("leaveBalance");
+
+const STATUS_LABELS = { PENDING: "Waiting for HR", APPROVED: "Approved", REJECTED: "Rejected" };
+
+function renderLeave(data) {
+  const paid = data.paidLeave;
+  leaveBalance.innerHTML = "";
+  leaveBalance.append(
+    "Paid leave in " + paid.year + ": ",
+    Object.assign(document.createElement("strong"), { textContent: `${paid.remaining} of ${paid.allowed} days left` }),
+    ` (${paid.used} used, ${paid.pending} waiting for approval).`,
+  );
+
+  if (data.requests.length === 0) {
+    showEmpty(leaveTableBody, 5, "No leave filed yet.");
+    return;
+  }
+
+  leaveTableBody.replaceChildren(
+    ...data.requests.map((leave) => {
+      const row = document.createElement("tr");
+      const dates = leave.startDate === leave.endDate ? leave.startDate : `${leave.startDate} to ${leave.endDate}`;
+      let action = "";
+
+      if (leave.status === "PENDING") {
+        action = document.createElement("button");
+        action.type = "button";
+        action.className = "secondary-button";
+        action.textContent = "Cancel";
+        action.setAttribute("aria-label", `Cancel leave from ${dates}`);
+        action.addEventListener("click", () => cancelLeave(leave, dates));
+      }
+
+      row.append(
+        cell(dates),
+        cell(leave.leaveTypeLabel),
+        cell(String(leave.workingDays), "amount"),
+        cell(STATUS_LABELS[leave.status] || leave.status),
+        cell(action),
+      );
+
+      return row;
+    }),
+  );
+}
+
+async function cancelLeave(leave, dates) {
+  if (!confirm(`Cancel your ${leave.leaveTypeLabel.toLowerCase()} from ${dates}?`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/me/leave/${encodeURIComponent(leave.leaveId)}`, {
+      method: "DELETE",
+      credentials: "same-origin",
+    });
+
+    if (!response.ok) {
+      throw new Error((await response.text()).trim() || "This leave could not be cancelled.");
+    }
+
+    renderLeave(await getJson("/api/me/leave"));
+    setFeedback(leaveMessage, `Leave from ${dates} cancelled.`, "success");
+  } catch (error) {
+    setFeedback(leaveMessage, error.message, "error");
+  }
+}
+
+leaveStart.addEventListener("change", () => {
+  if (!leaveEnd.value || leaveEnd.value < leaveStart.value) {
+    leaveEnd.value = leaveStart.value;
+  }
+});
+
+leaveForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  leaveStart.removeAttribute("aria-invalid");
+  leaveEnd.removeAttribute("aria-invalid");
+
+  if (!leaveStart.value || !leaveEnd.value) {
+    (leaveStart.value ? leaveEnd : leaveStart).setAttribute("aria-invalid", "true");
+    setFeedback(leaveMessage, "Choose the first and last day of your leave.", "error");
+    return;
+  }
+
+  if (leaveEnd.value < leaveStart.value) {
+    leaveEnd.setAttribute("aria-invalid", "true");
+    setFeedback(leaveMessage, "The last day can't be before the first day.", "error");
+    return;
+  }
+
+  leaveSubmit.disabled = true;
+  setFeedback(leaveMessage, "Filing...", null);
+
+  try {
+    const filed = await sendJson("POST", "/api/me/leave", {
+      leaveType: leaveType.value,
+      startDate: leaveStart.value,
+      endDate: leaveEnd.value,
+      reason: leaveReason.value.trim(),
+    });
+
+    leaveForm.reset();
+    renderLeave(await getJson("/api/me/leave"));
+    setFeedback(
+      leaveMessage,
+      `${filed.leaveTypeLabel} filed for ${filed.workingDays} working day${filed.workingDays === 1 ? "" : "s"}. Waiting for HR approval.`,
+      "success",
+    );
+  } catch (error) {
+    setFeedback(leaveMessage, error.message, "error");
+  } finally {
+    leaveSubmit.disabled = false;
+  }
+});
+
 // ---------- page ----------
 
 async function loadPage() {
@@ -484,7 +610,9 @@ async function loadPage() {
     showEmpty(payrollTableBody, 6, "Unavailable.");
     showEmpty(attendanceTableBody, 6, "Unavailable.");
     showEmpty(overtimeTableBody, 4, "Unavailable.");
+    showEmpty(leaveTableBody, 5, "Unavailable.");
     overtimeForm.hidden = true;
+    leaveForm.hidden = true;
     form2316Form.hidden = true;
     contactForm.hidden = true;
     return;
@@ -494,6 +622,7 @@ async function loadPage() {
     getJson("/api/me/payroll").then(renderPayroll),
     getJson("/api/me/attendance").then(renderAttendance),
     getJson("/api/me/overtime").then(renderOvertime),
+    getJson("/api/me/leave").then(renderLeave),
   ]);
 
   const failure = results.find((result) => result.status === "rejected");

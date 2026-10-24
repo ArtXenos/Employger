@@ -28,6 +28,9 @@
           <a href="#overtimeSection" class="nav-item"
             ><span aria-hidden="true">↗</span>My Overtime</a
           >
+          <a href="#leaveSection" class="nav-item"
+            ><span aria-hidden="true">✈</span>My Leave</a
+          >
           <a href="#form2316Section" class="nav-item"
             ><span aria-hidden="true">▤</span>My BIR 2316</a
           >
@@ -157,6 +160,61 @@
                 </thead>
                 <tbody id="overtimeTableBody">
                   <tr><td colspan="4" class="empty">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="section-card" id="leaveSection" aria-labelledby="leaveHeading">
+            <div class="section-header">
+              <div>
+                <h2 id="leaveHeading">Leave</h2>
+                <p>File leave for working days. HR approves or rejects it. Weekends and holidays aren't counted.</p>
+              </div>
+            </div>
+
+            <p id="leaveBalance" class="leave-balance" aria-live="polite"></p>
+
+            <form id="leaveForm" class="self-service-form" novalidate>
+              <div class="field">
+                <label for="leaveType">Type</label>
+                <select id="leaveType" name="leaveType" required>
+                  <option value="PAID">Paid leave</option>
+                  <option value="UNPAID">Unpaid leave</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="leaveStart">From</label>
+                <input id="leaveStart" name="startDate" type="date" required />
+              </div>
+              <div class="field">
+                <label for="leaveEnd">To</label>
+                <input id="leaveEnd" name="endDate" type="date" required />
+              </div>
+              <div class="field field-wide">
+                <label for="leaveReason">Reason <span class="optional">(optional)</span></label>
+                <input id="leaveReason" name="reason" type="text" maxlength="255" />
+              </div>
+              <div class="form-actions">
+                <button id="leaveSubmit" class="primary-button" type="submit">File leave</button>
+              </div>
+              <p id="leaveMessage" class="form-feedback" role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="table-wrapper">
+              <table>
+                <caption class="visually-hidden">Your leave requests</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Dates</th>
+                    <th scope="col">Type</th>
+                    <th scope="col" class="amount">Working days</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody id="leaveTableBody">
+                  <tr><td colspan="5" class="empty">Loading...</td></tr>
                 </tbody>
               </table>
             </div>

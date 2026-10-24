@@ -1,5 +1,6 @@
 package com.employger;
 
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.AuditLog;
 import com.employger.entity.Employee;
@@ -108,7 +109,7 @@ class SelfServiceActionsIntegrationTest {
 
         List<Overtime> filed = overtimeRepository.findByEmployeeEmployeeId(alice.getEmployeeId());
         assertThat(filed).singleElement().satisfies(overtime -> {
-            assertThat(overtime.getStatus()).isEqualTo(Overtime.Status.PENDING);
+            assertThat(overtime.getStatus()).isEqualTo(ApprovalRequest.Status.PENDING);
             assertThat(overtime.getApprovedBy()).isNull();
         });
         assertThat(overtimeRepository.findByEmployeeEmployeeId(bob.getEmployeeId())).isEmpty();

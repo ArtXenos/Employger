@@ -1,6 +1,7 @@
 package com.employger.service;
 
 import com.employger.exception.ResourceNotFoundException;
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
@@ -282,6 +283,6 @@ public class AttendanceService {
         return overtimeRepository
                 .findByAttendanceAttendanceId(attendance.getAttendanceId())
                 .stream()
-                .anyMatch(overtime -> overtime.getStatus() != Overtime.Status.REJECTED);
+                .anyMatch(overtime -> overtime.getStatus() != ApprovalRequest.Status.REJECTED);
     }
 }

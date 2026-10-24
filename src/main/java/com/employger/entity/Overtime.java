@@ -1,16 +1,16 @@
 package com.employger.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/** Overtime an employee worked or asked for; HR approves or rejects it. */
 @Entity
 @Table(name = "overtime")
-public class Overtime {
+public class Overtime extends ApprovalRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -57,17 +57,6 @@ public class Overtime {
     )
     private BigDecimal overtimeAmount = BigDecimal.ZERO;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    // Starts PENDING and changes only through approve() or reject().
-    // READ_ONLY: a "status" sent by the browser is ignored.
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private Status status = Status.PENDING;
-
-    @ManyToOne
-    @JoinColumn(name = "approved_by")
-    private User approvedBy;
-
     // The payroll that paid this overtime (migration V2). Set only by the
     // server when payroll is calculated; never read from request bodies.
     @JsonIgnore
@@ -82,33 +71,18 @@ public class Overtime {
     )
     private LocalDateTime createdAt;
 
-    public enum Status {
-        PENDING,
-        APPROVED,
-        REJECTED
+    // The lifecycle (approve, reject, checkPending) is inherited from
+    // ApprovalRequest; only the wording is overtime's own.
+
+    @Override
+    protected String requestKind() {
+        return "overtime";
     }
 
-    // ---------- lifecycle: PENDING -> APPROVED or REJECTED, then final ----------
-
-    /** Throws unless this request is still pending. */
-    public void checkPending() {
-        if (status != Status.PENDING) {
-            throw new IllegalStateException("Only pending overtime can be approved or rejected");
-        }
-    }
-
-    /** PENDING -> APPROVED. */
-    public void approve(User approvedBy) {
-        checkPending();
-        this.status = Status.APPROVED;
-        this.approvedBy = approvedBy;
-    }
-
-    /** PENDING -> REJECTED. approvedBy records whoever decided. */
-    public void reject(User rejectedBy) {
-        checkPending();
-        this.status = Status.REJECTED;
-        this.approvedBy = rejectedBy;
+    @Override
+    public String describe() {
+        return "overtime #" + overtimeId + " (employee #" + employee.getEmployeeId() + ", "
+                + overtimeDate + ", " + hours + " h, amount " + overtimeAmount + ")";
     }
 
     @PrePersist
@@ -170,18 +144,6 @@ public class Overtime {
 
     public void setOvertimeAmount(BigDecimal overtimeAmount) {
         this.overtimeAmount = overtimeAmount;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public User getApprovedBy() {
-        return approvedBy;
-    }
-
-    public void setApprovedBy(User approvedBy) {
-        this.approvedBy = approvedBy;
     }
 
     public LocalDateTime getCreatedAt() {

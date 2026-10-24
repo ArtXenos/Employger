@@ -73,7 +73,7 @@ class LifecycleTest {
 
         overtime.approve(hr);
 
-        assertThat(overtime.getStatus()).isEqualTo(Overtime.Status.APPROVED);
+        assertThat(overtime.getStatus()).isEqualTo(ApprovalRequest.Status.APPROVED);
         assertThat(overtime.getApprovedBy()).isSameAs(hr);
     }
 
@@ -83,7 +83,7 @@ class LifecycleTest {
 
         overtime.reject(hr);
 
-        assertThat(overtime.getStatus()).isEqualTo(Overtime.Status.REJECTED);
+        assertThat(overtime.getStatus()).isEqualTo(ApprovalRequest.Status.REJECTED);
         assertThat(overtime.getApprovedBy()).isSameAs(hr);
     }
 
@@ -113,8 +113,8 @@ class LifecycleTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = Overtime.Status.class, names = {"APPROVED", "REJECTED"})
-    void decidedOvertimeCannotBeDecidedAgain(Overtime.Status status) {
+    @EnumSource(value = ApprovalRequest.Status.class, names = {"APPROVED", "REJECTED"})
+    void decidedOvertimeCannotBeDecidedAgain(ApprovalRequest.Status status) {
         Overtime overtime = new Overtime();
         ReflectionTestUtils.setField(overtime, "status", status);
 

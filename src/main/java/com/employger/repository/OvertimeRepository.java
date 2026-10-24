@@ -1,5 +1,6 @@
 package com.employger.repository;
 
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Overtime;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -11,9 +12,9 @@ public interface OvertimeRepository
 
     List<Overtime> findByEmployeeEmployeeId(Integer employeeId);
 
-    List<Overtime> findByStatusOrderByOvertimeDateAsc(Overtime.Status status);
+    List<Overtime> findByStatusOrderByOvertimeDateAsc(ApprovalRequest.Status status);
 
-    long countByStatus(Overtime.Status status);
+    long countByStatus(ApprovalRequest.Status status);
 
     List<Overtime> findByAttendanceAttendanceId(Integer attendanceId);
 
@@ -27,5 +28,5 @@ public interface OvertimeRepository
         Integer employeeId,
         LocalDate startDate,
         LocalDate endDate,
-        Overtime.Status status);
+        ApprovalRequest.Status status);
 }

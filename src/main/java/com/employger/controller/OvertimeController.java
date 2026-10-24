@@ -1,6 +1,7 @@
 package com.employger.controller;
 
 import com.employger.exception.ResourceNotFoundException;
+import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Overtime;
 import com.employger.service.OvertimeService;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +27,7 @@ public class OvertimeController {
     // so the dashboard doesn't download every record to show a few.
     @GetMapping
     public List<OvertimeResponse> getAllOvertime(
-            @RequestParam(required = false) Overtime.Status status) {
+            @RequestParam(required = false) ApprovalRequest.Status status) {
 
         List<Overtime> overtime = status != null
                 ? overtimeService.getOvertimeByStatus(status)
@@ -100,7 +101,7 @@ public class OvertimeController {
     @PutMapping("/{id}/status")
     public ResponseEntity<OvertimeResponse> updateOvertimeStatus(
             @PathVariable Integer id,
-            @RequestParam Overtime.Status status,
+            @RequestParam ApprovalRequest.Status status,
             Authentication authentication) {
 
         try {

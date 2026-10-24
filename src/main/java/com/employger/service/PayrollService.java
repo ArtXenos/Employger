@@ -852,6 +852,13 @@ public class PayrollService {
          * of how it was calculated, and links the included overtime to it.
          * The payroll must already have an ID.
          */
+        // An employee without a department is recorded as "" so the payroll
+        // stays Unassigned; NULL is kept for payroll from before V8.
+        private static String recordedDepartment(Employee employee) {
+                String department = employee.getDepartment();
+                return department == null ? "" : department.trim();
+        }
+
         private void applyCalculation(Payroll payroll) {
 
                 PayrollBreakdown breakdown = calculate(
@@ -878,7 +885,7 @@ public class PayrollService {
                                 ? null
                                 : String.join("\n", breakdown.notes()));
                 payroll.setCalculatedAt(LocalDateTime.now());
-                payroll.setDepartment(payroll.getEmployee().getDepartment());
+                payroll.setDepartment(recordedDepartment(payroll.getEmployee()));
 
                 payroll.setSssContribution(breakdown.statutory().sss());
                 payroll.setPhilHealthContribution(breakdown.statutory().philHealth());

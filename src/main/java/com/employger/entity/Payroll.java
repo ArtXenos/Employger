@@ -100,7 +100,8 @@ public class Payroll {
     private LocalDateTime calculatedAt;
 
     // The employee's department when this payroll was calculated (migration
-    // V8), so moving the employee later doesn't move this cost.
+    // V8), so moving the employee later doesn't move this cost. "" means
+    // they had none; NULL means calculated before V8.
     @Column(length = 100)
     private String department;
 

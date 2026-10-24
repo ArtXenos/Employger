@@ -18,7 +18,10 @@ import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.PriorEmployerCompensationRepository;
 import com.employger.repository.SystemSettingRepository;
+import com.employger.entity.User;
+import com.employger.repository.UserRepository;
 import com.employger.service.EarningService;
+import com.employger.service.ExecutiveDashboardService;
 import com.employger.service.PayrollService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +62,10 @@ class HolidayBenefitsAndYearEndIntegrationTest {
     private EarningService earningService;
     @Autowired
     private EmployeeRepository employeeRepository;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private ExecutiveDashboardService executiveDashboardService;
     @Autowired
     private PayCycleRepository payCycleRepository;
     @Autowired
@@ -201,15 +208,52 @@ class HolidayBenefitsAndYearEndIntegrationTest {
     }
 
     @Test
-    void calculatingPayrollRecordsTheEmployeesDepartmentForTheCompanyOverview() {
-        employee.setDepartment("Sales");
+    void processedPayrollStaysInItsDepartmentAfterTheEmployeeMoves() {
+        employee.setDepartment("Finance");
         employeeRepository.save(employee);
         PayCycle november = cycle("November 2026", LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30),
                 PayCycle.CycleType.MONTHLY);
 
         Payroll payroll = payrollService.createPayroll(employee.getEmployeeId(), november.getPayCycleId());
+        payrollService.processPayroll(payroll.getPayrollId(), processor().getUsername());
 
-        assertThat(payroll.getDepartment()).isEqualTo("Sales");
+        employee.setDepartment("Sales");
+        employeeRepository.save(employee);
+
+        ExecutiveDashboardService.ExecutiveSummary summary =
+                executiveDashboardService.summary(java.time.YearMonth.of(2026, 11));
+
+        assertThat(summary.departments())
+                .filteredOn(row -> row.department().equals("Finance"))
+                .singleElement()
+                .satisfies(row -> {
+                    assertThat(row.activeEmployees()).isZero();
+                    assertThat(row.amounts().get("grossPay")).isEqualByComparingTo(payroll.getGrossPay());
+                });
+        assertThat(summary.departments())
+                .filteredOn(row -> row.department().equals("Sales"))
+                .singleElement()
+                .satisfies(row -> assertThat(row.amounts().get("grossPay")).isEqualByComparingTo("0"));
+    }
+
+    @Test
+    void payrollForAnEmployeeWithoutADepartmentStaysUnassigned() {
+        employee.setDepartment(null);
+        employeeRepository.save(employee);
+        PayCycle november = cycle("November 2026", LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30),
+                PayCycle.CycleType.MONTHLY);
+
+        Payroll payroll = payrollService.createPayroll(employee.getEmployeeId(), november.getPayCycleId());
+        payrollService.processPayroll(payroll.getPayrollId(), processor().getUsername());
+
+        employee.setDepartment("Sales");
+        employeeRepository.save(employee);
+
+        assertThat(executiveDashboardService.summary(java.time.YearMonth.of(2026, 11)).departments())
+                .filteredOn(row -> row.department().equals("Unassigned"))
+                .singleElement()
+                .satisfies(row -> assertThat(row.amounts().get("grossPay"))
+                        .isEqualByComparingTo(payroll.getGrossPay()));
     }
 
     // ---------- year-end annualization ----------
@@ -342,6 +386,14 @@ class HolidayBenefitsAndYearEndIntegrationTest {
                 Map.entry("sss_ec_amount_high", "30"),
                 Map.entry("pagibig_employer_rate", "0.02"))
                 .forEach(this::setting);
+    }
+
+    private User processor() {
+        User user = new User();
+        user.setUsername("payroll.processor");
+        user.setPasswordHash("not-used");
+        user.setRole(User.Role.HR_MANAGER);
+        return userRepository.save(user);
     }
 
     private Employee employee(String email) {

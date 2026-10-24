@@ -4,7 +4,9 @@
 # Usage (from the project folder, in PowerShell):
 #   .\scripts\backup-db.ps1
 #   .\scripts\backup-db.ps1 -BackupDir "D:\employger-backups"
-#   .\scripts\backup-db.ps1 -MysqlBin "C:\Program Files\MariaDB 10.11\bin" -Port 3307
+#   .\scripts\backup-db.ps1 -MysqlBin "C:\xampp\mysql\bin" -Port 3306   # old XAMPP fallback
+#
+# Defaults to the live MariaDB 10.11 server on port 3307.
 #
 # Backups contain salary and personal data. Keep them out of this
 # repository and out of shared folders.
@@ -13,8 +15,8 @@ param(
     [string]$BackupDir = "$env:USERPROFILE\Documents\employger-backups",
     [string]$Database = "employger_db",
     [string]$User = "root",
-    [string]$MysqlBin = "C:\xampp\mysql\bin",
-    [int]$Port = 3306
+    [string]$MysqlBin = "C:\Program Files\MariaDB 10.11\bin",
+    [int]$Port = 3307
 )
 
 $ErrorActionPreference = "Stop"

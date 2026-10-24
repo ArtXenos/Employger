@@ -109,6 +109,14 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/me/**")
                                                 .authenticated()
 
+                                                // Payroll sign-off: the General Manager approves
+                                                // or sends back what HR processed. Administrators
+                                                // too, so payroll can't get stuck without a GM.
+                                                .requestMatchers(HttpMethod.POST,
+                                                                "/api/payroll/*/approve",
+                                                                "/api/payroll/*/send-back")
+                                                .hasAnyRole("ADMINISTRATOR", "GENERAL_MANAGER")
+
                                                 // Payroll data: general managers may read it;
                                                 // only administrators and HR managers may change it.
                                                 .requestMatchers(HttpMethod.GET, PAYROLL_DATA_APIS)

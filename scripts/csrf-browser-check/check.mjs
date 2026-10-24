@@ -12,8 +12,9 @@
 // 2. In another window: node scripts/csrf-browser-check/check.mjs
 // 3. Stop the app (Ctrl+C) and delete cp.txt.
 //
-// seed.sql adds one test admin, browser.admin / browser-check-pass, that
-// exists only in that in-memory database.
+// seed.sql adds a test admin (browser.admin) and general manager
+// (browser.gm), both with password browser-check-pass, plus the settings
+// payroll needs. They exist only in that in-memory database.
 import { spawn } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";

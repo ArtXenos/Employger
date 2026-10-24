@@ -48,7 +48,7 @@ The course grades encapsulation, inheritance, polymorphism and abstraction. On 2
 
 ### 3.3 Domain lifecycle methods: encapsulation
 
-- `Payroll`: `checkCanProcess()` / `process(user, time)` (DRAFT → PROCESSED) and `checkCanBePaid()` / `markPaid(method, reference, time)` (PROCESSED → PAID). There is also `isDraft()`.
+- `Payroll`: `checkCanProcess()` / `process(user, time)` (DRAFT → PROCESSED), `checkCanBeReviewedBy(user)` / `approve(user, time)` (PROCESSED → APPROVED) or `sendBack(user, reason)` (PROCESSED → DRAFT), and `checkCanBePaid()` / `markPaid(method, reference, time)` (APPROVED → PAID). The person who processed a payroll can't review it. There is also `isDraft()`.
 - `Overtime` and `LeaveRequest` extend the abstract `ApprovalRequest`, which holds `checkPending()` and the `final` `approve(user)` and `reject(user)` (PENDING → APPROVED or REJECTED). Each subclass supplies only `requestKind()` and `describe()`.
 - Neither has a `setStatus()` (removed 2026-10-25): a new payroll starts DRAFT and new overtime PENDING, and a `status` sent by the browser for overtime is ignored. Tests that need a PAID or APPROVED record as setup data set the stored field with `ReflectionTestUtils`.
 - The services call the check first, before any recalculation, and the transition last. The error messages are exactly as before.
@@ -74,8 +74,8 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 |---|---|---|
 | Employee | My Payroll: payslips (printable), attendance, overtime, leave, BIR 2316 (printable), My Details | Files their own overtime and leave (PENDING until HR decides), cancels pending leave, changes their own email, phone and address and their password |
 | HR Manager | All staff pages except Settings, Users and the audit log; dashboard with **Pending Approvals** and **Company Overview** | Employees, attendance, overtime decisions, pay cycles, payroll, benefits, reports |
-| General Manager | Staff pages read-only (no Reports); dashboard **Company Overview** (totals by month and department, six-month labor cost trend) | Nothing |
-| Administrator | Everything, including Settings, Users and the audit log | Everything |
+| General Manager | Staff pages read-only (no Reports); dashboard **Company Overview** (totals by month and department, six-month labor cost trend) and a notice when payroll awaits sign-off | Approves processed payroll or sends it back to HR with a reason |
+| Administrator | Everything, including Settings, Users and the audit log | Everything, including payroll sign-off (except for payroll they processed themselves) |
 
 ## 5. Design decisions
 

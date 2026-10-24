@@ -224,9 +224,11 @@ The password-guessing limit counts failed logins in memory, which is fast, and k
 
 **Idea:** an object keeps its data private and lets it change only in valid ways.
 
-### Payroll protects its own lifecycle: DRAFT → PROCESSED → PAID
+### Payroll protects its own lifecycle: DRAFT → PROCESSED → APPROVED → PAID
 
-[src/main/java/com/employger/entity/Payroll.java:179-213](../src/main/java/com/employger/entity/Payroll.java#L179-L213)
+[src/main/java/com/employger/entity/Payroll.java](../src/main/java/com/employger/entity/Payroll.java)
+
+Since the General Manager sign-off (V10), `approve(reviewer, time)` and `sendBack(reviewer, reason)` sit between processing and payment. Both call `checkCanBeReviewedBy(reviewer)`, which refuses anything not PROCESSED **and** refuses the person who processed it: the "two different people" rule lives in the payroll object, not in a page or a service.
 
 ```java
 public void process(User processedBy, LocalDateTime processedAt) {
@@ -496,6 +498,9 @@ classDiagram
         +isDraft() boolean
         +checkCanProcess()
         +process(User, LocalDateTime)
+        +checkCanBeReviewedBy(User)
+        +approve(User, LocalDateTime)
+        +sendBack(User, String)
         +checkCanBePaid()
         +markPaid(String, String, LocalDateTime)
     }

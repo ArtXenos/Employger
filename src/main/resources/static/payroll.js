@@ -432,6 +432,11 @@ function renderPayrollTable() {
 
             <td>
               ${getStatusBadge(status)}
+              ${
+                status === "DRAFT" && payroll.reviewNote
+                  ? `<span class="review-note">Sent back: ${escapeHtml(payroll.reviewNote)}</span>`
+                  : ""
+              }
             </td>
 
             <td class="action-buttons">
@@ -465,6 +470,26 @@ function renderPayrollTable() {
 
               ${
                 status === "PROCESSED"
+                  ? `
+                    <button
+                      class="action-button signoff-button signoff-approve"
+                      onclick="approvePayroll(${payroll.payrollId})"
+                    >
+                      Approve
+                    </button>
+
+                    <button
+                      class="action-button signoff-button signoff-send-back"
+                      onclick="sendBackPayroll(${payroll.payrollId})"
+                    >
+                      Send back
+                    </button>
+                  `
+                  : ""
+              }
+
+              ${
+                status === "APPROVED"
                   ? `
                     <button
                       class="pay-button"
@@ -540,8 +565,9 @@ function updateSummary() {
     (payroll) => payroll.status === "DRAFT",
   ).length;
 
+  // Processed and approved: final, but not paid yet.
   const processed = payrollRecords.filter(
-    (payroll) => payroll.status === "PROCESSED",
+    (payroll) => payroll.status === "PROCESSED" || payroll.status === "APPROVED",
   ).length;
 
   const paid = payrollRecords.filter(
@@ -863,6 +889,73 @@ async function processPayroll(payrollId) {
 }
 
 // =========================
+// GENERAL MANAGER SIGN-OFF
+// =========================
+
+function payrollLabel(payroll) {
+  const employee = payroll.employee || {};
+  const name = `${employee.firstName || ""} ${employee.lastName || ""}`.trim() || "Unknown Employee";
+  return `Payroll #${payroll.payrollId} (${name}, net pay ${formatCurrency(payroll.netPay)})`;
+}
+
+async function approvePayroll(payrollId) {
+  const payroll = payrollRecords.find((item) => item.payrollId === payrollId);
+
+  if (!payroll || !confirm(`Approve ${payrollLabel(payroll)}?\n\nHR can then mark it as paid.`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/payroll/${payrollId}/approve`, { method: "POST" });
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Unable to approve this payroll.");
+    }
+
+    alert(`Payroll #${payrollId} approved.`);
+    await loadPayrollRecords();
+  } catch (error) {
+    alert(error.message || "Unable to approve this payroll.");
+  }
+}
+
+async function sendBackPayroll(payrollId) {
+  const payroll = payrollRecords.find((item) => item.payrollId === payrollId);
+
+  if (!payroll) {
+    return;
+  }
+
+  const reason = prompt(`Send ${payrollLabel(payroll)} back to HR as a draft.\n\nWhat needs to be fixed?`);
+
+  if (reason === null) {
+    return;
+  }
+
+  if (!reason.trim()) {
+    alert("Say why the payroll is being sent back.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/payroll/${payrollId}/send-back`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason.trim() }),
+    });
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Unable to send this payroll back.");
+    }
+
+    alert(`Payroll #${payrollId} sent back to HR as a draft.`);
+    await loadPayrollRecords();
+  } catch (error) {
+    alert(error.message || "Unable to send this payroll back.");
+  }
+}
+
+// =========================
 // PAYMENT MODAL
 // =========================
 
@@ -873,8 +966,8 @@ function openPaymentModal(payrollId) {
     return;
   }
 
-  if (payroll.status !== "PROCESSED") {
-    alert("Only PROCESSED payroll records can be marked as paid.");
+  if (payroll.status !== "APPROVED") {
+    alert("Only payroll approved by the General Manager can be marked as paid.");
     return;
   }
 
@@ -1210,6 +1303,10 @@ function getStatusBadge(status) {
 
   if (normalized === "PROCESSED") {
     className = "status-processed";
+  }
+
+  if (normalized === "APPROVED") {
+    className = "status-approved";
   }
 
   if (normalized === "PAID") {

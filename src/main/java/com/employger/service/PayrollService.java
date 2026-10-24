@@ -1000,6 +1000,40 @@ public class PayrollService {
                 return payrollRepository.save(payroll);
         }
 
+        /** General Manager (or administrator) sign-off: PROCESSED -> APPROVED. */
+        @Transactional
+        public Payroll approvePayroll(Integer id, String username) {
+                Payroll payroll = payrollRepository.findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
+
+                com.employger.entity.User reviewer = userRepository.findByUsername(username)
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+                payroll.approve(reviewer, LocalDateTime.now());
+
+                auditService.record("PAYROLL_APPROVED",
+                                "Approved " + describe(payroll) + " with net pay " + payroll.getNetPay());
+
+                return payrollRepository.save(payroll);
+        }
+
+        /** The reviewer returns a PROCESSED payroll to DRAFT with a reason. */
+        @Transactional
+        public Payroll sendBackPayroll(Integer id, String reason, String username) {
+                Payroll payroll = payrollRepository.findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
+
+                com.employger.entity.User reviewer = userRepository.findByUsername(username)
+                                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+                payroll.sendBack(reviewer, reason);
+
+                auditService.record("PAYROLL_SENT_BACK",
+                                "Sent " + describe(payroll) + " back to DRAFT: " + payroll.getReviewNote());
+
+                return payrollRepository.save(payroll);
+        }
+
         @Transactional
         public Payroll markPayrollAsPaid(
                         Integer id,

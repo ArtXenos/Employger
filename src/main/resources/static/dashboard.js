@@ -222,6 +222,21 @@ async function loadApprovals() {
   }
 }
 
+// For the General Manager and administrators: processed payroll that
+// needs their sign-off before HR can pay it.
+async function loadSignoffNotice() {
+  try {
+    const waiting = asArray(await fetchJson("/api/payroll"))
+      .filter((payroll) => payroll.status === "PROCESSED").length;
+
+    $("signoffText").textContent =
+      `${waiting} processed payroll ${waiting === 1 ? "is" : "are"} waiting for your approval.`;
+    $("signoffNotice").hidden = waiting === 0;
+  } catch (error) {
+    $("signoffNotice").hidden = true;
+  }
+}
+
 // Pending leave, oldest first, with the same Approve and Reject buttons.
 async function loadLeaveApprovals() {
   const body = $("leaveApprovalsTableBody");
@@ -541,7 +556,11 @@ async function initializeDashboard() {
 
     const tasks = [loadDashboardSummary(), loadOverview()];
 
-    // Approving is for administrators and HR; general managers only read.
+    if (user.role === "GENERAL_MANAGER" || user.role === "ADMINISTRATOR") {
+      tasks.push(loadSignoffNotice());
+    }
+
+    // Approving overtime and leave is for administrators and HR.
     if (user.role === "ADMINISTRATOR" || user.role === "HR_MANAGER") {
       $("approvalsSection").hidden = false;
       tasks.push(loadApprovals(), loadLeaveApprovals());

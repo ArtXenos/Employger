@@ -111,6 +111,27 @@ public class PayrollController {
                 payrollService.processPayroll(id, authentication.getName()));
     }
 
+    // Sign-off by a General Manager or administrator (SecurityConfig).
+    @PostMapping("/{id}/approve")
+    public PayrollResponse approvePayroll(@PathVariable Integer id, Authentication authentication) {
+        return PayrollResponse.from(payrollService.approvePayroll(id, authentication.getName()));
+    }
+
+    public record SendBackRequest(
+            @jakarta.validation.constraints.NotBlank(message = "Say why the payroll is being sent back.")
+            @jakarta.validation.constraints.Size(max = 255, message = "The reason must be at most 255 characters.")
+            String reason) {
+    }
+
+    @PostMapping("/{id}/send-back")
+    public PayrollResponse sendBackPayroll(
+            @PathVariable Integer id,
+            @jakarta.validation.Valid @RequestBody SendBackRequest request,
+            Authentication authentication) {
+
+        return PayrollResponse.from(payrollService.sendBackPayroll(id, request.reason(), authentication.getName()));
+    }
+
     @PostMapping("/{id}/pay")
     public PayrollResponse markPayrollAsPaid(
             @PathVariable Integer id,

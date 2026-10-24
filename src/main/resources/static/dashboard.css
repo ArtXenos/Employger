@@ -144,6 +144,26 @@ a {
   font-size: 14px;
   cursor: pointer;
 }
+.signoff-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 14px 18px;
+  border: 1px solid #ddd6fe;
+  border-radius: 12px;
+  background: #f5f3ff;
+  color: #4c1d95;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.signoff-notice[hidden] {
+  display: none;
+}
+
 .approvals-subheading {
   margin: 18px 0 8px;
   color: #334155;
@@ -321,9 +341,15 @@ textarea {
   background: #ecfdf5;
   color: #047857;
 }
-:is(td, .action-buttons) .action-reject {
+:is(td, .action-buttons) :is(.action-reject, .signoff-send-back) {
   background: #fff7ed;
   color: #c2410c;
+}
+/* GM sign-off buttons: own classes, because general managers see them
+   while session.js hides the other write buttons from them. */
+:is(td, .action-buttons) .signoff-approve {
+  background: #ecfdf5;
+  color: #047857;
 }
 :is(td, .action-buttons) :is(.delete-button, .action-delete) {
   background: #fef2f2;

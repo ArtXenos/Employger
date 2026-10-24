@@ -16,8 +16,9 @@ class LifecycleTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 10, 24, 9, 0);
 
     private final User hr = new User();
+    private final User gm = new User();
 
-    // ---------- payroll: DRAFT -> PROCESSED -> PAID ----------
+    // ---------- payroll: DRAFT -> PROCESSED -> APPROVED -> PAID ----------
 
     @Test
     void draftPayrollCanBeProcessedThenPaid() {
@@ -31,6 +32,12 @@ class LifecycleTest {
         assertThat(payroll.getProcessedAt()).isEqualTo(NOW);
         assertThat(payroll.isDraft()).isFalse();
 
+        payroll.approve(gm, NOW.plusHours(2));
+
+        assertThat(payroll.getStatus()).isEqualTo(Payroll.Status.APPROVED);
+        assertThat(payroll.getApprovedBy()).isSameAs(gm);
+        assertThat(payroll.getApprovedAt()).isEqualTo(NOW.plusHours(2));
+
         payroll.markPaid("Bank transfer", "REF-1", NOW.plusDays(1));
 
         assertThat(payroll.getStatus()).isEqualTo(Payroll.Status.PAID);
@@ -40,7 +47,7 @@ class LifecycleTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = Payroll.Status.class, names = {"PROCESSED", "PAID"})
+    @EnumSource(value = Payroll.Status.class, names = {"PROCESSED", "APPROVED", "PAID"})
     void onlyDraftPayrollCanBeProcessed(Payroll.Status status) {
         Payroll payroll = new Payroll();
         ReflectionTestUtils.setField(payroll, "status", status);
@@ -54,15 +61,70 @@ class LifecycleTest {
 
     @ParameterizedTest
     @EnumSource(value = Payroll.Status.class, names = {"DRAFT", "PAID"})
-    void onlyProcessedPayrollCanBePaid(Payroll.Status status) {
+    void onlyApprovedPayrollCanBePaid(Payroll.Status status) {
         Payroll payroll = new Payroll();
         ReflectionTestUtils.setField(payroll, "status", status);
 
         assertThatThrownBy(() -> payroll.markPaid("Cash", null, NOW))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Only PROCESSED payroll can be marked as paid");
+                .hasMessage("Only APPROVED payroll can be marked as paid");
         assertThat(payroll.getStatus()).isEqualTo(status);
         assertThat(payroll.getPaymentMethod()).isNull();
+    }
+
+    @Test
+    void processedPayrollNeedsGeneralManagerApprovalBeforePayment() {
+        Payroll payroll = new Payroll();
+        payroll.process(hr, NOW);
+
+        assertThatThrownBy(() -> payroll.markPaid("Cash", null, NOW))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("must be approved by the General Manager");
+    }
+
+    @Test
+    void whoeverProcessedThePayrollCannotApproveIt() {
+        Payroll payroll = new Payroll();
+        payroll.process(hr, NOW);
+
+        assertThatThrownBy(() -> payroll.approve(hr, NOW))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("You processed this payroll, so someone else must approve or send it back.");
+        assertThat(payroll.getStatus()).isEqualTo(Payroll.Status.PROCESSED);
+    }
+
+    @Test
+    void sentBackPayrollReturnsToDraftWithTheReason() {
+        Payroll payroll = new Payroll();
+        payroll.process(hr, NOW);
+
+        assertThatThrownBy(() -> payroll.sendBack(gm, "  "))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        payroll.sendBack(gm, " Overtime on Oct 3 looks wrong ");
+
+        assertThat(payroll.getStatus()).isEqualTo(Payroll.Status.DRAFT);
+        assertThat(payroll.getReviewNote()).isEqualTo("Overtime on Oct 3 looks wrong");
+        assertThat(payroll.getProcessedBy()).isNull();
+        assertThat(payroll.getProcessedAt()).isNull();
+
+        payroll.process(hr, NOW.plusDays(1));
+
+        assertThat(payroll.getReviewNote()).isNull();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Payroll.Status.class, names = {"DRAFT", "APPROVED", "PAID"})
+    void onlyProcessedPayrollCanBeReviewed(Payroll.Status status) {
+        Payroll payroll = new Payroll();
+        ReflectionTestUtils.setField(payroll, "status", status);
+
+        assertThatThrownBy(() -> payroll.approve(gm, NOW))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Only PROCESSED payroll can be approved or sent back");
+        assertThatThrownBy(() -> payroll.sendBack(gm, "reason"))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(payroll.getStatus()).isEqualTo(status);
     }
 
     // ---------- overtime: PENDING -> APPROVED or REJECTED ----------

@@ -59,6 +59,18 @@ public class Payroll {
     @JoinColumn(name = "processed_by")
     private User processedBy;
 
+    // General Manager sign-off (migration V10): who approved it and when.
+    @ManyToOne
+    @JoinColumn(name = "approved_by")
+    private User approvedBy;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    // Why the GM last sent it back to DRAFT; cleared when processed again.
+    @Column(name = "review_note", length = 255)
+    private String reviewNote;
+
     @Column(name = "payment_date")
     private LocalDateTime paymentDate;
 
@@ -175,12 +187,14 @@ public class Payroll {
     public enum Status {
         DRAFT,
         PROCESSED,
+        APPROVED,
         PAID
     }
 
-    // ---------- lifecycle: DRAFT -> PROCESSED -> PAID ----------
+    // ---------- lifecycle: DRAFT -> PROCESSED -> APPROVED -> PAID ----------
     // The payroll enforces its own transitions. PayrollService calls the
-    // check first (before recalculating) and the transition last.
+    // check first (before recalculating) and the transition last. A
+    // PROCESSED payroll can also be sent back to DRAFT by the reviewer.
 
     public boolean isDraft() {
         return status == Status.DRAFT;
@@ -199,22 +213,78 @@ public class Payroll {
         this.status = Status.PROCESSED;
         this.processedBy = processedBy;
         this.processedAt = processedAt;
+        this.reviewNote = null;
     }
 
-    /** Throws unless this payroll can be paid (only PROCESSED can). */
-    public void checkCanBePaid() {
+    /**
+     * Throws unless this user may sign off: it must be PROCESSED, and the
+     * person who processed it can't approve their own work.
+     */
+    public void checkCanBeReviewedBy(User reviewer) {
         if (status != Status.PROCESSED) {
-            throw new IllegalStateException("Only PROCESSED payroll can be marked as paid");
+            throw new IllegalStateException("Only PROCESSED payroll can be approved or sent back");
+        }
+
+        if (processedBy != null && isSameUser(processedBy, reviewer)) {
+            throw new IllegalStateException(
+                    "You processed this payroll, so someone else must approve or send it back.");
         }
     }
 
-    /** PROCESSED -> PAID, recording the payment. */
+    private static boolean isSameUser(User a, User b) {
+        return a == b || (a.getUserId() != null && a.getUserId().equals(b.getUserId()));
+    }
+
+    /** PROCESSED -> APPROVED, recording who signed off and when. */
+    public void approve(User reviewer, LocalDateTime approvedAt) {
+        checkCanBeReviewedBy(reviewer);
+        this.status = Status.APPROVED;
+        this.approvedBy = reviewer;
+        this.approvedAt = approvedAt;
+    }
+
+    /** PROCESSED -> DRAFT with the reason, so HR can correct and reprocess it. */
+    public void sendBack(User reviewer, String reason) {
+        checkCanBeReviewedBy(reviewer);
+
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Say why the payroll is being sent back.");
+        }
+
+        this.status = Status.DRAFT;
+        this.processedBy = null;
+        this.processedAt = null;
+        this.reviewNote = reason.trim();
+    }
+
+    /** Throws unless this payroll can be paid (only APPROVED can). */
+    public void checkCanBePaid() {
+        if (status != Status.APPROVED) {
+            throw new IllegalStateException(status == Status.PROCESSED
+                    ? "This payroll must be approved by the General Manager before it can be marked as paid"
+                    : "Only APPROVED payroll can be marked as paid");
+        }
+    }
+
+    /** APPROVED -> PAID, recording the payment. */
     public void markPaid(String paymentMethod, String paymentReference, LocalDateTime paymentDate) {
         checkCanBePaid();
         this.status = Status.PAID;
         this.paymentMethod = paymentMethod;
         this.paymentReference = paymentReference;
         this.paymentDate = paymentDate;
+    }
+
+    public User getApprovedBy() {
+        return approvedBy;
+    }
+
+    public LocalDateTime getApprovedAt() {
+        return approvedAt;
+    }
+
+    public String getReviewNote() {
+        return reviewNote;
     }
 
     public Integer getPayrollId() {

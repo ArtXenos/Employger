@@ -4,6 +4,7 @@
 //   GENERAL_MANAGER  -> read-only: write controls hidden, banner shown
 //   not ADMINISTRATOR -> Settings and Users links hidden (admin-only)
 //   GENERAL_MANAGER  -> Reports link hidden (reports are admin and HR only)
+//   HR_MANAGER       -> payroll sign-off buttons hidden (GM or admin approves)
 
 (function () {
   const READ_ONLY_CONTROLS = [
@@ -32,6 +33,7 @@
   style.textContent =
     `html[data-role="GENERAL_MANAGER"] :is(${READ_ONLY_CONTROLS.join(", ")})` +
     " { display: none !important; }" +
+    ' html[data-role="HR_MANAGER"] .signoff-button { display: none !important; }' +
     " .read-only-banner { margin: 0 0 16px; padding: 10px 14px; border-radius: 8px;" +
     " background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; font-size: 14px; }";
   document.head.appendChild(style);
@@ -86,7 +88,8 @@
         banner.className = "read-only-banner";
         banner.setAttribute("role", "note");
         banner.textContent =
-          "Read-only access: you can view payroll information but not change it.";
+          "Read-only access, except sign-off: you can view payroll information " +
+          "and approve or send back processed payroll.";
 
         main.prepend(banner);
       }

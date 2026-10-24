@@ -64,6 +64,7 @@ class AuditTrailIntegrationTest {
 
         user("admin", User.Role.ADMINISTRATOR);
         user("hr", User.Role.HR_MANAGER);
+        user("gm", User.Role.GENERAL_MANAGER);
 
         employee = new Employee();
         employee.setFirstName("Test");
@@ -85,6 +86,41 @@ class AuditTrailIntegrationTest {
 
     @Test
     @WithMockUser(username = "hr", roles = "HR_MANAGER")
+    void generalManagerCanSendProcessedPayrollBackWithAReason() throws Exception {
+        String response = mockMvc.perform(post("/api/payroll/employee/{e}/pay-cycle/{c}",
+                        employee.getEmployeeId(), cycle.getPayCycleId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Integer payrollId = com.jayway.jsonpath.JsonPath.read(response, "$.payrollId");
+        mockMvc.perform(post("/api/payroll/{id}/process", payrollId)).andExpect(status().isOk());
+
+        var gm = org.springframework.security.test.web.servlet.request
+                .SecurityMockMvcRequestPostProcessors.user("gm").roles("GENERAL_MANAGER");
+
+        mockMvc.perform(post("/api/payroll/{id}/send-back", payrollId).with(gm)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\": \" \"}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/payroll/{id}/send-back", payrollId).with(gm)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\": \"Check the overtime\"}"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.status").value("DRAFT"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.reviewNote").value("Check the overtime"));
+
+        mockMvc.perform(post("/api/payroll/{id}/pay", payrollId).param("paymentMethod", "CASH"))
+                .andExpect(status().isConflict());
+
+        AuditLog latest = auditLogRepository.findTop200ByOrderByAuditIdDesc().getFirst();
+        assertThat(latest.getAction()).isEqualTo("PAYROLL_SENT_BACK");
+        assertThat(latest.getDescription()).endsWith("back to DRAFT: Check the overtime");
+    }
+
+    @Test
+    @WithMockUser(username = "hr", roles = "HR_MANAGER")
     void payrollLifecycleIsAuditedWithTheActingUser() throws Exception {
         String response = mockMvc.perform(post("/api/payroll/employee/{e}/pay-cycle/{c}",
                         employee.getEmployeeId(), cycle.getPayCycleId())
@@ -96,6 +132,16 @@ class AuditTrailIntegrationTest {
         Integer payrollId = com.jayway.jsonpath.JsonPath.read(response, "$.payrollId");
 
         mockMvc.perform(post("/api/payroll/{id}/process", payrollId)).andExpect(status().isOk());
+
+        // HR can't sign off; the General Manager can.
+        mockMvc.perform(post("/api/payroll/{id}/approve", payrollId)).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/payroll/{id}/approve", payrollId)
+                        .with(org.springframework.security.test.web.servlet.request
+                                .SecurityMockMvcRequestPostProcessors.user("gm").roles("GENERAL_MANAGER")))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.approvedBy.username").value("gm"));
+
         mockMvc.perform(post("/api/payroll/{id}/pay", payrollId)
                         .param("paymentMethod", "BANK_TRANSFER")
                         .param("paymentReference", "REF-123"))
@@ -104,11 +150,11 @@ class AuditTrailIntegrationTest {
         List<AuditLog> entries = auditLogRepository.findTop200ByOrderByAuditIdDesc();
 
         assertThat(entries).extracting(AuditLog::getAction)
-                .containsExactly("PAYROLL_PAID", "PAYROLL_PROCESSED", "PAYROLL_CREATED");
-        assertThat(entries).allSatisfy(entry -> {
-            assertThat(entry.getUser().getUsername()).isEqualTo("hr");
-            assertThat(entry.getDescription()).contains("payroll #" + payrollId);
-        });
+                .containsExactly("PAYROLL_PAID", "PAYROLL_APPROVED", "PAYROLL_PROCESSED", "PAYROLL_CREATED");
+        assertThat(entries).extracting(entry -> entry.getUser().getUsername())
+                .containsExactly("hr", "gm", "hr", "hr");
+        assertThat(entries).allSatisfy(entry ->
+                assertThat(entry.getDescription()).contains("payroll #" + payrollId));
         assertThat(entries.get(0).getDescription()).contains("BANK_TRANSFER", "REF-123");
     }
 

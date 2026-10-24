@@ -108,7 +108,7 @@ class ResponseShapeAndInputIntegrationTest {
         payroll = new Payroll();
         payroll.setEmployee(employee);
         payroll.setPayCycle(cycle);
-        ReflectionTestUtils.setField(payroll, "status", Payroll.Status.PROCESSED);
+        ReflectionTestUtils.setField(payroll, "status", Payroll.Status.APPROVED);
         payroll.setNetPay(new BigDecimal("12000.00"));
         payroll.setProcessedBy(processor);
         payroll = payrollRepository.save(payroll);

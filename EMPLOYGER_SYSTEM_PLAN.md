@@ -85,7 +85,7 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 | No deductions hierarchy | The `deductions` table is empty and unused. The real deductions are statutory and attendance deductions. |
 | Subclasses only for de minimis earning types | The other earning types (13th month, other benefits, hazard pay, taxable allowance) only differ in which payroll column they're summed into. Classes for them would add nothing. |
 | Behaviour classes beside the `Earning.Type` enum, not in the entity | The `bonuses` table keeps storing the type name unchanged. The benefit classes need settings, which belong in the service layer, not in a JPA entity. |
-| Setters kept on `Payroll` and `Overtime` | Hibernate, JSON request binding (overtime) and test fixtures use them. The lifecycle methods are the path the application uses for status changes. |
+| No `setStatus()` on `Payroll` and `Overtime` (removed 2026-10-25) | Status changes only through the lifecycle methods. Other setters stay for Hibernate and request binding; tests set a stored PAID or APPROVED status with `ReflectionTestUtils`. |
 | No effective-dated rates | Settings hold one current value per rate. Dated rates would be new functionality. |
 | Employees change contact details directly, without HR approval | Only email, phone and address, and each change is audited (`EMPLOYEE_CONTACT_UPDATED`, field names only). Salary, department, government numbers and bank details stay HR-only. |
 | Company overview shows the whole company | Em-Ployger has no "reports to" field, so a manager can't be limited to their own team. Totals only, no personal data, so a company-wide view is safe for general managers. |

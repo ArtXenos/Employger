@@ -62,7 +62,7 @@ class EmployeeAndUserValidationIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        actingAdmin = user("acting.admin", User.Role.ADMINISTRATOR, null);
+        actingAdmin = user("acting.admin", User.Role.ADMINISTRATOR, employee("acting.admin@example.test"));
     }
 
     // ---------- employees ----------
@@ -180,11 +180,13 @@ class EmployeeAndUserValidationIntegrationTest {
 
     @Test
     void shortAndOverlongPasswordsAreRejected() throws Exception {
-        sendUser(post("/api/users"), "new.user", "short-pass", "HR_MANAGER", "ACTIVE", null)
+        Integer hire = employee("new.user@example.test").getEmployeeId();
+
+        sendUser(post("/api/users"), "new.user", "short-pass", "HR_MANAGER", "ACTIVE", hire)
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string("Password must be at least 12 characters."));
 
-        sendUser(post("/api/users"), "new.user", "x".repeat(73), "HR_MANAGER", "ACTIVE", null)
+        sendUser(post("/api/users"), "new.user", "x".repeat(73), "HR_MANAGER", "ACTIVE", hire)
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string(containsString("Password is too long")));
     }
@@ -199,7 +201,9 @@ class EmployeeAndUserValidationIntegrationTest {
 
     @Test
     void createdUserIsAuditedWithoutPasswordAndResponseHasNoHash() throws Exception {
-        sendUser(post("/api/users"), "new.user", "long-enough-password", "HR_MANAGER", null, null)
+        Integer hire = employee("new.user@example.test").getEmployeeId();
+
+        sendUser(post("/api/users"), "new.user", "long-enough-password", "HR_MANAGER", null, hire)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist());
@@ -215,7 +219,8 @@ class EmployeeAndUserValidationIntegrationTest {
         Employee employee = employee("linked@example.test");
         user("linked.user", User.Role.EMPLOYEE, employee);
 
-        sendUser(post("/api/users"), "LINKED.user", "long-enough-password", "EMPLOYEE", null, null)
+        sendUser(post("/api/users"), "LINKED.user", "long-enough-password", "EMPLOYEE", null,
+                employee("other.hire@example.test").getEmployeeId())
                 .andExpect(status().isConflict())
                 .andExpect(content().string("This username is already taken."));
 
@@ -226,14 +231,46 @@ class EmployeeAndUserValidationIntegrationTest {
     }
 
     @Test
+    void loginWithoutLinkedEmployeeIsRejectedForEveryRole() throws Exception {
+        for (String role : new String[] {"HR_MANAGER", "GENERAL_MANAGER", "ADMINISTRATOR", "EMPLOYEE"}) {
+            sendUser(post("/api/users"), "outsider", "long-enough-password", role, "ACTIVE", null)
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string(containsString("Linked employee is required")));
+        }
+
+        sendUser(put("/api/users/{id}", actingAdmin.getUserId()),
+                "acting.admin", "", "ADMINISTRATOR", "ACTIVE", null)
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("Linked employee is required")));
+
+        assertThat(userRepository.findByUsername("outsider")).isEmpty();
+    }
+
+    @Test
+    void formerEmployeeCanOnlyHaveAnInactiveLogin() throws Exception {
+        Employee former = employee("former@example.test");
+        former.setEmploymentStatus(Employee.EmploymentStatus.INACTIVE);
+        employeeRepository.save(former);
+
+        sendUser(post("/api/users"), "former.hr", "long-enough-password", "HR_MANAGER", "ACTIVE",
+                former.getEmployeeId())
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("no longer works for the company")));
+
+        sendUser(post("/api/users"), "former.hr", "long-enough-password", "HR_MANAGER", "INACTIVE",
+                former.getEmployeeId())
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void onlyActiveAdministratorCannotBeDemotedDeactivatedOrDeleted() throws Exception {
         sendUser(put("/api/users/{id}", actingAdmin.getUserId()),
-                "acting.admin", "", "HR_MANAGER", "ACTIVE", null)
+                "acting.admin", "", "HR_MANAGER", "ACTIVE", actingAdmin.getEmployee().getEmployeeId())
                 .andExpect(status().isConflict())
                 .andExpect(content().string(containsString("only active administrator")));
 
         sendUser(put("/api/users/{id}", actingAdmin.getUserId()),
-                "acting.admin", "", "ADMINISTRATOR", "INACTIVE", null)
+                "acting.admin", "", "ADMINISTRATOR", "INACTIVE", actingAdmin.getEmployee().getEmployeeId())
                 .andExpect(status().isConflict());
 
         assertThat(userRepository.findById(actingAdmin.getUserId()).orElseThrow().getRole())
@@ -253,7 +290,7 @@ class EmployeeAndUserValidationIntegrationTest {
         user("second.admin", User.Role.ADMINISTRATOR, null);
 
         sendUser(put("/api/users/{id}", actingAdmin.getUserId()),
-                "acting.admin", "", "HR_MANAGER", "ACTIVE", null)
+                "acting.admin", "", "HR_MANAGER", "ACTIVE", actingAdmin.getEmployee().getEmployeeId())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("HR_MANAGER"));
 
@@ -272,15 +309,15 @@ class EmployeeAndUserValidationIntegrationTest {
 
     @Test
     void passwordChangeIsValidatedAndAuditedWithoutTheValue() throws Exception {
-        User target = user("target.user", User.Role.EMPLOYEE, null);
+        User target = user("target.user", User.Role.EMPLOYEE, employee("target@example.test"));
         String oldHash = target.getPasswordHash();
 
         sendUser(put("/api/users/{id}", target.getUserId()),
-                "target.user", "too-short", "EMPLOYEE", "ACTIVE", null)
+                "target.user", "too-short", "EMPLOYEE", "ACTIVE", target.getEmployee().getEmployeeId())
                 .andExpect(status().isBadRequest());
 
         sendUser(put("/api/users/{id}", target.getUserId()),
-                "target.user", "brand-new-password", "EMPLOYEE", "ACTIVE", null)
+                "target.user", "brand-new-password", "EMPLOYEE", "ACTIVE", target.getEmployee().getEmployeeId())
                 .andExpect(status().isOk());
 
         assertThat(userRepository.findById(target.getUserId()).orElseThrow().getPasswordHash())
@@ -293,7 +330,7 @@ class EmployeeAndUserValidationIntegrationTest {
     @Test
     void renamingYourOwnAccountStillRecordsYouAsTheActor() throws Exception {
         sendUser(put("/api/users/{id}", actingAdmin.getUserId()),
-                "renamed.admin", "", "ADMINISTRATOR", "ACTIVE", null)
+                "renamed.admin", "", "ADMINISTRATOR", "ACTIVE", actingAdmin.getEmployee().getEmployeeId())
                 .andExpect(status().isOk());
 
         AuditLog entry = latestAudit();
@@ -304,11 +341,11 @@ class EmployeeAndUserValidationIntegrationTest {
 
     @Test
     void blankPasswordOnUpdateKeepsTheCurrentOne() throws Exception {
-        User target = user("target.user", User.Role.EMPLOYEE, null);
+        User target = user("target.user", User.Role.EMPLOYEE, employee("target@example.test"));
         String oldHash = target.getPasswordHash();
 
         sendUser(put("/api/users/{id}", target.getUserId()),
-                "target.user", "", "GENERAL_MANAGER", "ACTIVE", null)
+                "target.user", "", "GENERAL_MANAGER", "ACTIVE", target.getEmployee().getEmployeeId())
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("password"))));
 

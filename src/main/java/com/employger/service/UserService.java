@@ -66,21 +66,21 @@ public class UserService {
 
         checkPasswordStrength(request.getPassword());
 
+        if (userRepository.existsByEmployeeEmployeeId(request.getEmployeeId())) {
+            throw new IllegalStateException("This employee already has a login.");
+        }
+
+        User.Status status = request.getStatus() != null ? request.getStatus() : User.Status.ACTIVE;
+        Employee employee = findEmployee(request.getEmployeeId());
+        checkStillEmployed(employee, status);
+
         User user = new User();
 
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
-        user.setStatus(request.getStatus() != null ? request.getStatus() : User.Status.ACTIVE);
-
-        if (request.getEmployeeId() != null) {
-
-            if (userRepository.existsByEmployeeEmployeeId(request.getEmployeeId())) {
-                throw new IllegalStateException("This employee already has a login.");
-            }
-
-            user.setEmployee(findEmployee(request.getEmployeeId()));
-        }
+        user.setStatus(status);
+        user.setEmployee(employee);
 
         User saved = userRepository.save(user);
 
@@ -118,16 +118,12 @@ public class UserService {
                             + "administrator first, so nobody is locked out of user management.");
         }
 
-        Employee employee = null;
-
-        if (request.getEmployeeId() != null) {
-
-            if (userRepository.existsByEmployeeEmployeeIdAndUserIdNot(request.getEmployeeId(), id)) {
-                throw new IllegalStateException("This employee already has a login.");
-            }
-
-            employee = findEmployee(request.getEmployeeId());
+        if (userRepository.existsByEmployeeEmployeeIdAndUserIdNot(request.getEmployeeId(), id)) {
+            throw new IllegalStateException("This employee already has a login.");
         }
+
+        Employee employee = findEmployee(request.getEmployeeId());
+        checkStillEmployed(employee, request.getStatus());
 
         boolean changesPassword = request.getPassword() != null && !request.getPassword().isBlank();
 
@@ -139,7 +135,7 @@ public class UserService {
         noteChange(changes, "username", user.getUsername(), username);
         noteChange(changes, "role", user.getRole(), request.getRole());
         noteChange(changes, "status", user.getStatus(), request.getStatus());
-        noteChange(changes, "employee", employeeIdOf(user), employee != null ? employee.getEmployeeId() : null);
+        noteChange(changes, "employee", employeeIdOf(user), employee.getEmployeeId());
 
         user.setUsername(username);
         user.setRole(request.getRole());
@@ -210,6 +206,14 @@ public class UserService {
 
         if (password.isBlank() || !password.equals(password.strip())) {
             throw new IllegalArgumentException("Password cannot start or end with a space.");
+        }
+    }
+
+    // A former employee's login may be kept, but only as INACTIVE.
+    private static void checkStillEmployed(Employee employee, User.Status status) {
+        if (status == User.Status.ACTIVE && !employee.isEmployed()) {
+            throw new IllegalArgumentException(
+                    "This employee no longer works for the company. Their login can only be inactive.");
         }
     }
 

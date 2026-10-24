@@ -7,6 +7,8 @@ import jakarta.validation.constraints.Pattern;
 
 public class CreateUserRequest {
 
+    // Every login belongs to someone who works for the company.
+    @NotNull(message = "Linked employee is required: logins are only for employees of the company.")
     private Integer employeeId;
 
     @NotBlank(message = "Username is required.")

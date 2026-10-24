@@ -225,6 +225,12 @@ public class Employee {
         return managerial;
     }
 
+    // Still working for the company: only then may they have an active login.
+    @JsonIgnore
+    public boolean isEmployed() {
+        return employmentStatus == EmploymentStatus.ACTIVE;
+    }
+
     public void setManagerial(boolean managerial) {
         this.managerial = managerial;
     }

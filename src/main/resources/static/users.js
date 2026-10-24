@@ -159,7 +159,7 @@ function openUserModal(user) {
 // Employees that already have a login are listed but cannot be chosen.
 function fillEmployeeOptions(selectedId, editingUserId) {
   const select = $("userEmployee");
-  select.innerHTML = `<option value="">None</option>`;
+  select.innerHTML = `<option value="">Choose an employee</option>`;
 
   employees.forEach((employee) => {
     const owner = users.find((u) => u.employeeId === employee.employeeId && u.userId !== editingUserId);
@@ -167,6 +167,7 @@ function fillEmployeeOptions(selectedId, editingUserId) {
 
     option.value = employee.employeeId;
     option.textContent = `${employee.lastName}, ${employee.firstName} (#${employee.employeeId})`
+      + (employee.employmentStatus === "INACTIVE" ? " - former employee" : "")
       + (owner ? ` - login: ${owner.username}` : "");
     option.disabled = Boolean(owner);
     select.appendChild(option);
@@ -194,8 +195,15 @@ async function saveUser(event) {
     return;
   }
 
-  if (role === "EMPLOYEE" && employeeId === null) {
-    showError("userMessage", "An employee login must be linked to an employee, or they will see no payslips.");
+  // Logins are only for people who work for the company; the server checks this too.
+  if (employeeId === null) {
+    showError("userMessage", "Choose the employee this login belongs to. Logins are only for employees of the company.");
+    return;
+  }
+
+  const linked = employees.find((e) => e.employeeId === employeeId);
+  if (linked && linked.employmentStatus === "INACTIVE" && $("userStatus").value === "ACTIVE") {
+    showError("userMessage", "This employee no longer works for the company. Their login can only be inactive.");
     return;
   }
 

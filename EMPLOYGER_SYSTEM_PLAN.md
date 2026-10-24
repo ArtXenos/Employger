@@ -110,5 +110,4 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 - `DeMinimisBenefit.limit(dailyRate)` takes the daily rate because monetized leave needs it. The other three benefits ignore it.
 - Adding a fourth statutory contribution would need a new field in the `StatutoryDeductions` and `EmployerShares` results, because each contribution is reported separately on payroll. The totals already come from the loop.
 - The company overview counts each payroll under the employee's **current** department, so moving an employee moves their past cost too.
-- The overtime approval panel loads all overtime and filters PENDING in the browser. Fine for a small company; a server-side filter would be needed for thousands of records.
 - From earlier work: login-attempt counters reset on restart, there's no real-browser CSRF test, and the stale XAMPP MariaDB 10.4 on port 3306 is kept only as a fallback.

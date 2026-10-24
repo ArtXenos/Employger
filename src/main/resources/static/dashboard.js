@@ -66,7 +66,7 @@ async function loadDashboardSummary() {
     fetchJson("/api/employees"),
     fetchJson("/api/attendance"),
     fetchJson("/api/payroll"),
-    fetchJson("/api/overtime"),
+    fetchJson("/api/overtime?status=APPROVED"),
   ]);
 
   const [employeesResult, attendanceResult, payrollResult, overtimeResult] =
@@ -185,9 +185,8 @@ async function loadApprovals() {
   const body = $("approvalsTableBody");
 
   try {
-    const pending = asArray(await fetchJson("/api/overtime"))
-      .filter((record) => String(record.status || "").toUpperCase() === "PENDING")
-      .sort((a, b) => String(a.overtimeDate).localeCompare(String(b.overtimeDate)));
+    // Filtered and sorted by date on the server.
+    const pending = asArray(await fetchJson("/api/overtime?status=PENDING"));
 
     if (pending.length === 0) {
       emptyRow(body, 5, "Nothing is waiting for approval.");

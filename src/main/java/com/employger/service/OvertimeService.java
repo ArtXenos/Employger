@@ -62,6 +62,10 @@ public class OvertimeService {
                 return overtimeRepository.findAll();
         }
 
+        public List<Overtime> getOvertimeByStatus(Overtime.Status status) {
+                return overtimeRepository.findByStatusOrderByOvertimeDateAsc(status);
+        }
+
         public Optional<Overtime> getOvertimeById(Integer id) {
                 return overtimeRepository.findById(id);
         }

@@ -32,6 +32,7 @@ import java.time.LocalTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -138,6 +139,25 @@ class OvertimeAndAttendanceRulesIntegrationTest {
                                 + " \"attendance\": {\"attendanceId\": " + workedDay.getAttendanceId() + "}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void overtimeListCanBeFilteredByStatusOnTheServer() throws Exception {
+        Overtime pending = pendingOvertime(OCT_6, "2", workedDay);
+
+        mockMvc.perform(get("/api/overtime").param("status", "PENDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].overtimeId").value(org.hamcrest.Matchers.hasItem(pending.getOvertimeId())))
+                .andExpect(jsonPath("$[*].status").value(org.hamcrest.Matchers.everyItem(
+                        org.hamcrest.Matchers.is("PENDING"))));
+
+        mockMvc.perform(get("/api/overtime").param("status", "APPROVED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].overtimeId").value(
+                        org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem(pending.getOvertimeId()))));
+
+        mockMvc.perform(get("/api/overtime").param("status", "MAYBE"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

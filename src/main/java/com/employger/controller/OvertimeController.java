@@ -22,9 +22,17 @@ public class OvertimeController {
         this.overtimeService = overtimeService;
     }
 
+    // ?status=PENDING returns only that status, filtered by the database,
+    // so the dashboard doesn't download every record to show a few.
     @GetMapping
-    public List<OvertimeResponse> getAllOvertime() {
-        return overtimeService.getAllOvertime()
+    public List<OvertimeResponse> getAllOvertime(
+            @RequestParam(required = false) Overtime.Status status) {
+
+        List<Overtime> overtime = status != null
+                ? overtimeService.getOvertimeByStatus(status)
+                : overtimeService.getAllOvertime();
+
+        return overtime
                 .stream()
                 .map(OvertimeResponse::new)
                 .toList();

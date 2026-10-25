@@ -174,6 +174,7 @@ async function loadPayslip() {
     const payslip = await response.json();
 
     populatePayslip(payslip);
+    document.getElementById("pdfButton").disabled = false;
   } catch (error) {
     console.error("Payslip loading error:", error);
 
@@ -188,6 +189,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("printButton").addEventListener("click", () => {
     window.print();
+  });
+
+  // The server sends the PDF as a download, so the page stays open.
+  document.getElementById("pdfButton").addEventListener("click", () => {
+    window.location.href = `/api/payslips/payroll/${encodeURIComponent(payrollId)}/pdf`;
   });
 
   loadPayslip();

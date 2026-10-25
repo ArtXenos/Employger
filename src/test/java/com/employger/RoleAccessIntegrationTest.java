@@ -10,6 +10,8 @@ import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.UserRepository;
+import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.parser.PdfTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +26,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -31,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -126,6 +130,54 @@ class RoleAccessIntegrationTest {
         mockMvc.perform(get("/api/reports/thirteenth-month.csv").param("year", "2026"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Balance due")));
+    }
+
+    // ---------- payslip PDF ----------
+
+    @Test
+    @WithMockUser(username = "alice.user", roles = "EMPLOYEE")
+    void employeeDownloadsOwnPaidPayslipPdfOnly() throws Exception {
+        byte[] pdf = mockMvc.perform(get("/api/me/payroll/{id}/pdf", alicePaid.getPayrollId()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(header().string("Content-Disposition", containsString("attachment")))
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        String text = pdfText(pdf);
+        assertThat(text).contains("PAYSLIP", "Test alice", "NET PAY", "PHP 11,000.00");
+
+        // Someone else's payroll and her own DRAFT look like they don't exist.
+        mockMvc.perform(get("/api/me/payroll/{id}/pdf", bobPaid.getPayrollId()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/me/payroll/{id}/pdf", aliceDraft.getPayrollId()))
+                .andExpect(status().isNotFound());
+
+        // The staff download is not for employees.
+        mockMvc.perform(get("/api/payslips/payroll/{id}/pdf", alicePaid.getPayrollId()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "hr", roles = "HR_MANAGER")
+    void hrDownloadsPaidPayslipPdfButNotForUnpaidPayroll() throws Exception {
+        mockMvc.perform(get("/api/payslips/payroll/{id}/pdf", bobPaid.getPayrollId()))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF));
+
+        mockMvc.perform(get("/api/payslips/payroll/{id}/pdf", aliceDraft.getPayrollId()))
+                .andExpect(status().isConflict())
+                .andExpect(content().string(containsString("only available for PAID payroll")));
+    }
+
+    private static String pdfText(byte[] pdf) throws Exception {
+        assertThat(new String(pdf, 0, 5, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+        PdfReader reader = new PdfReader(pdf);
+        try {
+            return new PdfTextExtractor(reader).getTextFromPage(1);
+        } finally {
+            reader.close();
+        }
     }
 
     // ---------- employee self-service ----------

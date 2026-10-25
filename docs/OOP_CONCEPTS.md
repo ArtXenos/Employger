@@ -294,6 +294,12 @@ public BigDecimal getBalanceDue() {
 
 The Reports page, the employee's **My 13th Month** and the **Generate 13th Month Pay** button all use this one object (`EarningService.thirteenthMonthStatus()`), so they can never disagree about how much is earned or still due. Before, the generator worked these out inside its own loop.
 
+### A payslip PDF can only exist for paid payroll
+
+[src/main/java/com/employger/service/PayslipPdf.java](../src/main/java/com/employger/service/PayslipPdf.java)
+
+`PayslipPdf`'s constructor refuses any payroll that isn't PAID, so no code anywhere can produce a "payslip" for pay that hasn't been made. Its fields are `private final`; outside code can ask only for `fileName()` and `toBytes()`. How the page is laid out (fonts, which lines appear, the "PHP" amounts) stays inside the class. Nothing is saved to disk: the PDF is built from the payroll on each download.
+
 ### Requests that only accept what the user may change
 
 - `ContactDetailsRequest` ([ContactDetailsRequest.java:12](../src/main/java/com/employger/dto/ContactDetailsRequest.java#L12)) has exactly three fields: email, phone and address. If an employee's browser sends `"baseSalary": 999999` or `"department": "Executive"`, there's nowhere for it to go, so it's ignored. A test proves the salary stays unchanged.

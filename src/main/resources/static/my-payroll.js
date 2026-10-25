@@ -197,6 +197,13 @@ function showPayslip(payroll, row) {
     }),
   );
 
+  // A PDF payslip is proof of payment, so only for PAID payroll.
+  const pdfButton = document.getElementById("pdfPayslipButton");
+  pdfButton.hidden = payroll.status !== "PAID";
+  pdfButton.onclick = () => {
+    window.location.href = `/api/me/payroll/${encodeURIComponent(payroll.payrollId)}/pdf`;
+  };
+
   payslipDetail.hidden = false;
   payslipDetail.focus();
 }

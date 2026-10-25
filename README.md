@@ -9,7 +9,8 @@ Em-Ployger is a payroll management system for Philippine employers. It covers em
 - **Leave.** Paid and unpaid leave are filed by the employee and approved by HR.
 - **Payroll.** The lifecycle is DRAFT, PROCESSED, approved by the General Manager, then PAID. Every payroll keeps a record of how it was calculated. Overlapping pay cycles are refused.
 - **Philippine statutory rules.** SSS, PhilHealth and Pag-IBIG (employee and employer shares), BIR withholding tax with year-end annualization, minimum wage earners, holidays, night differential, 13th month pay and de minimis benefits. Sources are in [docs/STATUTORY_DEDUCTIONS.md](docs/STATUTORY_DEDUCTIONS.md).
-- **Reports.** Monthly SSS, PhilHealth and Pag-IBIG tables as CSV, the BIR 1601-C summary and a printable BIR Form 2316.
+- **Payslips.** Printable on screen, or downloaded as a PDF for paid payroll, by HR or by the employees themselves.
+- **Reports.** Monthly SSS, PhilHealth and Pag-IBIG tables as CSV, the BIR 1601-C summary, a 13th month pay report (earned, paid, still due) and a printable BIR Form 2316.
 - **Security.** BCrypt passwords, CSRF protection, login lockout after repeated failures, role checks on the server, and an audit log.
 
 ## Roles

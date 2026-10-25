@@ -8,6 +8,7 @@ import com.employger.repository.PayrollRepository;
 import com.employger.repository.PayslipRepository;
 import com.employger.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,15 +19,33 @@ public class PayslipService {
     private final PayslipRepository payslipRepository;
     private final PayrollRepository payrollRepository;
     private final UserRepository userRepository;
+    private final SystemSettingService systemSettingService;
 
     public PayslipService(
             PayslipRepository payslipRepository,
             PayrollRepository payrollRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            SystemSettingService systemSettingService) {
 
         this.payslipRepository = payslipRepository;
         this.payrollRepository = payrollRepository;
         this.userRepository = userRepository;
+        this.systemSettingService = systemSettingService;
+    }
+
+    /** The PDF payslip of a PAID payroll; 404 if missing, 409 if not paid. */
+    @Transactional(readOnly = true)
+    public PayslipPdf payslipPdf(Integer payrollId) {
+        Payroll payroll = payrollRepository.findById(payrollId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
+        return payslipPdf(payroll);
+    }
+
+    /** For a payroll the caller has already loaded and checked. */
+    public PayslipPdf payslipPdf(Payroll payroll) {
+        return new PayslipPdf(payroll,
+                systemSettingService.findSettingValue("company_name").orElse(""),
+                LocalDateTime.now());
     }
 
     public List<Payslip> getAllPayslips() {

@@ -12,12 +12,14 @@ import com.employger.entity.Payroll;
 import com.employger.entity.Payslip;
 import com.employger.service.EarningService;
 import com.employger.service.LeaveService;
+import com.employger.service.PayslipService;
 import com.employger.service.ReportService;
 import com.employger.service.SelfServiceService;
 import com.employger.service.ThirteenthMonthStatus;
 import com.employger.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,16 +52,19 @@ public class SelfServiceController {
     private final UserService userService;
     private final LeaveService leaveService;
     private final EarningService earningService;
+    private final PayslipService payslipService;
 
     public SelfServiceController(
             SelfServiceService selfServiceService,
             UserService userService,
             LeaveService leaveService,
-            EarningService earningService) {
+            EarningService earningService,
+            PayslipService payslipService) {
         this.selfServiceService = selfServiceService;
         this.userService = userService;
         this.leaveService = leaveService;
         this.earningService = earningService;
+        this.payslipService = payslipService;
     }
 
     @GetMapping("/profile")
@@ -85,6 +90,17 @@ public class SelfServiceController {
         Payroll payroll = selfServiceService.getMyPayroll(authentication.getName(), payrollId);
 
         return new PayrollResponse(payroll, selfServiceService.findPayslip(payroll).orElse(null));
+    }
+
+    /** The employee's own payslip as a PDF; only for their PAID payroll. */
+    @GetMapping("/payroll/{payrollId}/pdf")
+    public ResponseEntity<byte[]> getPayslipPdf(
+            @PathVariable Integer payrollId,
+            Authentication authentication) {
+
+        Payroll payroll = selfServiceService.getMyPayroll(authentication.getName(), payrollId);
+
+        return PayslipController.pdf(payslipService.payslipPdf(payroll));
     }
 
     @GetMapping("/attendance")

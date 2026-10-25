@@ -1,7 +1,10 @@
 package com.employger.controller;
 
 import com.employger.dto.PayslipResponse;
+import com.employger.service.PayslipPdf;
 import com.employger.service.PayslipService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -42,6 +45,21 @@ public class PayslipController {
             @PathVariable Integer payrollId) {
 
         return PayslipResponse.from(payslipService.getPayslipByPayrollId(payrollId));
+    }
+
+    /** The payslip of a PAID payroll as a PDF download. */
+    @GetMapping("/payroll/{payrollId}/pdf")
+    public ResponseEntity<byte[]> downloadPdf(@PathVariable Integer payrollId) {
+        return pdf(payslipService.payslipPdf(payrollId));
+    }
+
+    /** A PDF as a download, never cached: it holds someone's pay. */
+    static ResponseEntity<byte[]> pdf(PayslipPdf payslip) {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + payslip.fileName() + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(payslip.toBytes());
     }
 
     // The generating user is the logged-in user. A userId request

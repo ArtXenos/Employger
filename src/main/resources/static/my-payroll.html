@@ -89,9 +89,14 @@
               aria-labelledby="payslipTitle">
               <div class="detail-header">
                 <h3 id="payslipTitle">Payslip</h3>
-                <button id="printPayslipButton" class="secondary-button print-button" type="button">
-                  Print payslip
-                </button>
+                <div class="detail-actions">
+                  <button id="printPayslipButton" class="secondary-button print-button" type="button">
+                    Print payslip
+                  </button>
+                  <button id="pdfPayslipButton" class="primary-button print-button" type="button" hidden>
+                    Download PDF
+                  </button>
+                </div>
               </div>
               <p id="payslipEmployee" class="print-only"></p>
               <dl id="payslipLines" class="payslip-lines"></dl>

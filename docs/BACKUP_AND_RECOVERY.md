@@ -34,7 +34,11 @@ The first script creates `employger_backup` with a random password that is never
 - It writes `employger_db_YYYY-MM-DD_HHMMSS.sql` to `Documents\employger-backups` and checks the file ends with `Dump completed`.
 - If the backup fails, it deletes the empty or partial file, so nothing that looks like a backup is left behind.
 - After a good backup, it deletes automatic backups older than 30 days. Backups with a name (for example `…_before-V4.sql`) are never deleted, and a failed run never deletes anything.
-- It adds one line to `Documents\employger-backups\backup.log`. A `FAILED:` line means that day has no backup.
+- It adds one line to `Documents\employger-backups\backup.log`, as a record.
+
+**You don't need to check the log.** Both tasks are silent while everything works and show a Windows notification, which stays until dismissed, when it doesn't:
+- **"Em-Ployger backup failed"**: the daily backup ran but failed. The message gives the reason.
+- **"Em-Ployger backup is out of date"**: a second task, **Em-Ployger backup check**, runs 30 minutes after you log on. It warns if the newest complete backup is older than 3 days, for example because the computer was off for days or the daily task was disabled.
 
 **Check, run now or remove:**
 
@@ -42,6 +46,7 @@ The first script creates `employger_backup` with a random password that is never
 Get-ScheduledTaskInfo -TaskName "Em-Ployger daily backup"   # LastRunTime, LastTaskResult (0 = OK)
 Start-ScheduledTask -TaskName "Em-Ployger daily backup"
 Unregister-ScheduledTask -TaskName "Em-Ployger daily backup"
+Unregister-ScheduledTask -TaskName "Em-Ployger backup check"
 ```
 
 The backups are on the same disk as the database. Copy the folder to a USB drive or a private cloud folder now and then, so a failed laptop doesn't take both.

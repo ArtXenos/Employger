@@ -18,7 +18,9 @@
 #                (employger_db_YYYY-MM-DD_HHMMSS.sql) older than this many
 #                days. 0, the default, keeps everything. Named backups such
 #                as employger_db_2026-10-23_before-V4.sql are never deleted.
-# -LogFile       Append one line per run, so unattended failures are seen.
+# -LogFile       Append one line per run, as a record.
+# -Notify        Show a Windows notification if the backup fails, so an
+#                unattended failure is seen without reading the log.
 #
 # Backups contain salary and personal data. Keep them out of this
 # repository and out of shared folders.
@@ -31,10 +33,13 @@ param(
     [int]$Port = 3307,
     [string]$DefaultsFile = "",
     [int]$KeepDays = 0,
-    [string]$LogFile = ""
+    [string]$LogFile = "",
+    [switch]$Notify
 )
 
 $ErrorActionPreference = "Stop"
+
+. (Join-Path $PSScriptRoot "Show-Notification.ps1")
 
 function Write-Log([string]$message) {
     Write-Host $message
@@ -89,6 +94,10 @@ try {
     # Don't leave an empty or partial file that looks like a backup.
     if ($file -and (Test-Path $file)) { Remove-Item $file -Force }
     Write-Log "FAILED: $($_.Exception.Message)"
+    if ($Notify) {
+        Show-Notification "Em-Ployger backup failed" `
+            "No backup was made today. $($_.Exception.Message) Details: $LogFile"
+    }
     throw
 }
 

@@ -188,6 +188,94 @@
             </table>
           </div>
         </section>
+
+        <!-- CORRECTIONS TO PAID PAYROLL -->
+        <section class="payroll-section adjustments-section" aria-labelledby="adjustmentsHeading">
+          <div class="section-header">
+            <div>
+              <h3 id="adjustmentsHeading">Corrections to Paid Payroll</h3>
+              <p>
+                Paid payroll is never changed. Record the mistake here and a
+                later payroll settles it: the one whose pay cycle contains the
+                settle date. It is taxable pay in that cycle and goes through the
+                General Manager's sign-off with that payroll.
+              </p>
+            </div>
+          </div>
+
+          <form id="adjustmentForm" class="adjustment-form" novalidate hidden>
+            <input type="hidden" id="adjustmentId" />
+
+            <div class="form-group">
+              <label for="adjustmentEmployee">Employee <span>*</span></label>
+              <select id="adjustmentEmployee" required></select>
+            </div>
+
+            <div class="form-group">
+              <label for="adjustmentPayroll">Paid payroll to correct <span>*</span></label>
+              <select id="adjustmentPayroll" required></select>
+            </div>
+
+            <div class="form-group">
+              <label for="adjustmentKind">Kind <span>*</span></label>
+              <select id="adjustmentKind" required>
+                <option value="UNDERPAYMENT">Underpayment: add to a later payroll</option>
+                <option value="OVERPAYMENT">Overpayment: deduct from a later payroll</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="adjustmentAmount">Amount (₱) <span>*</span></label>
+              <input type="number" id="adjustmentAmount" min="0.01" step="0.01" required />
+            </div>
+
+            <div class="form-group">
+              <label for="adjustmentDate">Settle in the cycle containing <span>*</span></label>
+              <input type="date" id="adjustmentDate" required />
+            </div>
+
+            <div class="form-group adjustment-reason">
+              <label for="adjustmentReason">Reason <span>*</span></label>
+              <input type="text" id="adjustmentReason" maxlength="255" required
+                placeholder="e.g. Overtime on Oct 3 was left out" />
+            </div>
+
+            <label class="consent-row" id="adjustmentConsentRow" hidden>
+              <input type="checkbox" id="adjustmentConsent" />
+              The employee agreed in writing to this deduction (Labor Code Art. 113).
+              It can't be more than that payroll's net pay.
+            </label>
+
+            <div class="adjustment-actions">
+              <button type="submit" class="primary-button" id="adjustmentSubmit">Record Correction</button>
+              <button type="button" class="secondary-button" id="adjustmentCancel" hidden>Cancel Edit</button>
+            </div>
+
+            <p id="adjustmentMessage" class="adjustment-message" role="status" aria-live="polite"></p>
+          </form>
+
+          <div class="table-container">
+            <table class="payroll-table adjustments-table">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Corrects</th>
+                  <th>Kind</th>
+                  <th>Amount</th>
+                  <th>Settle Date</th>
+                  <th>Reason</th>
+                  <th>Settled By</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adjustmentTableBody">
+                <tr>
+                  <td colspan="8" class="loading-cell">Loading corrections...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -244,6 +332,16 @@
             <div class="calculation-row">
               <span>Approved Overtime</span>
               <strong id="previewOvertimePay">₱0.00</strong>
+            </div>
+
+            <div class="calculation-row">
+              <span>Earnings and Benefits</span>
+              <strong id="previewBonus">₱0.00</strong>
+            </div>
+
+            <div class="calculation-row" title="Corrections of earlier PAID payroll settled in this cycle: underpayments added, overpayments recovered.">
+              <span>Corrections of Earlier Pay</span>
+              <strong id="previewAdjustments">₱0.00</strong>
             </div>
 
             <div class="calculation-row">
@@ -360,6 +458,12 @@
                 <span>Bonus</span>
 
                 <strong id="detailsBonus"> ₱0.00 </strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Corrections of Earlier Pay</span>
+
+                <strong id="detailsAdjustments"> ₱0.00 </strong>
               </div>
 
               <div class="breakdown-divider"></div>
@@ -569,6 +673,7 @@
     <script src="/session.js"></script>
 
     <script src="payroll.js"></script>
+    <script src="/payroll-adjustments.js"></script>
     <script src="/account.js"></script>
     <script src="/password-toggle.js"></script>
   </body>

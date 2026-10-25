@@ -8,6 +8,7 @@ Em-Ployger is a payroll management system for Philippine employers. It covers em
 - **Attendance and overtime.** Hours come from time in and time out. Overtime goes through HR approval.
 - **Leave.** Paid and unpaid leave are filed by the employee and approved by HR.
 - **Payroll.** The lifecycle is DRAFT, PROCESSED, approved by the General Manager, then PAID. Every payroll keeps a record of how it was calculated. Overlapping pay cycles are refused.
+- **Corrections.** Paid payroll is never changed. An underpayment or overpayment is recorded and settled by a later payroll, with the employee's written consent required for a deduction.
 - **Philippine statutory rules.** SSS, PhilHealth and Pag-IBIG (employee and employer shares), BIR withholding tax with year-end annualization, minimum wage earners, holidays, night differential, 13th month pay and de minimis benefits. Sources are in [docs/STATUTORY_DEDUCTIONS.md](docs/STATUTORY_DEDUCTIONS.md).
 - **Payslips.** Printable on screen, or downloaded as a PDF for paid payroll, by HR or by the employees themselves.
 - **Reports.** Monthly SSS, PhilHealth and Pag-IBIG tables as CSV, the BIR 1601-C summary, a 13th month pay report (earned, paid, still due) and a printable BIR Form 2316.
@@ -36,7 +37,7 @@ You need a **JDK 25 or newer** and **MariaDB 10.11 or newer**. The commands belo
 .\mvnw.cmd package
 ```
 
-**2. Create the database.** The script creates `employger_db` and applies every migration in [db/migrations](db/migrations) in order, from `V1__base_schema.sql` through V11. It asks for the MariaDB root password. If `employger_db` already exists, it stops and changes nothing.
+**2. Create the database.** The script creates `employger_db` and applies every migration in [db/migrations](db/migrations) in order, from `V1__base_schema.sql` through the newest (V12 today). It asks for the MariaDB root password. If `employger_db` already exists, it stops and changes nothing.
 
 ```powershell
 .\scripts\setup-db.ps1

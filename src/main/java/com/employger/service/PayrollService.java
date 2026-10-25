@@ -9,12 +9,14 @@ import com.employger.entity.Overtime;
 import com.employger.entity.Attendance;
 import com.employger.entity.Earning;
 import com.employger.entity.Holiday;
+import com.employger.entity.PayrollAdjustment;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.OvertimeRepository;
 import com.employger.repository.AttendanceRepository;
 import com.employger.repository.EarningRepository;
+import com.employger.repository.PayrollAdjustmentRepository;
 import com.employger.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +55,7 @@ public class PayrollService {
         private final EarningsCalculator earningsCalculator;
         private final EarningRepository earningRepository;
         private final YearEndTaxService yearEndTaxService;
+        private final PayrollAdjustmentRepository payrollAdjustmentRepository;
 
         public PayrollService(
                         PayrollRepository payrollRepository,
@@ -67,9 +70,11 @@ public class PayrollService {
                         HolidayService holidayService,
                         EarningsCalculator earningsCalculator,
                         EarningRepository earningRepository,
-                        YearEndTaxService yearEndTaxService) {
+                        YearEndTaxService yearEndTaxService,
+                        PayrollAdjustmentRepository payrollAdjustmentRepository) {
 
                 this.statutoryDeductionService = statutoryDeductionService;
+                this.payrollAdjustmentRepository = payrollAdjustmentRepository;
                 this.holidayService = holidayService;
                 this.earningsCalculator = earningsCalculator;
                 this.earningRepository = earningRepository;
@@ -195,6 +200,7 @@ public class PayrollService {
                 preview.put("holidayPremiumPay", breakdown.premiumPay());
                 preview.put("nightDifferentialPay", breakdown.nightDifferentialPay());
                 preview.put("bonusAmount", breakdown.bonusAmount());
+                preview.put("adjustmentAmount", breakdown.adjustmentAmount());
                 preview.put("hazardPay", breakdown.earnings().hazardPay());
                 preview.put("thirteenthMonthPay", breakdown.earnings().thirteenthMonthPay());
                 preview.put("otherBenefitsPay", breakdown.earnings().otherBenefitsPay());
@@ -645,6 +651,30 @@ public class PayrollService {
 
                 notes.addAll(earnings.notes());
 
+                // ---------- corrections of earlier PAID payroll (V12) ----------
+
+                // Like earnings: those dated in this cycle that no other
+                // payroll has settled. Taxable pay (or a reduction of it).
+                Integer existingId = existing != null ? existing.getPayrollId() : null;
+
+                List<PayrollAdjustment> adjustments = payrollAdjustmentRepository
+                                .findByEmployeeEmployeeIdAndApplyDateBetween(
+                                                employee.getEmployeeId(), payCycle.getStartDate(), payCycle.getEndDate())
+                                .stream()
+                                .filter(adjustment -> adjustment.getPayroll() == null
+                                                || adjustment.getPayroll().getPayrollId().equals(existingId))
+                                .sorted(Comparator.comparing(PayrollAdjustment::getApplyDate)
+                                                .thenComparing(PayrollAdjustment::getAdjustmentId))
+                                .toList();
+
+                BigDecimal adjustmentAmount = money(adjustments.stream()
+                                .map(PayrollAdjustment::signedAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+                for (PayrollAdjustment adjustment : adjustments) {
+                        notes.add(adjustment.describe());
+                }
+
                 // ---------- totals ----------
 
                 BigDecimal bonusAmount = earnings.total();
@@ -653,7 +683,8 @@ public class PayrollService {
                                 .add(overtimePay)
                                 .add(premiumPay)
                                 .add(nightDifferentialPay)
-                                .add(bonusAmount);
+                                .add(bonusAmount)
+                                .add(adjustmentAmount);
 
                 // A minimum wage earner's minimum wage, holiday pay, overtime,
                 // night differential and hazard pay are exempt (RR 11-2018).
@@ -703,6 +734,16 @@ public class PayrollService {
                                         + " cannot be withheld and must be paid by the employer (RR 11-2018).");
                 }
 
+                // An overpayment may only be recovered from what this payroll
+                // pays; processing refuses until HR moves or splits it.
+                boolean recoveryExceedsPay = adjustmentAmount.signum() < 0 && unclampedNet.signum() < 0;
+
+                if (recoveryExceedsPay) {
+                        notes.add("The overpayment recovery is more than this payroll's net pay by "
+                                        + money(unclampedNet.negate())
+                                        + ". Split it or move part of it to a later cycle before processing.");
+                }
+
                 BigDecimal netPay = unclampedNet.max(ZERO);
 
                 return new PayrollBreakdown(
@@ -724,6 +765,8 @@ public class PayrollService {
                                 nightDifferentialPay,
                                 earnings,
                                 bonusAmount,
+                                adjustments,
+                                adjustmentAmount,
                                 grossPay,
                                 money(mweExemptPay),
                                 statutory,
@@ -732,6 +775,7 @@ public class PayrollService {
                                 yearEnd,
                                 deductionAmount,
                                 netPay,
+                                recoveryExceedsPay,
                                 notes);
         }
 
@@ -883,7 +927,7 @@ public class PayrollService {
                 return department == null ? "" : department.trim();
         }
 
-        private void applyCalculation(Payroll payroll) {
+        private PayrollBreakdown applyCalculation(Payroll payroll) {
 
                 PayrollBreakdown breakdown = calculate(
                                 payroll.getEmployee(),
@@ -893,6 +937,7 @@ public class PayrollService {
                 payroll.setRegularPay(breakdown.regularPay());
                 payroll.setOvertimePay(breakdown.overtimePay());
                 payroll.setBonusAmount(breakdown.bonusAmount());
+                payroll.setAdjustmentAmount(breakdown.adjustmentAmount());
                 payroll.setGrossPay(breakdown.grossPay());
                 payroll.setTaxAmount(breakdown.taxAmount());
                 payroll.setDeductionAmount(breakdown.deductionAmount());
@@ -947,6 +992,17 @@ public class PayrollService {
                         included.setPayroll(payroll);
                 }
 
+                // Release corrections no longer included, then link what is.
+                for (PayrollAdjustment linked : payrollAdjustmentRepository.findByPayrollPayrollId(payroll.getPayrollId())) {
+                        if (!breakdown.adjustments().contains(linked)) {
+                                linked.release();
+                        }
+                }
+
+                for (PayrollAdjustment included : breakdown.adjustments()) {
+                        included.settleIn(payroll);
+                }
+
                 // Release overtime no longer included, then link what is.
                 for (Overtime linked : overtimeRepository.findByPayrollPayrollId(payroll.getPayrollId())) {
                         if (!breakdown.overtime().contains(linked)) {
@@ -957,6 +1013,8 @@ public class PayrollService {
                 for (Overtime included : breakdown.overtime()) {
                         included.setPayroll(payroll);
                 }
+
+                return breakdown;
         }
 
         /*
@@ -1010,7 +1068,12 @@ public class PayrollService {
                 // was created: attendance or overtime may have changed since.
                 BigDecimal draftNetPay = payroll.getNetPay();
 
-                applyCalculation(payroll);
+                PayrollBreakdown breakdown = applyCalculation(payroll);
+
+                if (breakdown.recoveryExceedsPay()) {
+                        throw new IllegalStateException("The overpayment recovery in this payroll is more than "
+                                        + "its net pay. Split the correction or move part of it to a later cycle.");
+                }
 
                 payroll.process(user, LocalDateTime.now());
 
@@ -1132,6 +1195,10 @@ public class PayrollService {
 
                 for (Earning linked : earningRepository.findByPayrollPayrollId(payroll.getPayrollId())) {
                         linked.setPayroll(null);
+                }
+
+                for (PayrollAdjustment linked : payrollAdjustmentRepository.findByPayrollPayrollId(payroll.getPayrollId())) {
+                        linked.release();
                 }
 
                 payrollRepository.delete(payroll);

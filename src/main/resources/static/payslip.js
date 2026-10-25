@@ -119,6 +119,10 @@ function populatePayslip(payslip) {
     payroll.bonusAmount,
   );
 
+  document.getElementById("adjustmentAmount").textContent = formatCurrency(
+    payroll.adjustmentAmount,
+  );
+
   document.getElementById("grossPay").textContent = formatCurrency(
     payroll.grossPay,
   );

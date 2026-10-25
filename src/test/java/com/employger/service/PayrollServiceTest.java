@@ -13,6 +13,7 @@ import com.employger.repository.HolidayRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.OvertimeRepository;
 import com.employger.repository.PayCycleRepository;
+import com.employger.repository.PayrollAdjustmentRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.PriorEmployerCompensationRepository;
 import com.employger.repository.UserRepository;
@@ -80,6 +81,8 @@ class PayrollServiceTest {
     private EarningRepository earningRepository;
     @Mock
     private PriorEmployerCompensationRepository priorEmployerRepository;
+    @Mock
+    private PayrollAdjustmentRepository payrollAdjustmentRepository;
 
     private PayrollService payrollService;
 
@@ -116,7 +119,8 @@ class PayrollServiceTest {
                         List.of(new RiceSubsidy(calculationService), new ClothingAllowance(calculationService),
                                 new MedicalCashAllowance(calculationService), new MonetizedLeave(calculationService))),
                 earningRepository,
-                new YearEndTaxService(payrollRepository, priorEmployerRepository));
+                new YearEndTaxService(payrollRepository, priorEmployerRepository),
+                payrollAdjustmentRepository);
 
         employee = new Employee();
         employee.setEmployeeId(35);

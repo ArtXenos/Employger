@@ -168,6 +168,9 @@ function showPayslip(payroll, row) {
     ["Regular pay", money(payroll.regularPay)],
     ["Overtime pay", money(payroll.overtimePay)],
     ["Bonus", money(payroll.bonusAmount)],
+    ...(Number(payroll.adjustmentAmount || 0) !== 0
+      ? [["Corrections of earlier pay", money(payroll.adjustmentAmount)]]
+      : []),
     ["Gross pay", money(payroll.grossPay)],
     ["SSS", money(payroll.sssContribution)],
     ["PhilHealth", money(payroll.philHealthContribution)],

@@ -627,3 +627,83 @@ input:focus {
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
+
+/* =========================
+   CORRECTIONS TO PAID PAYROLL
+   ========================= */
+
+.adjustments-section {
+  margin-top: 24px;
+}
+
+.adjustment-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 14px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.adjustment-form[hidden],
+.adjustments-section [hidden] {
+  display: none !important;
+}
+
+.adjustment-reason,
+.consent-row,
+.adjustment-actions,
+.adjustment-message {
+  grid-column: 1 / -1;
+}
+
+.consent-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.consent-row input {
+  width: auto;
+  margin-top: 2px;
+}
+
+.adjustment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.adjustment-message {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #166534;
+}
+
+.adjustment-message.error {
+  color: #b91c1c;
+}
+
+.adjustments-table {
+  min-width: 980px;
+}
+
+.adjustments-table td.reason-cell {
+  white-space: normal;
+  min-width: 220px;
+}
+
+.amount-negative {
+  color: #b91c1c;
+}
+
+@media (max-width: 760px) {
+  .adjustment-form {
+    grid-template-columns: 1fr;
+  }
+}

@@ -3,6 +3,7 @@ package com.employger.service;
 import com.employger.entity.Attendance;
 import com.employger.entity.Holiday;
 import com.employger.entity.Overtime;
+import com.employger.entity.PayrollAdjustment;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,6 +33,8 @@ public record PayrollBreakdown(
         BigDecimal nightDifferentialPay,
         EarningsCalculator.Result earnings,
         BigDecimal bonusAmount,
+        List<PayrollAdjustment> adjustments,
+        BigDecimal adjustmentAmount,
         BigDecimal grossPay,
         BigDecimal mweExemptPay,
         StatutoryDeductionService.StatutoryDeductions statutory,
@@ -40,6 +43,7 @@ public record PayrollBreakdown(
         YearEndTaxService.Result yearEnd,
         BigDecimal deductionAmount,
         BigDecimal netPay,
+        boolean recoveryExceedsPay,
         List<String> notes) {
 
     /**

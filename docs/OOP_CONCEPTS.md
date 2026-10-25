@@ -153,6 +153,31 @@ Spring's `OncePerRequestFilter` already knows how to run exactly once per reques
 
 ---
 
+### Corrections to paid payroll: `Underpayment` and `OverpaymentRecovery` extend `PayrollAdjustment`
+
+[src/main/java/com/employger/entity/PayrollAdjustment.java](../src/main/java/com/employger/entity/PayrollAdjustment.java), [Underpayment.java](../src/main/java/com/employger/entity/Underpayment.java), [OverpaymentRecovery.java](../src/main/java/com/employger/entity/OverpaymentRecovery.java)
+
+A mistake in PAID payroll is never fixed by changing that payroll. It is recorded as a correction that a later payroll settles. There are two kinds: the employee was paid too little, or too much. They share almost everything: the payroll they correct, the amount, the reason, the date of the cycle that settles them, the rule that they lock once that payroll is processed, and the checks on all of it. The abstract parent holds all of that once. Each subclass adds only what makes it different:
+
+| | `Underpayment` | `OverpaymentRecovery` |
+|---|---|---|
+| `signedAmount()` | `+amount`: added to pay | `-amount`: deducted |
+| `kindLabel()` | "Underpayment" | "Overpayment recovery" |
+| `checkKindRules()` | nothing extra | refuses without the employee's written consent (Labor Code Art. 113) |
+
+```java
+public final void change(Payroll correctedPayroll, BigDecimal amount, String reason,
+                         LocalDate applyDate, boolean employeeConsent) {
+    checkNotLocked();
+    // ... rules both kinds share: PAID payroll, amount > 0, a reason, a later cycle
+    checkKindRules();      // then the subclass's own rule
+}
+```
+
+`change()` is `final`: no subclass can skip the shared checks. It calls the abstract `checkKindRules()` at the end, so each kind adds its rule without repeating the rest. This is the *template method* pattern.
+
+Both kinds live in one table, `payroll_adjustments`. The `kind` column (`@DiscriminatorColumn`) tells JPA which class to create when it reads a row (single-table inheritance).
+
 ## 3. Polymorphism
 
 **Idea:** one call, many behaviours. The same method call runs a different implementation depending on the object's actual class at runtime.
@@ -202,6 +227,20 @@ The parent's `monthlyEmployeesCompensation()` is a **concrete** method that retu
 ### Existing interface implementation
 
 `CustomUserDetailsService implements UserDetailsService` ([CustomUserDetailsService.java:14](../src/main/java/com/employger/service/CustomUserDetailsService.java#L14)). Spring Security calls `loadUserByUsername()` through the interface and runs our version.
+
+### Payroll adds up corrections without knowing which is which
+
+[src/main/java/com/employger/service/PayrollService.java](../src/main/java/com/employger/service/PayrollService.java), in `calculate()`
+
+```java
+BigDecimal adjustmentAmount = money(adjustments.stream()
+        .map(PayrollAdjustment::signedAmount)
+        .reduce(BigDecimal.ZERO, BigDecimal::add));
+```
+
+> "The payroll calculation never asks whether a correction is an underpayment or an overpayment. It asks each one for its `signedAmount()`, and the object answers. An underpayment of ₱500 and a recovery of ₱120.50 add up to +₱379.50 without an `if`."
+
+The page, the API and the audit log work the same way. They show `kindLabel()` and `describe()`, and `isRecovery()` is worked out from the sign, so no code checks `instanceof`.
 
 ### Our own interface: `LoginAttemptStore`
 
@@ -590,6 +629,34 @@ classDiagram
         +generateThirteenthMonth(int, LocalDate) List
     }
     EarningService ..> ThirteenthMonthStatus : creates
+
+    class PayrollAdjustment {
+        <<abstract>>
+        -Payroll correctedPayroll
+        -BigDecimal amount
+        -LocalDate applyDate
+        -Payroll payroll
+        +signedAmount()* BigDecimal
+        +kindLabel()* String
+        #checkKindRules()*
+        +change(Payroll, BigDecimal, String, LocalDate, boolean)
+        +isLocked() boolean
+        +isRecovery() boolean
+        +describe() String
+    }
+    class Underpayment {
+        +signedAmount() BigDecimal
+        +kindLabel() String
+        #checkKindRules()
+    }
+    class OverpaymentRecovery {
+        +signedAmount() BigDecimal
+        +kindLabel() String
+        #checkKindRules()
+    }
+    PayrollAdjustment <|-- Underpayment
+    PayrollAdjustment <|-- OverpaymentRecovery
+    PayrollService ..> PayrollAdjustment : sums signedAmount()
 
     class UserDetailsService {
         <<interface>>

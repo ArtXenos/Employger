@@ -73,8 +73,8 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 | Role | Pages | Can change |
 |---|---|---|
 | Employee | My Payroll: payslips (printable), attendance, overtime, leave, BIR 2316 (printable), My Details | Files their own overtime and leave (PENDING until HR decides), cancels pending leave, changes their own email, phone and address and their password |
-| HR Manager | All staff pages except Settings, Users and the audit log; dashboard with **Pending Approvals** and **Company Overview** | Employees, attendance, overtime decisions, pay cycles, payroll, benefits, reports |
-| General Manager | Staff pages read-only (no Reports); dashboard **Company Overview** (totals by month and department, six-month labor cost trend) and a notice when payroll awaits sign-off | Approves processed payroll or sends it back to HR with a reason |
+| HR Manager | All staff pages except Settings, Users and the audit log; dashboard with **Pending Approvals** and **Company Overview** | Employees, attendance, overtime decisions, pay cycles, payroll, corrections to paid payroll, benefits, reports |
+| General Manager | Staff pages read-only (no Reports), including corrections to paid payroll; dashboard **Company Overview** (totals by month and department, six-month labor cost trend) and a notice when payroll awaits sign-off | Approves processed payroll, including any corrections it settles, or sends it back to HR with a reason |
 | Administrator | Everything, including Settings, Users and the audit log | Everything, including payroll sign-off (except for payroll they processed themselves) |
 
 ## 5. Design decisions
@@ -111,4 +111,5 @@ Every overriding or implementing method carries `@Override`. `docs/OOP_CONCEPTS.
 - `DeMinimisBenefit.limit(dailyRate)` takes the daily rate because monetized leave needs it. The other three benefits ignore it.
 - Adding a fourth statutory contribution would need a new field in the `StatutoryDeductions` and `EmployerShares` results, because each contribution is reported separately on payroll. The totals already come from the loop.
 - The company overview counts each payroll under the department recorded when it was calculated (V8). Payroll from before V8 has none recorded and uses the employee's current department.
+- Corrections to paid payroll (V12) are taxable pay in the cycle that settles them, as the owner decided. They don't count toward 13th month basic salary, and they aren't part of a minimum wage earner's exempt pay. An underpaid basic salary must be added to the 13th month separately if needed.
 - From earlier work: the stale XAMPP MariaDB 10.4 on port 3306 is kept only as a fallback.

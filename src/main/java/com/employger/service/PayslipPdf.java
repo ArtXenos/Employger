@@ -195,6 +195,7 @@ public final class PayslipPdf {
         // Payroll from before the itemized columns (V6) has only the total.
         BigDecimal rest = nz(payroll.getBonusAmount()).subtract(itemized);
         optional(lines, "Bonuses and benefits", rest);
+        optional(lines, "Corrections of earlier pay", payroll.getAdjustmentAmount());
 
         lines.add(new Line("Gross pay", payroll.getGrossPay(), true));
         return lines;

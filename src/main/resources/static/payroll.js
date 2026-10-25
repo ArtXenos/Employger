@@ -659,6 +659,8 @@ const PREVIEW_AMOUNT_FIELDS = {
   previewAttendanceDeduction: "attendanceDeduction",
   previewRegularPay: "regularPay",
   previewOvertimePay: "overtimePay",
+  previewBonus: "bonusAmount",
+  previewAdjustments: "adjustmentAmount",
   previewGrossPay: "grossPay",
   previewContributions: "otherDeductions",
   previewTax: "taxAmount",
@@ -1139,6 +1141,10 @@ function viewPayroll(payrollId) {
 
   document.getElementById("detailsBonus").textContent = formatCurrency(
     payroll.bonusAmount,
+  );
+
+  document.getElementById("detailsAdjustments").textContent = formatCurrency(
+    payroll.adjustmentAmount,
   );
 
   document.getElementById("detailsGrossPay").textContent = formatCurrency(

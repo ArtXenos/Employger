@@ -36,6 +36,11 @@ public class Payroll {
     @Column(name = "bonus_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal bonusAmount = BigDecimal.ZERO;
 
+    // Corrections of earlier PAID payroll settled here (V12): + underpayment,
+    // - overpayment recovery. NULL on payroll calculated before V12.
+    @Column(name = "adjustment_amount", precision = 12, scale = 2)
+    private BigDecimal adjustmentAmount;
+
     @Column(name = "gross_pay", nullable = false, precision = 12, scale = 2)
     private BigDecimal grossPay = BigDecimal.ZERO;
 
@@ -333,6 +338,14 @@ public class Payroll {
 
     public void setBonusAmount(BigDecimal bonusAmount) {
         this.bonusAmount = bonusAmount;
+    }
+
+    public BigDecimal getAdjustmentAmount() {
+        return adjustmentAmount;
+    }
+
+    public void setAdjustmentAmount(BigDecimal adjustmentAmount) {
+        this.adjustmentAmount = adjustmentAmount;
     }
 
     public BigDecimal getGrossPay() {

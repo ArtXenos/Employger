@@ -29,6 +29,7 @@ public class SecurityConfig {
                         "/api/pay-cycles/**",
                         "/api/payroll/**",
                         "/api/payroll-calculation/**",
+                        "/api/payroll-adjustments/**",
                         "/api/payslips/**",
                         "/api/holidays/**",
                         "/api/earnings/**",

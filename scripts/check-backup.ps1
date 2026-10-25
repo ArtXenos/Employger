@@ -34,14 +34,14 @@ if ($newest -and $newest.LastWriteTime -ge (Get-Date).AddDays(-$MaxAgeDays)) {
 
 if ($newest) {
     $since = $newest.LastWriteTime.ToString("MMM d")
-    $message = "No Em-Ployger backup since $since. Check the task 'Em-Ployger daily backup' in Task Scheduler."
+    $message = "No backup since $since. Check the task 'Em-Ployger daily backup' in Task Scheduler."
 } else {
-    $message = "No Em-Ployger backup found in $BackupDir."
+    $message = "No backup found in the $(Split-Path $BackupDir -Leaf) folder."
 }
 
-Write-Host "WARNING: $message"
+Write-Host "WARNING: $message ($BackupDir)"
 if ($LogFile) {
     Add-Content -Path $LogFile -Encoding UTF8 `
-        -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  WARNING: $message"
+        -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  WARNING: $message ($BackupDir)"
 }
 Show-Notification "Em-Ployger backup is out of date" $message

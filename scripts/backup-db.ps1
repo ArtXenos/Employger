@@ -95,8 +95,12 @@ try {
     if ($file -and (Test-Path $file)) { Remove-Item $file -Force }
     Write-Log "FAILED: $($_.Exception.Message)"
     if ($Notify) {
+        # Short enough to read in full; the log has the whole message.
+        $reason = $_.Exception.Message -replace '^mysqldump(\.exe)?: Got error: \d+: ', '' `
+            -replace ' when trying to connect$', ''
+        if ($reason.Length -gt 110) { $reason = $reason.Substring(0, 107) + "..." }
         Show-Notification "Em-Ployger backup failed" `
-            "No backup was made today. $($_.Exception.Message) Details: $LogFile"
+            "Today's backup wasn't made: $reason See backup.log in the backups folder."
     }
     throw
 }

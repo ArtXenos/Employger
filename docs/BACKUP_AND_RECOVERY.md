@@ -17,6 +17,35 @@
    ```
    Check the database name in every command. Never restore over `employger_db` unless you are deliberately recovering it.
 
+## Scheduled daily backup
+
+A Windows Task Scheduler task, **Em-Ployger daily backup**, runs `backup-db.ps1` every day at 12:00 while you are logged on. If the computer is off or asleep then, it runs as soon as possible afterwards. It uses a read-only account, `employger_backup`, which can't change anything, so no root password is stored anywhere. The app keeps running during a backup (`--single-transaction`, no table locks).
+
+**One-time setup** (from the project folder):
+
+```powershell
+.\scripts\setup-backup-account.ps1   # asks for the MariaDB root password once
+.\scripts\schedule-backup.ps1        # creates the daily task; -At "18:00" for another time
+```
+
+The first script creates `employger_backup` with a random password that is never shown. It saves the password in `%LOCALAPPDATA%\Employger\backup.cnf`, which only your Windows account can open, and then makes a test backup. Running it again gives the account a new password.
+
+**What each run does:**
+- It writes `employger_db_YYYY-MM-DD_HHMMSS.sql` to `Documents\employger-backups` and checks the file ends with `Dump completed`.
+- If the backup fails, it deletes the empty or partial file, so nothing that looks like a backup is left behind.
+- After a good backup, it deletes automatic backups older than 30 days. Backups with a name (for example `…_before-V4.sql`) are never deleted, and a failed run never deletes anything.
+- It adds one line to `Documents\employger-backups\backup.log`. A `FAILED:` line means that day has no backup.
+
+**Check, run now or remove:**
+
+```powershell
+Get-ScheduledTaskInfo -TaskName "Em-Ployger daily backup"   # LastRunTime, LastTaskResult (0 = OK)
+Start-ScheduledTask -TaskName "Em-Ployger daily backup"
+Unregister-ScheduledTask -TaskName "Em-Ployger daily backup"
+```
+
+The backups are on the same disk as the database. Copy the folder to a USB drive or a private cloud folder now and then, so a failed laptop doesn't take both.
+
 ## If MariaDB will not start, or the app can't connect
 
 A login failure while MariaDB is down is a **database** problem, not a password problem.

@@ -306,6 +306,27 @@ public class ReportService {
         return csv.toString();
     }
 
+    public String thirteenthMonthCsv(EarningService.ThirteenthMonthReport report) {
+
+        StringBuilder csv = new StringBuilder();
+
+        csv.append(line("Employee ID", "Employee", "Basic salary earned", "Payroll count",
+                "13th month earned", "Paid", "Entered, not yet paid", "Balance due", "Status"));
+
+        for (ThirteenthMonthStatus row : report.employees()) {
+            csv.append(line(String.valueOf(row.getEmployeeId()), row.getEmployeeName(),
+                    row.getBasicSalaryEarned().toPlainString(), String.valueOf(row.getPayrollCount()),
+                    row.getEarned().toPlainString(), row.getPaid().toPlainString(),
+                    row.getEntered().toPlainString(), row.getBalanceDue().toPlainString(), row.getStatus()));
+        }
+
+        csv.append(line("", "TOTAL", "", "", report.totalEarned().toPlainString(),
+                report.totalPaid().toPlainString(), report.totalEntered().toPlainString(),
+                report.totalBalanceDue().toPlainString(), ""));
+
+        return csv.toString();
+    }
+
     // ---------- helpers ----------
 
     private static AgencyReport agency(

@@ -87,6 +87,47 @@ class RoleAccessIntegrationTest {
         attendance(bob, LocalDate.of(2026, 10, 6));
     }
 
+    // ---------- 13th month pay ----------
+
+    @Test
+    @WithMockUser(username = "alice.user", roles = "EMPLOYEE")
+    void employeeSeesOnlyOwnThirteenthMonthAndNotTheReport() throws Exception {
+        alicePaid.setRegularPay(new BigDecimal("12000.00"));
+        bobPaid.setRegularPay(new BigDecimal("99999.00"));
+        payrollRepository.save(alicePaid);
+        payrollRepository.save(bobPaid);
+
+        // Alice's PAID payroll only (her DRAFT doesn't count): 12,000 / 12.
+        mockMvc.perform(get("/api/me/thirteenth-month").param("year", "2026"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.employeeId").value(alice.getEmployeeId()))
+                .andExpect(jsonPath("$.earned").value(1000.00))
+                .andExpect(jsonPath("$.eligible").value(true));
+
+        mockMvc.perform(get("/api/reports/thirteenth-month").param("year", "2026"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "gm", roles = "GENERAL_MANAGER")
+    void generalManagerCannotSeeTheThirteenthMonthReport() throws Exception {
+        mockMvc.perform(get("/api/reports/thirteenth-month").param("year", "2026"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "hr", roles = "HR_MANAGER")
+    void hrGetsTheThirteenthMonthReportAndCsv() throws Exception {
+        mockMvc.perform(get("/api/reports/thirteenth-month").param("year", "2026"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dueDate").value("2026-12-24"))
+                .andExpect(jsonPath("$.employees", hasSize(2)));
+
+        mockMvc.perform(get("/api/reports/thirteenth-month.csv").param("year", "2026"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Balance due")));
+    }
+
     // ---------- employee self-service ----------
 
     @Test

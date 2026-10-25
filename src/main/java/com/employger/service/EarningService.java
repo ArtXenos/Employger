@@ -14,7 +14,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Earnings entries (13th month, bonuses, hazard pay, allowances, de minimis).
@@ -141,70 +143,47 @@ public class EarningService {
             throw new IllegalArgumentException("The payment date must be in " + year + ".");
         }
 
-        LocalDate yearStart = LocalDate.of(year, 1, 1);
-        LocalDate yearEnd = LocalDate.of(year, 12, 31);
-
         List<ThirteenthMonthLine> lines = new ArrayList<>();
 
         for (Employee employee : employeeRepository.findAll()) {
 
             String name = employee.getFirstName() + " " + employee.getLastName();
+            ThirteenthMonthStatus status = thirteenthMonthStatus(employee, year);
 
-            if (employee.isManagerial()) {
-                lines.add(line(employee, name, null, 0, null, null, null, "Skipped: managerial employee."));
+            if (!status.isEligible()) {
+                lines.add(line(employee, name, null, 0, null, null, null, "Skipped: " + status.getNotEligibleReason() + "."));
                 continue;
             }
 
-            if (employee.getDateHired() != null && employee.getDateHired().isAfter(LocalDate.of(year, 12, 1))) {
-                lines.add(line(employee, name, null, 0, null, null, null,
-                        "Skipped: worked less than one month in " + year + "."));
-                continue;
-            }
+            BigDecimal basic = status.getBasicSalaryEarned();
 
-            List<Payroll> payrolls = payrollRepository
-                    .findByEmployeeEmployeeIdAndPayCycleEndDateBetween(employee.getEmployeeId(), yearStart, yearEnd)
-                    .stream()
-                    .filter(payroll -> payroll.getStatus() != Payroll.Status.DRAFT)
-                    .toList();
-
-            BigDecimal basic = payrolls.stream()
-                    .map(Payroll::getRegularPay)
-                    .filter(amount -> amount != null)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            if (payrolls.isEmpty() || basic.signum() <= 0) {
-                lines.add(line(employee, name, basic, payrolls.size(), null, null, null,
+            if (status.getPayrollCount() == 0 || basic.signum() <= 0) {
+                lines.add(line(employee, name, basic, status.getPayrollCount(), null, null, null,
                         "Skipped: no processed or paid payroll in " + year + "."));
                 continue;
             }
 
-            BigDecimal target = basic.divide(BigDecimal.valueOf(12), 2, RoundingMode.HALF_UP);
-
-            List<Earning> existing = earningRepository.findByEmployeeEmployeeIdAndEarningTypeAndDateGivenBetween(
-                    employee.getEmployeeId(), Earning.Type.THIRTEENTH_MONTH, yearStart, yearEnd);
-
-            BigDecimal alreadyPaid = existing.stream()
-                    .filter(EarningService::isLocked)
-                    .map(Earning::getAmount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+            BigDecimal target = status.getEarned();
+            BigDecimal alreadyPaid = status.getPaid();
             BigDecimal toEnter = target.subtract(alreadyPaid);
-            Earning open = existing.stream().filter(entry -> !isLocked(entry)).findFirst().orElse(null);
+            Earning open = thirteenthMonthEntries(employee, year).stream()
+                    .filter(entry -> !isLocked(entry)).findFirst().orElse(null);
+            int payrollCount = status.getPayrollCount();
 
             if (payrollRepository.isDateLockedForEmployee(employee.getEmployeeId(), dateGiven)) {
-                lines.add(line(employee, name, basic, payrolls.size(), target, alreadyPaid, null,
+                lines.add(line(employee, name, basic, payrollCount, target, alreadyPaid, null,
                         "Skipped: payroll covering " + dateGiven + " is already processed. Choose a later date."));
                 continue;
             }
 
             String description = "13th month pay " + year + ": basic salary " + basic.setScale(2, RoundingMode.HALF_UP)
-                    + " from " + payrolls.size() + " payroll / 12";
+                    + " from " + payrollCount + " payroll / 12";
 
             if (toEnter.signum() <= 0) {
                 if (open != null) {
                     earningRepository.delete(open);
                 }
-                lines.add(line(employee, name, basic, payrolls.size(), target, alreadyPaid, BigDecimal.ZERO,
+                lines.add(line(employee, name, basic, payrollCount, target, alreadyPaid, BigDecimal.ZERO,
                         "Nothing to add: already paid in full."));
                 continue;
             }
@@ -214,7 +193,7 @@ public class EarningService {
                 open.setDateGiven(dateGiven);
                 open.setDescription(description);
                 open.setPayroll(null);
-                lines.add(line(employee, name, basic, payrolls.size(), target, alreadyPaid, toEnter, "Updated."));
+                lines.add(line(employee, name, basic, payrollCount, target, alreadyPaid, toEnter, "Updated."));
             } else {
                 Earning earning = new Earning();
                 earning.setEmployee(employee);
@@ -224,7 +203,7 @@ public class EarningService {
                 earning.setDescription(description);
                 earning.setCreatedBy(auditService.currentUser().orElse(null));
                 earningRepository.save(earning);
-                lines.add(line(employee, name, basic, payrolls.size(), target, alreadyPaid, toEnter, "Added."));
+                lines.add(line(employee, name, basic, payrollCount, target, alreadyPaid, toEnter, "Added."));
             }
         }
 
@@ -234,6 +213,88 @@ public class EarningService {
                 "13th month pay " + year + " dated " + dateGiven + ": " + entered + " employee(s) added or updated");
 
         return lines;
+    }
+
+    /** The 13th month report for a year: every employee, due December 24. */
+    public record ThirteenthMonthReport(
+            int year,
+            LocalDate dueDate,
+            List<ThirteenthMonthStatus> employees,
+            BigDecimal totalEarned,
+            BigDecimal totalPaid,
+            BigDecimal totalEntered,
+            BigDecimal totalBalanceDue) {
+    }
+
+    /** Read-only: where each employee's 13th month pay for `year` stands. */
+    public ThirteenthMonthReport thirteenthMonthReport(int year) {
+
+        List<ThirteenthMonthStatus> employees = employeeRepository.findAll().stream()
+                .map(employee -> thirteenthMonthStatus(employee, year))
+                .sorted(Comparator.comparing(ThirteenthMonthStatus::getEmployeeName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        return new ThirteenthMonthReport(
+                year,
+                ThirteenthMonthStatus.dueDate(year),
+                employees,
+                total(employees, ThirteenthMonthStatus::getEarned),
+                total(employees, ThirteenthMonthStatus::getPaid),
+                total(employees, ThirteenthMonthStatus::getEntered),
+                // Over-entered employees don't reduce what others are owed.
+                total(employees, status -> status.getBalanceDue().max(BigDecimal.ZERO)));
+    }
+
+    /** One employee's 13th month pay for `year`, for the report and self-service. */
+    public ThirteenthMonthStatus thirteenthMonthStatus(Employee employee, int year) {
+
+        if (employee.isManagerial()) {
+            return ThirteenthMonthStatus.notEligible(employee, year, "managerial employee");
+        }
+
+        if (employee.getDateHired() != null && employee.getDateHired().isAfter(LocalDate.of(year, 12, 1))) {
+            return ThirteenthMonthStatus.notEligible(employee, year, "worked less than one month in " + year);
+        }
+
+        // Basic salary earned = regular pay of PROCESSED, APPROVED and PAID
+        // payroll whose cycle ends in the year.
+        List<Payroll> payrolls = payrollRepository
+                .findByEmployeeEmployeeIdAndPayCycleEndDateBetween(
+                        employee.getEmployeeId(), LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31))
+                .stream()
+                .filter(payroll -> payroll.getStatus() != Payroll.Status.DRAFT)
+                .toList();
+
+        BigDecimal basic = payrolls.stream()
+                .map(Payroll::getRegularPay)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<Earning> entries = thirteenthMonthEntries(employee, year);
+
+        BigDecimal paid = entries.stream()
+                .filter(EarningService::isLocked)
+                .map(Earning::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal entered = entries.stream()
+                .filter(entry -> !isLocked(entry))
+                .map(Earning::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return ThirteenthMonthStatus.of(employee, year, basic, payrolls.size(), paid, entered);
+    }
+
+    private List<Earning> thirteenthMonthEntries(Employee employee, int year) {
+        return earningRepository.findByEmployeeEmployeeIdAndEarningTypeAndDateGivenBetween(
+                employee.getEmployeeId(), Earning.Type.THIRTEENTH_MONTH,
+                LocalDate.of(year, 1, 1), LocalDate.of(year, 12, 31));
+    }
+
+    private static BigDecimal total(List<ThirteenthMonthStatus> employees,
+                                    Function<ThirteenthMonthStatus, BigDecimal> amount) {
+        return employees.stream().map(amount).reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private static ThirteenthMonthLine line(Employee employee, String name, BigDecimal basic, int count,

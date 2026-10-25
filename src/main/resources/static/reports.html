@@ -67,8 +67,8 @@
           <div>
             <h2>Reports</h2>
             <p>
-              Monthly SSS, PhilHealth, Pag-IBIG and BIR 1601-C figures, and
-              BIR Form 2316 for each employee. Built from processed and paid
+              Monthly SSS, PhilHealth, Pag-IBIG and BIR 1601-C figures, 13th
+              month pay for the year, and BIR Form 2316 for each employee. Built from processed and paid
               payroll only; a payroll belongs to the month its pay cycle ends.
               Copy the figures into each agency's portal.
             </p>
@@ -193,6 +193,47 @@
             <table class="figures-table">
               <tbody id="birTableBody">
                 <tr><td colspan="2" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- 13TH MONTH PAY -->
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>13th Month Pay</h3>
+              <p id="thirteenthInfo">
+                Basic salary earned / 12 (PD 851), from processed, approved
+                and paid payroll so far. Enter or top it up with
+                Generate 13th Month Pay on the Benefits page.
+              </p>
+            </div>
+
+            <div class="section-actions">
+              <label for="thirteenthYear" class="inline-label">Year</label>
+              <input type="number" id="thirteenthYear" class="year-input" min="2000" max="2100" />
+              <a class="add-button download-link" id="thirteenthCsv" href="#" download>Download CSV</a>
+            </div>
+          </div>
+
+          <p id="thirteenthMessage" class="form-message report-message" role="alert"></p>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th class="money">Basic Salary Earned</th>
+                  <th class="money">13th Month Earned</th>
+                  <th class="money">Paid</th>
+                  <th class="money">Entered, Not Yet Paid</th>
+                  <th class="money">Balance Due</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="thirteenthTableBody">
+                <tr><td colspan="7" class="empty-row">Loading...</td></tr>
               </tbody>
             </table>
           </div>

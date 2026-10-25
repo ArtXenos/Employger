@@ -10,9 +10,11 @@ import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
 import com.employger.entity.Payroll;
 import com.employger.entity.Payslip;
+import com.employger.service.EarningService;
 import com.employger.service.LeaveService;
 import com.employger.service.ReportService;
 import com.employger.service.SelfServiceService;
+import com.employger.service.ThirteenthMonthStatus;
 import com.employger.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -47,14 +49,17 @@ public class SelfServiceController {
     private final SelfServiceService selfServiceService;
     private final UserService userService;
     private final LeaveService leaveService;
+    private final EarningService earningService;
 
     public SelfServiceController(
             SelfServiceService selfServiceService,
             UserService userService,
-            LeaveService leaveService) {
+            LeaveService leaveService,
+            EarningService earningService) {
         this.selfServiceService = selfServiceService;
         this.userService = userService;
         this.leaveService = leaveService;
+        this.earningService = earningService;
     }
 
     @GetMapping("/profile")
@@ -152,6 +157,12 @@ public class SelfServiceController {
             Authentication authentication) {
 
         return new OvertimeResponse(selfServiceService.fileOvertime(authentication.getName(), request));
+    }
+
+    /** The employee's own 13th month pay for a year: earned so far, paid, due. */
+    @GetMapping("/thirteenth-month")
+    public ThirteenthMonthStatus getThirteenthMonth(@RequestParam int year, Authentication authentication) {
+        return earningService.thirteenthMonthStatus(selfServiceService.getMyEmployee(authentication.getName()), year);
     }
 
     @GetMapping("/bir-2316")

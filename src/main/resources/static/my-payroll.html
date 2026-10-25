@@ -31,6 +31,9 @@
           <a href="#leaveSection" class="nav-item"
             ><span aria-hidden="true">✈</span>My Leave</a
           >
+          <a href="#thirteenthSection" class="nav-item"
+            ><span aria-hidden="true">✦</span>My 13th Month</a
+          >
           <a href="#form2316Section" class="nav-item"
             ><span aria-hidden="true">▤</span>My BIR 2316</a
           >
@@ -216,6 +219,33 @@
                 <tbody id="leaveTableBody">
                   <tr><td colspan="5" class="empty">Loading...</td></tr>
                 </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="section-card" id="thirteenthSection" aria-labelledby="thirteenthHeading">
+            <div class="section-header">
+              <div>
+                <h2 id="thirteenthHeading">13th Month Pay</h2>
+                <p>Basic salary earned / 12, from processed and paid payroll so far. Paid by December 24.</p>
+              </div>
+            </div>
+
+            <form id="thirteenthForm" class="self-service-form" novalidate>
+              <div class="field">
+                <label for="thirteenthYear">Year</label>
+                <input id="thirteenthYear" name="year" type="number" min="2000" max="2100" step="1" required />
+              </div>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Show</button>
+              </div>
+              <p id="thirteenthMessage" class="form-feedback" role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="table-wrapper" id="thirteenthResult" hidden>
+              <table class="figures-table">
+                <caption class="visually-hidden">13th month pay figures</caption>
+                <tbody id="thirteenthTableBody"></tbody>
               </table>
             </div>
           </section>

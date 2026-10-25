@@ -24,6 +24,7 @@ import com.employger.repository.UserRepository;
 import com.employger.service.EarningService;
 import com.employger.service.ExecutiveDashboardService;
 import com.employger.service.PayrollService;
+import com.employger.service.ThirteenthMonthStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -349,7 +350,51 @@ class HolidayBenefitsAndYearEndIntegrationTest {
                 LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))).hasSize(1);
     }
 
+    @Test
+    void thirteenthMonthReportShowsEarnedEnteredPaidAndBalance() {
+        Employee manager = employee("boss@example.test");
+        manager.setManagerial(true);
+        employeeRepository.save(manager);
+
+        paidPayroll(employee, cycle("Jan 2026", LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                PayCycle.CycleType.MONTHLY), "26100.00");
+
+        // Before generating: 26,100 / 12 = 2,175.00 earned, nothing entered.
+        ThirteenthMonthStatus before = statusOf(earningService.thirteenthMonthReport(2026), employee);
+        assertThat(before.getEarned()).isEqualByComparingTo("2175.00");
+        assertThat(before.getEntered()).isEqualByComparingTo("0.00");
+        assertThat(before.getBalanceDue()).isEqualByComparingTo("2175.00");
+        assertThat(before.getStatus()).contains("Not entered yet");
+
+        earningService.generateThirteenthMonth(2026, LocalDate.of(2026, 12, 10));
+
+        // Entered but not yet paid: nothing left to enter.
+        EarningService.ThirteenthMonthReport report = earningService.thirteenthMonthReport(2026);
+        ThirteenthMonthStatus after = statusOf(report, employee);
+        assertThat(after.getEntered()).isEqualByComparingTo("2175.00");
+        assertThat(after.getPaid()).isEqualByComparingTo("0.00");
+        assertThat(after.getBalanceDue()).isEqualByComparingTo("0.00");
+        assertThat(report.dueDate()).isEqualTo(LocalDate.of(2026, 12, 24));
+
+        ThirteenthMonthStatus boss = statusOf(report, manager);
+        assertThat(boss.isEligible()).isFalse();
+        assertThat(boss.getEarned()).isEqualByComparingTo("0.00");
+        assertThat(boss.getStatus()).contains("managerial");
+
+        // The report only reads: still exactly one entry.
+        assertThat(earningRepository.findByEmployeeEmployeeIdAndEarningTypeAndDateGivenBetween(
+                employee.getEmployeeId(), Earning.Type.THIRTEENTH_MONTH,
+                LocalDate.of(2026, 1, 1), LocalDate.of(2026, 12, 31))).hasSize(1);
+    }
+
     // ---------- helpers ----------
+
+    private static ThirteenthMonthStatus statusOf(EarningService.ThirteenthMonthReport report, Employee who) {
+        return report.employees().stream()
+                .filter(status -> status.getEmployeeId().equals(who.getEmployeeId()))
+                .findFirst()
+                .orElseThrow();
+    }
 
     private Map<String, Object> preview() {
         return payrollService.previewPayroll(employee.getEmployeeId(), october.getPayCycleId());

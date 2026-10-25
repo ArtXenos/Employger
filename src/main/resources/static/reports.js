@@ -16,8 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   $("reportMonth").value = `${today.getFullYear()}-${month}`;
   $("form2316Year").value = today.getFullYear();
+  $("thirteenthYear").value = today.getFullYear();
 
   $("reportMonth").addEventListener("change", loadMonthly);
+  $("thirteenthYear").addEventListener("change", loadThirteenthMonth);
   $("form2316Form").addEventListener("submit", loadForm2316);
   $("print2316Button").addEventListener("click", () => window.print());
 
@@ -27,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   loadMonthly();
+  loadThirteenthMonth();
   loadEmployees();
 });
 
@@ -185,6 +188,75 @@ function renderBir1601c(bir) {
     ["Less: year-end refunds", formatMoney(bir.yearEndRefunds)],
     ["Net tax to remit", formatMoney(bir.netTaxToRemit), true],
   ]);
+}
+
+// ---------- 13th month pay ----------
+
+async function loadThirteenthMonth() {
+  const year = Number($("thirteenthYear").value);
+  const body = $("thirteenthTableBody");
+
+  clearMessage("thirteenthMessage");
+
+  if (!year) {
+    setEmptyRow(body, 7, "Choose a year.");
+    return;
+  }
+
+  setEmptyRow(body, 7, "Loading...");
+  $("thirteenthCsv").href = `/api/reports/thirteenth-month.csv?year=${year}`;
+
+  let report;
+
+  try {
+    report = await api(`/api/reports/thirteenth-month?year=${year}`);
+  } catch (error) {
+    // A denied role already sees the message in the first section.
+    if (!error.denied) {
+      showError("thirteenthMessage", error.message);
+    }
+    setEmptyRow(body, 7, "-");
+    return;
+  }
+
+  $("thirteenthInfo").textContent =
+    `Basic salary earned / 12 (PD 851), from processed, approved and paid payroll so far. ` +
+    `Due by ${report.dueDate}. Enter or top it up with Generate 13th Month Pay on the Benefits page.`;
+
+  if (report.employees.length === 0) {
+    setEmptyRow(body, 7, "No employees.");
+    return;
+  }
+
+  body.innerHTML = "";
+
+  report.employees.forEach((row) => {
+    const tr = document.createElement("tr");
+    const due = Number(row.balanceDue);
+
+    tr.innerHTML = `
+      <td>${escapeHtml(row.employeeName)}</td>
+      <td class="money">${row.eligible ? formatMoney(row.basicSalaryEarned) : "-"}</td>
+      <td class="money">${row.eligible ? formatMoney(row.earned) : "-"}</td>
+      <td class="money">${row.eligible ? formatMoney(row.paid) : "-"}</td>
+      <td class="money">${row.eligible ? formatMoney(row.entered) : "-"}</td>
+      <td class="money">${row.eligible && due !== 0 ? formatMoney(row.balanceDue) : "-"}</td>
+      <td>${escapeHtml(row.status)}</td>`;
+
+    body.appendChild(tr);
+  });
+
+  const total = document.createElement("tr");
+  total.className = "total-row";
+  total.innerHTML = `
+    <td colspan="2">Total</td>
+    <td class="money">${formatMoney(report.totalEarned)}</td>
+    <td class="money">${formatMoney(report.totalPaid)}</td>
+    <td class="money">${formatMoney(report.totalEntered)}</td>
+    <td class="money">${formatMoney(report.totalBalanceDue)}</td>
+    <td></td>`;
+
+  body.appendChild(total);
 }
 
 // ---------- BIR 2316 ----------

@@ -407,6 +407,74 @@ function render2316(form) {
   print2316Button.hidden = false;
 }
 
+// ---------- 13th month pay ----------
+
+const thirteenthForm = document.getElementById("thirteenthForm");
+const thirteenthYear = document.getElementById("thirteenthYear");
+const thirteenthMessage = document.getElementById("thirteenthMessage");
+const thirteenthResult = document.getElementById("thirteenthResult");
+
+thirteenthYear.value = new Date().getFullYear();
+
+thirteenthForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  loadThirteenthMonth();
+});
+
+async function loadThirteenthMonth() {
+  const year = Number(thirteenthYear.value);
+  thirteenthResult.hidden = true;
+
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    thirteenthYear.setAttribute("aria-invalid", "true");
+    setFeedback(thirteenthMessage, "Enter a year between 2000 and 2100.", "error");
+    return;
+  }
+
+  thirteenthYear.removeAttribute("aria-invalid");
+  setFeedback(thirteenthMessage, "Loading...", null);
+
+  let status;
+
+  try {
+    status = await getJson(`/api/me/thirteenth-month?year=${encodeURIComponent(year)}`);
+  } catch (error) {
+    setFeedback(thirteenthMessage, error.message, "error");
+    return;
+  }
+
+  setFeedback(thirteenthMessage, status.eligible ? "" : status.status, null);
+
+  if (!status.eligible) {
+    return;
+  }
+
+  const rows = [
+    ["Basic salary earned so far", money(status.basicSalaryEarned)],
+    ["13th month pay earned (÷ 12)", money(status.earned), "total"],
+    ["Already paid", money(status.paid)],
+    ["Entered, paid with an upcoming payroll", money(status.entered)],
+    ["Still to be entered by HR", money(Math.max(0, Number(status.balanceDue)))],
+  ];
+
+  document.getElementById("thirteenthTableBody").replaceChildren(
+    ...rows.map(([label, value, kind]) => {
+      const row = document.createElement("tr");
+      const th = document.createElement("th");
+
+      th.textContent = label;
+      th.scope = "row";
+      row.className = kind === "total" ? "total-row" : "";
+      row.append(th, cell(value, "amount"));
+      return row;
+    }),
+  );
+
+  thirteenthResult.hidden = false;
+}
+
+loadThirteenthMonth();
+
 // ---------- my details ----------
 
 const contactForm = document.getElementById("contactForm");

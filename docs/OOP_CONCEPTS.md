@@ -273,6 +273,27 @@ public void updateContactDetails(String email, String phone, String address) {
 
 Employees can now change their own email, phone and address on **My Details**, and HR can change them on the Employees page. Both go through this one method, so the rules are the same either way: email required and trimmed, a blank phone or address stored as empty. Before, HR's code set the three fields one by one.
 
+### 13th month pay: one object decides what "earned" and "due" mean
+
+[src/main/java/com/employger/service/ThirteenthMonthStatus.java](../src/main/java/com/employger/service/ThirteenthMonthStatus.java)
+
+`ThirteenthMonthStatus` holds one employee's figures for a year: basic salary earned, what's already paid and what's entered but not yet paid. Its fields are `private final`, and its constructor is `private`. The only ways to make one are `of(...)` and `notEligible(employee, year, reason)`, so it can't hold an eligible employee's figures and a "not eligible" reason at once. Everything else is derived inside it:
+
+```java
+public BigDecimal getEarned() {
+    if (!isEligible()) {
+        return BigDecimal.ZERO.setScale(2);
+    }
+    return basicSalaryEarned.divide(TWELVE, 2, RoundingMode.HALF_UP);
+}
+
+public BigDecimal getBalanceDue() {
+    return getEarned().subtract(paid).subtract(entered);
+}
+```
+
+The Reports page, the employee's **My 13th Month** and the **Generate 13th Month Pay** button all use this one object (`EarningService.thirteenthMonthStatus()`), so they can never disagree about how much is earned or still due. Before, the generator worked these out inside its own loop.
+
 ### Requests that only accept what the user may change
 
 - `ContactDetailsRequest` ([ContactDetailsRequest.java:12](../src/main/java/com/employger/dto/ContactDetailsRequest.java#L12)) has exactly three fields: email, phone and address. If an employee's browser sends `"baseSalary": 999999` or `"department": "Executive"`, there's nowhere for it to go, so it's ignored. A test proves the salary stays unchanged.
@@ -544,6 +565,25 @@ classDiagram
         +updateContactDetails(String, String, String)
     }
     User --> "0..1" Employee : has a (composition, not inheritance)
+
+    class ThirteenthMonthStatus {
+        -BigDecimal basicSalaryEarned
+        -BigDecimal paid
+        -BigDecimal entered
+        -String notEligibleReason
+        +of(...)$ ThirteenthMonthStatus
+        +notEligible(Employee, int, String)$ ThirteenthMonthStatus
+        +isEligible() boolean
+        +getEarned() BigDecimal
+        +getBalanceDue() BigDecimal
+        +getStatus() String
+    }
+    class EarningService {
+        +thirteenthMonthStatus(Employee, int) ThirteenthMonthStatus
+        +thirteenthMonthReport(int) ThirteenthMonthReport
+        +generateThirteenthMonth(int, LocalDate) List
+    }
+    EarningService ..> ThirteenthMonthStatus : creates
 
     class UserDetailsService {
         <<interface>>

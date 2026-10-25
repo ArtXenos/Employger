@@ -1,5 +1,6 @@
 package com.employger.controller;
 
+import com.employger.service.EarningService;
 import com.employger.service.ReportService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,9 +18,11 @@ import java.nio.charset.StandardCharsets;
 public class ReportController {
 
     private final ReportService reportService;
+    private final EarningService earningService;
 
-    public ReportController(ReportService reportService) {
+    public ReportController(ReportService reportService, EarningService earningService) {
         this.reportService = reportService;
+        this.earningService = earningService;
     }
 
     @GetMapping("/monthly")
@@ -49,6 +52,23 @@ public class ReportController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(body);
+    }
+
+    @GetMapping("/thirteenth-month")
+    public EarningService.ThirteenthMonthReport thirteenthMonth(@RequestParam int year) {
+        return earningService.thirteenthMonthReport(year);
+    }
+
+    @GetMapping("/thirteenth-month.csv")
+    public ResponseEntity<byte[]> thirteenthMonthCsv(@RequestParam int year) {
+
+        String csv = reportService.thirteenthMonthCsv(earningService.thirteenthMonthReport(year));
+        byte[] body = ("﻿" + csv).getBytes(StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"13th-month-" + year + ".csv\"")
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .body(body);
     }

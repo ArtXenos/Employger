@@ -18,6 +18,10 @@ public record LeaveResponse(
         String reason,
         String status,
         String decidedBy,
+        String decisionRemarks,
+        String cancelReason,
+        String cancelledBy,
+        LocalDateTime cancelledAt,
         LocalDateTime createdAt) {
 
     public LeaveResponse(LeaveRequest leave) {
@@ -33,6 +37,10 @@ public record LeaveResponse(
                 leave.getReason(),
                 leave.getStatus().name(),
                 leave.getApprovedBy() != null ? leave.getApprovedBy().getUsername() : null,
+                leave.getDecisionRemarks(),
+                leave.getCancelReason(),
+                leave.getCancelledBy() != null ? leave.getCancelledBy().getUsername() : null,
+                leave.getCancelledAt(),
                 leave.getCreatedAt());
     }
 }

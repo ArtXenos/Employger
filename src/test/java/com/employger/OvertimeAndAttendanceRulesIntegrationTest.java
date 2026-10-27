@@ -23,6 +23,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -204,8 +205,9 @@ class OvertimeAndAttendanceRulesIntegrationTest {
                         .content("{\"attendanceDate\": \"2026-10-06\", \"status\": \"PRESENT\", \"regularHours\": 4}"))
                 .andExpect(status().isConflict());
 
+        // Attendance is never deleted, locked or not.
         mockMvc.perform(delete("/api/attendance/{id}", absentDay.getAttendanceId()))
-                .andExpect(status().isConflict());
+                .andExpect(status().isMethodNotAllowed());
 
         requestOvertime(OCT_6, "1", workedDay).andExpect(status().isConflict());
 
@@ -213,13 +215,93 @@ class OvertimeAndAttendanceRulesIntegrationTest {
                         .param("status", "APPROVED"))
                 .andExpect(status().isConflict());
 
+        // Overtime is never deleted; paid overtime can't be cancelled either.
         mockMvc.perform(delete("/api/overtime/{id}", approved.getOvertimeId()))
-                .andExpect(status().isConflict());
+                .andExpect(status().isMethodNotAllowed());
+        mockMvc.perform(post("/api/overtime/{id}/cancel", approved.getOvertimeId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\": \"Employee was sick\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(content().string(containsString("overpayment correction")));
 
         assertThat(attendanceRepository.findById(workedDay.getAttendanceId()).orElseThrow().getRegularHours())
                 .isEqualByComparingTo("8.00");
         assertThat(attendanceRepository.existsById(absentDay.getAttendanceId())).isTrue();
         assertThat(overtimeRepository.existsById(approved.getOvertimeId())).isTrue();
+    }
+
+    // ---------- reject with a reason, cancel instead of delete (V14) ----------
+
+    @Test
+    void rejectingOvertimeNeedsAReasonTheEmployeeCanSee() throws Exception {
+        Overtime pending = pendingOvertime(OCT_6, "2", workedDay);
+
+        decide(pending, "REJECTED", null)
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("Enter the reason to reject this overtime")));
+        decide(pending, "REJECTED", "   ").andExpect(status().isBadRequest());
+        assertThat(overtimeRepository.findById(pending.getOvertimeId()).orElseThrow().isPending()).isTrue();
+
+        decide(pending, "REJECTED", " Not pre-approved ")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REJECTED"))
+                .andExpect(jsonPath("$.decisionRemarks").value("Not pre-approved"));
+    }
+
+    @Test
+    void approvedOvertimeIsCancelledWithAReasonAndKept() throws Exception {
+        Overtime overtime = pendingOvertime(OCT_6, "2", workedDay);
+
+        // Pending overtime is rejected, not cancelled, by HR.
+        cancel(overtime, "Changed plans")
+                .andExpect(status().isConflict())
+                .andExpect(content().string(containsString("Use Reject")));
+
+        decide(overtime, "APPROVED", null).andExpect(status().isOk());
+
+        cancel(overtime, null).andExpect(status().isBadRequest());
+
+        cancel(overtime, "Employee was sick")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.cancelReason").value("Employee was sick"))
+                .andExpect(jsonPath("$.cancelledBy").value("hr"))
+                // The approval stays on record.
+                .andExpect(jsonPath("$.approvedBy").value("hr"));
+
+        cancel(overtime, "Again").andExpect(status().isConflict());
+        assertThat(overtimeRepository.existsById(overtime.getOvertimeId())).isTrue();
+    }
+
+    @Test
+    void cancellingOvertimeInADraftPayrollTakesItsPayOut() throws Exception {
+        Overtime overtime = pendingOvertime(OCT_6, "2", workedDay);
+        decide(overtime, "APPROVED", null).andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/payroll/employee/{e}/pay-cycle/{c}",
+                        employee.getEmployeeId(), firstHalf.getPayCycleId()))
+                .andExpect(status().isOk());
+        Payroll draft = payrollRepository.findByEmployeeEmployeeId(employee.getEmployeeId()).getFirst();
+        assertThat(draft.getOvertimePay()).isPositive();
+
+        cancel(overtime, "Shift called off").andExpect(status().isOk());
+
+        assertThat(payrollRepository.findById(draft.getPayrollId()).orElseThrow().getOvertimePay())
+                .isEqualByComparingTo("0");
+        assertThat(overtimeRepository.findById(overtime.getOvertimeId()).orElseThrow().getPayroll()).isNull();
+    }
+
+    private ResultActions decide(Overtime overtime, String status, String reason) throws Exception {
+        return mockMvc.perform(put("/api/overtime/{id}/status", overtime.getOvertimeId())
+                .param("status", status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(reason == null ? "{}" : "{\"reason\": \"" + reason + "\"}"));
+    }
+
+    private ResultActions cancel(Overtime overtime, String reason) throws Exception {
+        return mockMvc.perform(post("/api/overtime/{id}/cancel", overtime.getOvertimeId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(reason == null ? "{}" : "{\"reason\": \"" + reason + "\"}"));
     }
 
     // ---------- attendance ----------
@@ -236,7 +318,8 @@ class OvertimeAndAttendanceRulesIntegrationTest {
                 .andExpect(content().string(containsString("overtime")));
 
         mockMvc.perform(delete("/api/attendance/{id}", workedDay.getAttendanceId()))
-                .andExpect(status().isConflict());
+                .andExpect(status().isMethodNotAllowed());
+        assertThat(attendanceRepository.existsById(workedDay.getAttendanceId())).isTrue();
     }
 
     @Test

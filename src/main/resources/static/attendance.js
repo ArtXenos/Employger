@@ -148,12 +148,6 @@ function renderAttendance() {
                         Edit
                     </button>
 
-                    <button
-                        class="action-button delete-button"
-                        onclick="deleteAttendance(${record.attendanceId})">
-                        Delete
-                    </button>
-
                 </td>
             `;
 
@@ -372,42 +366,9 @@ form.addEventListener("submit", async (event) => {
 });
 
 /* ================================
-   Delete Attendance
+   Attendance is history: a wrong record is corrected with Edit, never
+   deleted (the server refuses deletion too).
 ================================ */
-
-async function deleteAttendance(attendanceId) {
-  const confirmed = confirm(
-    "Are you sure you want to delete this attendance record?",
-  );
-
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    const response = await fetch(`/api/attendance/${attendanceId}`, {
-      method: "DELETE",
-    });
-
-    if (response.status === 401) {
-      window.location.href = "/index.html";
-
-      return;
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-
-      throw new Error(errorText || "Unable to delete attendance.");
-    }
-
-    await loadAttendance();
-  } catch (error) {
-    console.error(error);
-
-    alert(error.message);
-  }
-}
 
 /* ================================
    Form Message

@@ -25,6 +25,7 @@
     ".action-approve",
     ".action-reject",
     ".action-delete",
+    ".action-cancel",
     ".process-button",
     ".pay-button",
   ];

@@ -1,6 +1,7 @@
 package com.employger.controller;
 
 import com.employger.dto.LeaveResponse;
+import com.employger.dto.ReasonRequest;
 import com.employger.entity.ApprovalRequest;
 import com.employger.service.LeaveService;
 import org.springframework.security.core.Authentication;
@@ -27,12 +28,14 @@ public class LeaveController {
         return leaveService.getLeave(status).stream().map(LeaveResponse::new).toList();
     }
 
+    // Rejecting needs {"reason": "..."} in the body; approving needs no body.
     @PutMapping("/{id}/status")
     public LeaveResponse decide(
             @PathVariable Integer id,
             @RequestParam ApprovalRequest.Status status,
+            @RequestBody(required = false) ReasonRequest reason,
             Authentication authentication) {
 
-        return new LeaveResponse(leaveService.decide(id, status, authentication.getName()));
+        return new LeaveResponse(leaveService.decide(id, status, authentication.getName(), ReasonRequest.of(reason)));
     }
 }

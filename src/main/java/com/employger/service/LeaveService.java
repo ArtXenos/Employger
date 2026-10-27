@@ -145,7 +145,7 @@ public class LeaveService {
     }
 
     @Transactional
-    public LeaveRequest decide(Integer leaveId, ApprovalRequest.Status decision, String username) {
+    public LeaveRequest decide(Integer leaveId, ApprovalRequest.Status decision, String username, String remarks) {
 
         LeaveRequest leave = leaveRequestRepository.findById(leaveId)
                 .orElseThrow(() -> new ResourceNotFoundException("Leave request not found"));
@@ -179,10 +179,11 @@ public class LeaveService {
             markAttendance(leave, days);
             leave.approve(user);
         } else {
-            leave.reject(user);
+            leave.reject(user, remarks);
         }
 
-        auditService.record("LEAVE_" + decision, decision + " " + leave.describe());
+        auditService.record("LEAVE_" + decision, decision + " " + leave.describe()
+                + (leave.getDecisionRemarks() != null ? ": " + leave.getDecisionRemarks() : ""));
 
         return leaveRequestRepository.save(leave);
     }

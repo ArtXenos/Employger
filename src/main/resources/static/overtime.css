@@ -421,3 +421,23 @@ td .action-buttons {
   line-height: 1.4 !important;
 }
 
+.status-cancelled {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.status-note {
+  display: block;
+  max-width: 240px;
+  margin-top: 6px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.action-cancel {
+  background: #fff7ed;
+  color: #9a3412;
+}
+

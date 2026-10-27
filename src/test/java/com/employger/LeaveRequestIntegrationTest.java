@@ -223,6 +223,8 @@ class LeaveRequestIntegrationTest {
     private ResultActions decide(Integer id, String decision) throws Exception {
         return mockMvc.perform(put("/api/leave/{id}/status", id)
                 .param("status", decision)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(decision.equals("REJECTED") ? "{\"reason\": \"Short-staffed that week\"}" : "{}")
                 .with(user("hr").roles("HR_MANAGER")));
     }
 

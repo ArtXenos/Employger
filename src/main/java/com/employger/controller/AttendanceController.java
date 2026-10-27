@@ -14,6 +14,7 @@ import java.util.List;
 // Errors (400 invalid input, 404 not found, 409 conflict) are turned into
 // plain-text responses by ApiExceptionHandler.
 @RestController
+// Attendance is history: it is corrected with an edit, never deleted.
 @RequestMapping("/api/attendance")
 public class AttendanceController {
 
@@ -62,15 +63,6 @@ public class AttendanceController {
 
         return AttendanceResponse.from(
                 attendanceService.updateAttendance(id, employeeId, request.toEntity()));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAttendance(
-            @PathVariable Integer id) {
-
-        attendanceService.deleteAttendance(id);
-
-        return ResponseEntity.noContent().build();
     }
 
     private static List<AttendanceResponse> toResponses(List<Attendance> records) {

@@ -143,7 +143,7 @@ class LifecycleTest {
     void pendingOvertimeCanBeRejected() {
         Overtime overtime = new Overtime();
 
-        overtime.reject(hr);
+        overtime.reject(hr, "Not pre-approved");
 
         assertThat(overtime.getStatus()).isEqualTo(ApprovalRequest.Status.REJECTED);
         assertThat(overtime.getApprovedBy()).isSameAs(hr);
@@ -183,7 +183,7 @@ class LifecycleTest {
         assertThatThrownBy(() -> overtime.approve(hr))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Only pending overtime can be approved or rejected");
-        assertThatThrownBy(() -> overtime.reject(hr))
+        assertThatThrownBy(() -> overtime.reject(hr, "Too late"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Only pending overtime can be approved or rejected");
         assertThat(overtime.getStatus()).isEqualTo(status);

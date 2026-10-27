@@ -5,6 +5,7 @@ import com.employger.dto.ContactDetailsRequest;
 import com.employger.dto.LeaveFilingRequest;
 import com.employger.dto.LeaveResponse;
 import com.employger.dto.OvertimeFilingRequest;
+import com.employger.dto.ReasonRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
@@ -12,6 +13,7 @@ import com.employger.entity.Payroll;
 import com.employger.entity.Payslip;
 import com.employger.service.EarningService;
 import com.employger.service.LeaveService;
+import com.employger.service.OvertimeService;
 import com.employger.service.PayslipService;
 import com.employger.service.ReportService;
 import com.employger.service.SelfServiceService;
@@ -53,18 +55,21 @@ public class SelfServiceController {
     private final LeaveService leaveService;
     private final EarningService earningService;
     private final PayslipService payslipService;
+    private final OvertimeService overtimeService;
 
     public SelfServiceController(
             SelfServiceService selfServiceService,
             UserService userService,
             LeaveService leaveService,
             EarningService earningService,
-            PayslipService payslipService) {
+            PayslipService payslipService,
+            OvertimeService overtimeService) {
         this.selfServiceService = selfServiceService;
         this.userService = userService;
         this.leaveService = leaveService;
         this.earningService = earningService;
         this.payslipService = payslipService;
+        this.overtimeService = overtimeService;
     }
 
     @GetMapping("/profile")
@@ -175,6 +180,18 @@ public class SelfServiceController {
         return new OvertimeResponse(selfServiceService.fileOvertime(authentication.getName(), request));
     }
 
+    // The employee calls off their own overtime, pending or approved, with a reason.
+    @PostMapping("/overtime/{overtimeId}/cancel")
+    public OvertimeResponse cancelOvertime(
+            @PathVariable Integer overtimeId,
+            @RequestBody(required = false) ReasonRequest reason,
+            Authentication authentication) {
+
+        return new OvertimeResponse(overtimeService.cancelOvertime(overtimeId,
+                selfServiceService.getMyEmployee(authentication.getName()),
+                ReasonRequest.of(reason), authentication.getName()));
+    }
+
     /** The employee's own 13th month pay for a year: earned so far, paid, due. */
     @GetMapping("/thirteenth-month")
     public ThirteenthMonthStatus getThirteenthMonth(@RequestParam int year, Authentication authentication) {
@@ -283,18 +300,26 @@ public class SelfServiceController {
         }
     }
 
+    // overtimeId lets the employee cancel it; the reasons explain a
+    // rejection or cancellation.
     public record OvertimeResponse(
+            Integer overtimeId,
             LocalDate date,
             BigDecimal hours,
             BigDecimal amount,
-            String status) {
+            String status,
+            String decisionRemarks,
+            String cancelReason) {
 
         OvertimeResponse(Overtime overtime) {
             this(
+                    overtime.getOvertimeId(),
                     overtime.getOvertimeDate(),
                     overtime.getHours(),
                     overtime.getOvertimeAmount(),
-                    overtime.getStatus().name());
+                    overtime.getStatus().name(),
+                    overtime.getDecisionRemarks(),
+                    overtime.getCancelReason());
         }
     }
 }

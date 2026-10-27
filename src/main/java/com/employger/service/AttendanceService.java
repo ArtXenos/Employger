@@ -1,7 +1,6 @@
 package com.employger.service;
 
 import com.employger.exception.ResourceNotFoundException;
-import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
@@ -138,25 +137,6 @@ public class AttendanceService {
         return attendanceRepository.save(attendance);
     }
 
-    @Transactional
-    public void deleteAttendance(Integer id) {
-
-        Attendance attendance = attendanceRepository
-                .findById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Attendance not found"));
-
-        ensureDateNotLocked(attendance.getEmployee(), attendance.getAttendanceDate());
-
-        if (hasActiveOvertime(attendance)) {
-            throw new IllegalStateException(
-                    "This attendance record has pending or approved overtime. "
-                            + "Reject or delete that overtime first.");
-        }
-
-        attendanceRepository.delete(attendance);
-    }
-
     private void validateAttendanceDetails(Attendance attendance) {
 
         if (attendance.getAttendanceDate() == null) {
@@ -283,6 +263,6 @@ public class AttendanceService {
         return overtimeRepository
                 .findByAttendanceAttendanceId(attendance.getAttendanceId())
                 .stream()
-                .anyMatch(overtime -> overtime.getStatus() != ApprovalRequest.Status.REJECTED);
+                .anyMatch(Overtime::isActive);
     }
 }

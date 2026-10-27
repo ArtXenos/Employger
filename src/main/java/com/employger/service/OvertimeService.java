@@ -6,6 +6,7 @@ import com.employger.entity.Attendance;
 import com.employger.entity.Employee;
 import com.employger.entity.Holiday;
 import com.employger.entity.Overtime;
+import com.employger.entity.Payroll;
 import com.employger.entity.User;
 import com.employger.repository.AttendanceRepository;
 import com.employger.repository.EmployeeRepository;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +40,7 @@ public class OvertimeService {
         private final AuditService auditService;
         private final HolidayService holidayService;
         private final SalaryHistoryService salaryHistoryService;
+        private final PayrollService payrollService;
 
         public OvertimeService(
                         OvertimeRepository overtimeRepository,
@@ -49,9 +52,11 @@ public class OvertimeService {
                         SystemSettingService systemSettingService,
                         AuditService auditService,
                         HolidayService holidayService,
-                        SalaryHistoryService salaryHistoryService) {
+                        SalaryHistoryService salaryHistoryService,
+                        PayrollService payrollService) {
 
                 this.salaryHistoryService = salaryHistoryService;
+                this.payrollService = payrollService;
                 this.auditService = auditService;
                 this.holidayService = holidayService;
                 this.overtimeRepository = overtimeRepository;
@@ -173,7 +178,8 @@ public class OvertimeService {
         public Overtime updateOvertimeStatus(
                         Integer overtimeId,
                         ApprovalRequest.Status newStatus,
-                        String username) {
+                        String username,
+                        String remarks) {
 
                 Overtime overtime = overtimeRepository
                                 .findById(overtimeId)
@@ -212,36 +218,76 @@ public class OvertimeService {
 
                         overtime.approve(user);
                 } else {
-                        overtime.reject(user);
+                        overtime.reject(user, remarks);
                 }
 
-                auditService.record("OVERTIME_" + newStatus, newStatus + " " + overtime.describe());
+                auditService.record("OVERTIME_" + newStatus, newStatus + " " + overtime.describe()
+                                + (overtime.getDecisionRemarks() != null ? ": " + overtime.getDecisionRemarks() : ""));
 
                 return overtimeRepository.save(overtime);
         }
 
+        /**
+         * Calls off overtime that was asked for or approved, keeping it on
+         * record as CANCELLED with the reason. HR cancels approved overtime
+         * (pending overtime is rejected instead); an employee may cancel
+         * their own, pending or approved. Overtime in processed or paid
+         * payroll can't be cancelled: the pay is corrected with an
+         * overpayment correction. A DRAFT payroll that included it is
+         * recalculated at once, so it no longer pays it.
+         *
+         * @param owner the employee cancelling their own overtime, or null
+         *              when HR cancels
+         */
         @Transactional
-        public void deleteOvertime(Integer id) {
+        public Overtime cancelOvertime(
+                        Integer overtimeId,
+                        Employee owner,
+                        String reason,
+                        String username) {
 
                 Overtime overtime = overtimeRepository
-                                .findById(id)
+                                .findById(overtimeId)
+                                .filter(found -> owner == null
+                                                || found.getEmployee().getEmployeeId().equals(owner.getEmployeeId()))
                                 .orElseThrow(() -> new ResourceNotFoundException(
                                                 "Overtime not found"));
 
-                if (overtime.getStatus() == ApprovalRequest.Status.APPROVED
-                                && payrollRepository.isDateLockedForEmployee(
-                                                overtime.getEmployee().getEmployeeId(),
-                                                overtime.getOvertimeDate())) {
-
+                if (owner == null && overtime.isPending()) {
                         throw new IllegalStateException(
-                                        "This approved overtime is part of a processed or paid payroll "
-                                                        + "and cannot be deleted.");
+                                        "Pending overtime is rejected, not cancelled. Use Reject and give the reason.");
                 }
 
-                auditService.record("OVERTIME_DELETED",
-                                "Deleted " + overtime.getStatus() + " " + overtime.describe());
+                if (payrollRepository.isDateLockedForEmployee(
+                                overtime.getEmployee().getEmployeeId(),
+                                overtime.getOvertimeDate())) {
 
-                overtimeRepository.delete(overtime);
+                        throw new IllegalStateException(
+                                        "This overtime is part of a processed or paid payroll and can't be cancelled. "
+                                                        + "Record an overpayment correction on the Payroll page instead.");
+                }
+
+                User user = userRepository
+                                .findByUsername(username)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "User not found"));
+
+                overtime.cancel(user, reason, LocalDateTime.now());
+
+                Payroll draft = overtime.getPayroll();
+
+                auditService.record("OVERTIME_CANCELLED", "Cancelled "
+                                + (owner != null ? "by the employee " : "")
+                                + overtime.describe() + ": " + overtime.getCancelReason());
+
+                Overtime saved = overtimeRepository.save(overtime);
+
+                // Recalculating unlinks it from the draft and takes its pay out.
+                if (draft != null && draft.isDraft()) {
+                        payrollService.updatePayroll(draft.getPayrollId());
+                }
+
+                return saved;
         }
 
         private void ensureDateNotLocked(
@@ -293,7 +339,7 @@ public class OvertimeService {
                                                 attendance.getAttendanceDate())
                                 .stream()
                                 .filter(other -> !other.getOvertimeId().equals(excludedOvertimeId))
-                                .filter(other -> other.getStatus() != ApprovalRequest.Status.REJECTED)
+                                .filter(Overtime::isActive)
                                 .map(Overtime::getHours)
                                 .reduce(ZERO, BigDecimal::add);
 
@@ -430,8 +476,7 @@ public class OvertimeService {
                 for (Overtime overtime : overtimeRepository.findByEmployeeEmployeeId(employee.getEmployeeId())) {
 
                         boolean unpaid = overtime.getPayroll() == null || overtime.getPayroll().isDraft();
-                        boolean open = overtime.getStatus() == ApprovalRequest.Status.PENDING
-                                        || overtime.getStatus() == ApprovalRequest.Status.APPROVED;
+                        boolean open = overtime.isActive();
 
                         if (!unpaid || !open || overtime.getOvertimeDate().isBefore(from)) {
                                 continue;

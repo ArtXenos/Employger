@@ -339,3 +339,12 @@
     padding: 0 !important;
   }
 }
+
+.status-reason {
+  display: block;
+  margin-top: 4px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.35;
+}
+

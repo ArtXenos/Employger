@@ -223,6 +223,7 @@ function renderOvertimeTable(records = overtimeRecords) {
                         ">
                             ${status}
                         </span>
+                        ${renderStatusNote(record)}
                     </td>
 
                     <td>
@@ -268,13 +269,17 @@ function renderActions(record) {
         `;
   }
 
-  buttons += `
-        <button
-            class="action-button action-delete"
-            onclick="deleteOvertime(${record.overtimeId})">
-            Delete
-        </button>
-    `;
+  // Overtime is history: approved overtime that won't be worked is
+  // cancelled with a reason, never deleted.
+  if (record.status === "APPROVED") {
+    buttons += `
+            <button
+                class="action-button action-cancel"
+                onclick="cancelOvertime(${record.overtimeId})">
+                Cancel
+            </button>
+        `;
+  }
 
   return `
         <div class="action-buttons">
@@ -551,25 +556,87 @@ async function approveOvertime(id) {
 ========================================= */
 
 async function rejectOvertime(id) {
-  const confirmed = confirm("Reject this overtime record?");
+  const reason = await askForReason({
+    title: "Reject overtime",
+    message: "The employee will see this reason on My Payroll.",
+    confirmLabel: "Reject",
+  });
 
-  if (!confirmed) {
+  if (reason === null) {
     return;
   }
 
-  await updateOvertimeStatus(id, "REJECTED");
+  await updateOvertimeStatus(id, "REJECTED", reason);
+}
+
+/* =========================================
+   CANCEL APPROVED OVERTIME
+========================================= */
+
+async function cancelOvertime(id) {
+  const reason = await askForReason({
+    title: "Cancel approved overtime",
+    message:
+      "The overtime stays on record as Cancelled, with this reason, and is no longer paid. " +
+      "Overtime already in processed or paid payroll can't be cancelled.",
+    confirmLabel: "Cancel overtime",
+  });
+
+  if (reason === null) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/overtime/${id}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+
+    if (!response.ok) {
+      const errorText = (await response.text()).trim();
+
+      throw new Error(errorText || "Unable to cancel overtime.");
+    }
+
+    await loadOvertimeRecords();
+
+    showMessage("Overtime cancelled.", "success");
+  } catch (error) {
+    console.error(error);
+
+    showMessage(error.message, "error");
+  }
+}
+
+/* =========================================
+   STATUS NOTE (reason for a rejection or cancellation)
+========================================= */
+
+function renderStatusNote(record) {
+  if (record.status === "REJECTED" && record.decisionRemarks) {
+    return `<small class="status-note">Reason: ${escapeHtml(record.decisionRemarks)}</small>`;
+  }
+
+  if (record.status === "CANCELLED") {
+    return `<small class="status-note">By ${escapeHtml(record.cancelledBy || "-")}: ${escapeHtml(record.cancelReason || "")}</small>`;
+  }
+
+  return "";
 }
 
 /* =========================================
    UPDATE STATUS
 ========================================= */
 
-async function updateOvertimeStatus(id, status) {
+async function updateOvertimeStatus(id, status, reason) {
   try {
     const response = await fetch(
       `/api/overtime/${id}/status?status=${status}`,
       {
         method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reason ? { reason } : {}),
       },
     );
 
@@ -582,38 +649,6 @@ async function updateOvertimeStatus(id, status) {
     await loadOvertimeRecords();
 
     showMessage(`Overtime ${status.toLowerCase()} successfully.`, "success");
-  } catch (error) {
-    console.error(error);
-
-    showMessage(error.message, "error");
-  }
-}
-
-/* =========================================
-   DELETE OVERTIME
-========================================= */
-
-async function deleteOvertime(id) {
-  const confirmed = confirm("Delete this overtime record?");
-
-  if (!confirmed) {
-    return;
-  }
-
-  try {
-    const response = await fetch(`/api/overtime/${id}`, {
-      method: "DELETE",
-    });
-
-    if (!response.ok) {
-      const errorText = (await response.text()).trim();
-
-      throw new Error(errorText || "Unable to delete overtime.");
-    }
-
-    await loadOvertimeRecords();
-
-    showMessage("Overtime deleted successfully.", "success");
   } catch (error) {
     console.error(error);
 
@@ -770,6 +805,9 @@ function getStatusClass(status) {
 
     case "REJECTED":
       return "status-rejected";
+
+    case "CANCELLED":
+      return "status-cancelled";
 
     default:
       return "status-pending";

@@ -2,7 +2,7 @@
 
 These test cases are carried out by hand in the browser at <http://localhost:8080>. There are four groups: Salary Management, Employee Management, Work Hour Tracking and Document Generation. After running each case, fill in **Actual Result** and set **Status** to Pass or Fail.
 
-The 342 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This document is the hand-run check of what a user sees.
+The 347 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This document is the hand-run check of what a user sees.
 
 ## Before you start
 
@@ -102,9 +102,14 @@ Covers: working hours tracked for each employee, and overtime logged.
 | WH-11 | No overtime on an absent day | WH-04 | Add overtime linked to the ABSENT day. | Attendance Record: 2026-11-05<br>Hours: 1 | Not saved. Message: "Overtime cannot be recorded for a day marked ABSENT." | | |
 | WH-12 | Overtime hours must be above zero | WH-01 | Add overtime with 0 hours. | Hours: 0 | Not saved. The browser stops the form with its own message, "Value must be greater than or equal to 0.01." If the browser check is bypassed, the server refuses it with "Overtime hours must be greater than zero". | | |
 | WH-13 | A day cannot exceed 24 hours | WH-01 (8 regular hours) | Add overtime of 17 hours on 2026-11-02. | Hours: 17 | Not saved. The message says regular hours plus overtime would exceed 24 hours on that date. | | |
-| WH-14 | Only pending overtime can be edited | WH-09 | Look at the buttons on the approved overtime row. | | There is no **Edit** button, only **Delete**, so approved overtime can't be changed from the page. If a change is sent to the server directly, it refuses with "Only pending overtime can be edited". | | |
+| WH-14 | Only pending overtime can be edited | WH-09 | Look at the buttons on the approved overtime row. | | There is no **Edit** button, only **Cancel**, so approved overtime can't be changed from the page. If a change is sent to the server directly, it refuses with "Only pending overtime can be edited". | | |
 | WH-15 | Filter overtime by employee and status | WH-08 to WH-09 | On **Overtime**, choose Maria Santos and Approved in the filters. | | Only Maria's approved overtime is listed. **Clear Filters** shows everything again. | | |
 | WH-16 | Employee files their own overtime | An Employee login linked to an employee with attendance | 1. Log in as Employee.<br>2. On **My Payroll**, fill in the overtime form and click **File overtime**. | Date: a day with attendance<br>Hours: 1 | The request is saved as Pending and appears on the staff **Overtime** page. | | |
+| WH-17 | Rejecting overtime needs a reason | A PENDING overtime request | 1. Click **Reject**.<br>2. Click **Reject** in the dialog with the reason empty.<br>3. Enter a reason and click **Reject**. | Reason: Not pre-approved by supervisor | Step 2: "Please enter the reason." and nothing changes. Step 3: status REJECTED with "Reason: Not pre-approved by supervisor" under it. The employee sees the same reason on **My Payroll**. The same applies to **Reject** in the Dashboard's Pending Approvals, for overtime and leave. | | |
+| WH-18 | Cancel approved overtime instead of deleting it | An APPROVED overtime not yet in processed payroll | Click **Cancel**, enter a reason and confirm. | Reason: Employee called in sick | Status CANCELLED with "By <user>: Employee called in sick". Approved By still shows who approved it. A DRAFT payroll that included it is recalculated without it. The row has no Delete button. | | |
+| WH-19 | Paid overtime can't be cancelled | Approved overtime in a PROCESSED or PAID payroll (SM-18) | Click **Cancel** on it, enter a reason and confirm. | | Refused: "This overtime is part of a processed or paid payroll and can't be cancelled. Record an overpayment correction on the Payroll page instead." | | |
+| WH-20 | Employee cancels their own overtime | WH-16 | On **My Payroll**, click **Cancel** on the overtime, enter a reason and confirm. | Reason: Family emergency | Status Cancelled with the reason. The record stays on the staff **Overtime** page as CANCELLED. | | |
+| WH-21 | Attendance and overtime can't be deleted | Any attendance and overtime | Look at the **Attendance** and **Overtime** pages. | | Neither page has a Delete button. Attendance is corrected with **Edit**; overtime is rejected or cancelled with a reason. | | |
 
 ## 4. Document Generation
 

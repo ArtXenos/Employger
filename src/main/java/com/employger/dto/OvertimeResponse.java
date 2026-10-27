@@ -4,6 +4,7 @@ import com.employger.entity.Overtime;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class OvertimeResponse {
 
@@ -18,6 +19,11 @@ public class OvertimeResponse {
     private String status;
     private String approvedBy;
     private Integer payrollId;
+    // Why it was rejected (V14).
+    private String decisionRemarks;
+    private String cancelReason;
+    private String cancelledBy;
+    private LocalDateTime cancelledAt;
 
     public OvertimeResponse(Overtime overtime) {
 
@@ -52,6 +58,12 @@ public class OvertimeResponse {
         this.payrollId = overtime.getPayroll() != null
                 ? overtime.getPayroll().getPayrollId()
                 : null;
+        this.decisionRemarks = overtime.getDecisionRemarks();
+        this.cancelReason = overtime.getCancelReason();
+        this.cancelledBy = overtime.getCancelledBy() != null
+                ? overtime.getCancelledBy().getUsername()
+                : null;
+        this.cancelledAt = overtime.getCancelledAt();
     }
 
     public Integer getOvertimeId() {
@@ -96,5 +108,21 @@ public class OvertimeResponse {
 
     public Integer getPayrollId() {
         return payrollId;
+    }
+
+    public String getDecisionRemarks() {
+        return decisionRemarks;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public String getCancelledBy() {
+        return cancelledBy;
+    }
+
+    public LocalDateTime getCancelledAt() {
+        return cancelledAt;
     }
 }

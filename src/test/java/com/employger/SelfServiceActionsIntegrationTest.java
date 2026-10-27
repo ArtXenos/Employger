@@ -227,6 +227,43 @@ class SelfServiceActionsIntegrationTest {
         mockMvc.perform(get("/api/me/bir-2316").param("year", "2026")).andExpect(status().isNotFound());
     }
 
+    // ---------- cancelling own overtime (V14) ----------
+
+    @Test
+    void employeeCancelsTheirOwnOvertimeWithAReason() throws Exception {
+        String filed = fileOvertime(OCT_20, "2").andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Integer id = com.jayway.jsonpath.JsonPath.read(filed, "$.overtimeId");
+
+        mockMvc.perform(post("/api/me/overtime/{id}/cancel", id)
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(post("/api/me/overtime/{id}/cancel", id)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\": \"Family emergency\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.cancelReason").value("Family emergency"));
+
+        mockMvc.perform(get("/api/me/overtime"))
+                .andExpect(jsonPath("$[0].status").value("CANCELLED"));
+        assertThat(overtimeRepository.existsById(id)).isTrue();
+    }
+
+    @Test
+    void employeeCannotCancelSomeoneElsesOvertime() throws Exception {
+        Overtime bobs = new Overtime();
+        bobs.setEmployee(bob);
+        bobs.setOvertimeDate(OCT_20);
+        bobs.setHours(new BigDecimal("1.00"));
+        bobs = overtimeRepository.save(bobs);
+
+        mockMvc.perform(post("/api/me/overtime/{id}/cancel", bobs.getOvertimeId())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\": \"Not mine\"}"))
+                .andExpect(status().isNotFound());
+        assertThat(overtimeRepository.findById(bobs.getOvertimeId()).orElseThrow().isPending()).isTrue();
+    }
+
     // ---------- helpers ----------
 
     private ResultActions fileOvertime(LocalDate date, String hours) throws Exception {

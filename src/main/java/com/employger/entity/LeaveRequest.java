@@ -76,6 +76,16 @@ public class LeaveRequest extends ApprovalRequest {
         return "leave";
     }
 
+    // Approving leave already marked its days LEAVE or ABSENT in attendance,
+    // so cancelling it would leave attendance wrong.
+    @Override
+    protected void checkCancellable() {
+        if (getStatus() == Status.APPROVED) {
+            throw new IllegalStateException("Approved leave has already been recorded in attendance "
+                    + "and can't be cancelled. Correct the attendance days instead.");
+        }
+    }
+
     @Override
     public String describe() {
         return leaveType + " leave #" + leaveId + " (employee #" + employee.getEmployeeId() + ", "

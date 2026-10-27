@@ -294,15 +294,17 @@ function leaveDecisionButton(leave, dates, status, label, className) {
 async function decideLeave(leave, dates, status) {
   const verb = status === "APPROVED" ? "Approve" : "Reject";
   const days = `${leave.workingDays} working day${leave.workingDays === 1 ? "" : "s"}`;
+  const what = `${leave.leaveTypeLabel.toLowerCase()} for ${leave.employeeName}, ${dates} (${days})`;
+  const reason = await confirmOrAskReason(status, `${verb} ${what}?`, "Reject leave", what);
 
-  if (!confirm(`${verb} ${leave.leaveTypeLabel.toLowerCase()} for ${leave.employeeName}, ${dates} (${days})?`)) {
+  if (reason === null) {
     return;
   }
 
   try {
     const response = await fetch(
       `/api/leave/${encodeURIComponent(leave.leaveId)}/status?status=${status}`,
-      { method: "PUT", credentials: "same-origin" },
+      decisionRequest(reason),
     );
 
     if (!response.ok) {
@@ -314,6 +316,29 @@ async function decideLeave(leave, dates, status) {
   } catch (error) {
     feedback("approvalsMessage", error.message, "error");
   }
+}
+
+// Approving asks for a confirmation; rejecting asks for the reason, which
+// the employee will see. Resolves to "" (approve), the reason, or null.
+async function confirmOrAskReason(status, question, rejectTitle, what) {
+  if (status === "APPROVED") {
+    return confirm(question) ? "" : null;
+  }
+
+  return askForReason({
+    title: rejectTitle,
+    message: `${what}. The employee will see this reason on My Payroll.`,
+    confirmLabel: "Reject",
+  });
+}
+
+function decisionRequest(reason) {
+  return {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(reason ? { reason } : {}),
+  };
 }
 
 function decisionButton(record, status, label, className, who) {
@@ -330,15 +355,17 @@ function decisionButton(record, status, label, className, who) {
 
 async function decide(record, status, who) {
   const verb = status === "APPROVED" ? "Approve" : "Reject";
+  const what = `${record.hours} h of overtime for ${who} on ${record.overtimeDate}`;
+  const reason = await confirmOrAskReason(status, `${verb} ${what}?`, "Reject overtime", what);
 
-  if (!confirm(`${verb} ${record.hours} h of overtime for ${who} on ${record.overtimeDate}?`)) {
+  if (reason === null) {
     return;
   }
 
   try {
     const response = await fetch(
       `/api/overtime/${encodeURIComponent(record.overtimeId)}/status?status=${status}`,
-      { method: "PUT", credentials: "same-origin" },
+      decisionRequest(reason),
     );
 
     if (!response.ok) {

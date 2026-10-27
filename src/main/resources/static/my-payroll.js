@@ -239,24 +239,76 @@ function renderAttendance(records) {
 
 function renderOvertime(records) {
   if (records.length === 0) {
-    showEmpty(overtimeTableBody, 4, "No overtime recorded yet.");
+    showEmpty(overtimeTableBody, 5, "No overtime recorded yet.");
     return;
   }
 
   overtimeTableBody.replaceChildren(
     ...records.map((record) => {
       const row = document.createElement("tr");
+      let action = "";
+
+      // Overtime that won't be worked is cancelled, with a reason, so the
+      // record stays. HR can't be asked to do it for you.
+      if (record.status === "PENDING" || record.status === "APPROVED") {
+        action = document.createElement("button");
+        action.type = "button";
+        action.className = "secondary-button";
+        action.textContent = "Cancel";
+        action.setAttribute("aria-label", `Cancel overtime on ${record.date}`);
+        action.addEventListener("click", () => cancelOvertime(record));
+      }
 
       row.append(
         cell(text(record.date)),
         cell(text(record.hours), "amount"),
         cell(money(record.amount), "amount"),
-        cell(text(record.status)),
+        cell(statusWithReason(record)),
+        cell(action),
       );
 
       return row;
     }),
   );
+}
+
+async function cancelOvertime(record) {
+  const reason = await askForReason({
+    title: "Cancel overtime",
+    message: `Your ${record.hours} h of overtime on ${record.date} stays on record as Cancelled, with this reason, and won't be paid.`,
+    confirmLabel: "Cancel overtime",
+  });
+
+  if (reason === null) {
+    return;
+  }
+
+  try {
+    await sendJson("POST", `/api/me/overtime/${encodeURIComponent(record.overtimeId)}/cancel`, { reason });
+    renderOvertime(await getJson("/api/me/overtime"));
+    setFeedback(overtimeMessage, `Overtime on ${record.date} cancelled.`, "success");
+  } catch (error) {
+    setFeedback(overtimeMessage, error.message, "error");
+  }
+}
+
+// The status, with the reason when it was rejected or cancelled.
+function statusWithReason(request) {
+  const wrapper = document.createElement("span");
+  wrapper.textContent = STATUS_LABELS[request.status] || request.status;
+
+  const reason = request.status === "REJECTED" ? request.decisionRemarks
+    : request.status === "CANCELLED" ? request.cancelReason
+      : null;
+
+  if (reason) {
+    const note = document.createElement("small");
+    note.className = "status-reason";
+    note.textContent = `Reason: ${reason}`;
+    wrapper.append(note);
+  }
+
+  return wrapper;
 }
 
 // ---------- filing overtime ----------
@@ -564,7 +616,7 @@ const leaveMessage = document.getElementById("leaveMessage");
 const leaveSubmit = document.getElementById("leaveSubmit");
 const leaveBalance = document.getElementById("leaveBalance");
 
-const STATUS_LABELS = { PENDING: "Waiting for HR", APPROVED: "Approved", REJECTED: "Rejected" };
+const STATUS_LABELS = { PENDING: "Waiting for HR", APPROVED: "Approved", REJECTED: "Rejected", CANCELLED: "Cancelled" };
 
 function renderLeave(data) {
   const paid = data.paidLeave;
@@ -599,7 +651,7 @@ function renderLeave(data) {
         cell(dates),
         cell(leave.leaveTypeLabel),
         cell(String(leave.workingDays), "amount"),
-        cell(STATUS_LABELS[leave.status] || leave.status),
+        cell(statusWithReason(leave)),
         cell(action),
       );
 
@@ -687,7 +739,7 @@ async function loadPage() {
     showError(error.message);
     showEmpty(payrollTableBody, 6, "Unavailable.");
     showEmpty(attendanceTableBody, 6, "Unavailable.");
-    showEmpty(overtimeTableBody, 4, "Unavailable.");
+    showEmpty(overtimeTableBody, 5, "Unavailable.");
     showEmpty(leaveTableBody, 5, "Unavailable.");
     overtimeForm.hidden = true;
     leaveForm.hidden = true;

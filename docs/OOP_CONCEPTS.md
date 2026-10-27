@@ -60,13 +60,25 @@ Spreading a monthly amount over a pay cycle and rounding it to centavos is the s
 
 [ApprovalRequest.java](../src/main/java/com/employger/entity/ApprovalRequest.java)
 
-Overtime and leave both go through the same steps: PENDING, then APPROVED or REJECTED. The parent holds `status`, `approvedBy`, `approve()` and `reject()`. `Overtime` adds hours and rate, and `LeaveRequest` adds the leave type and dates.
+Overtime and leave both go through the same steps: PENDING, then APPROVED or REJECTED, and a pending or approved request can later be CANCELLED. The parent holds `status`, `approvedBy`, the reasons, `approve()`, `reject()` and `cancel()`. `Overtime` adds hours and rate, and `LeaveRequest` adds the leave type and dates.
 
 ```java
-public final void approve(User decidedBy) {
-    checkPending();              // only a pending request can be decided
-    this.status = Status.APPROVED;
+public final void reject(User decidedBy, String remarks) {
+    checkPending();                                      // only a pending request can be decided
+    this.decisionRemarks = requireReason(remarks, "reject");  // no reason, no rejection
+    this.status = Status.REJECTED;
     this.approvedBy = decidedBy;
+}
+```
+
+The "a reason is required" rule is written once, in the parent, so overtime and leave can't differ on it. `cancel()` is also `final` and calls a hook, `checkCancellable()`, which does nothing by default. `LeaveRequest` overrides it to refuse cancelling approved leave, because its days are already recorded in attendance:
+
+```java
+@Override
+protected void checkCancellable() {
+    if (getStatus() == Status.APPROVED) {
+        throw new IllegalStateException("Approved leave has already been recorded in attendance ...");
+    }
 }
 ```
 

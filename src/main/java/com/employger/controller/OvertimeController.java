@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import com.employger.dto.OvertimeResponse;
+import com.employger.dto.ReasonRequest;
 
 import java.util.List;
 
@@ -98,17 +99,20 @@ public class OvertimeController {
         }
     }
 
+    // Rejecting needs {"reason": "..."} in the body; approving needs no body.
     @PutMapping("/{id}/status")
     public ResponseEntity<OvertimeResponse> updateOvertimeStatus(
             @PathVariable Integer id,
             @RequestParam ApprovalRequest.Status status,
+            @RequestBody(required = false) ReasonRequest reason,
             Authentication authentication) {
 
         try {
             Overtime updatedOvertime = overtimeService.updateOvertimeStatus(
                     id,
                     status,
-                    authentication.getName());
+                    authentication.getName(),
+                    ReasonRequest.of(reason));
 
             return ResponseEntity.ok(
         new OvertimeResponse(updatedOvertime));
@@ -118,17 +122,15 @@ public class OvertimeController {
         }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOvertime(
-            @PathVariable Integer id) {
+    // Approved overtime that won't be worked. Overtime is history, so it is
+    // cancelled (kept, with the reason), never deleted.
+    @PostMapping("/{id}/cancel")
+    public OvertimeResponse cancelOvertime(
+            @PathVariable Integer id,
+            @RequestBody(required = false) ReasonRequest reason,
+            Authentication authentication) {
 
-        try {
-            overtimeService.deleteOvertime(id);
-
-            return ResponseEntity.noContent().build();
-
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return new OvertimeResponse(overtimeService.cancelOvertime(
+                id, null, ReasonRequest.of(reason), authentication.getName()));
     }
 }

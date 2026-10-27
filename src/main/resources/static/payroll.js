@@ -90,6 +90,11 @@ function setupEventListeners() {
     employeeSearch.addEventListener("input", renderPayrollTable);
   }
 
+  document.getElementById("generateAllButton").addEventListener("click", openGenerateAllModal);
+  document.getElementById("closeGenerateAllButton").addEventListener("click", closeGenerateAllModal);
+  document.getElementById("cancelGenerateAllButton").addEventListener("click", closeGenerateAllModal);
+  document.getElementById("generateAllForm").addEventListener("submit", generateForAll);
+
   if (generatePayrollButton) {
     generatePayrollButton.addEventListener("click", openModal);
   }
@@ -645,6 +650,97 @@ function closeModal() {
   }
 
   payrollModal.classList.add("hidden");
+}
+
+// =========================
+// GENERATE FOR ALL
+// =========================
+
+function openGenerateAllModal() {
+  const select = document.getElementById("generateAllCycle");
+
+  // Payroll can only be generated for OPEN or PROCESSING cycles.
+  select.innerHTML = '<option value="">Select pay cycle</option>';
+
+  payCycles
+    .filter((cycle) => cycle.status === "OPEN" || cycle.status === "PROCESSING")
+    .forEach((cycle) => {
+      const option = document.createElement("option");
+      option.value = cycle.payCycleId;
+      option.textContent = getPayCycleLabel(cycle);
+      select.appendChild(option);
+    });
+
+  document.getElementById("generateAllMessage").textContent = "";
+  document.getElementById("generateAllResult").classList.add("hidden");
+  document.getElementById("generateAllModal").classList.remove("hidden");
+}
+
+function closeGenerateAllModal() {
+  document.getElementById("generateAllModal").classList.add("hidden");
+}
+
+async function generateForAll(event) {
+  event.preventDefault();
+
+  const payCycleId = document.getElementById("generateAllCycle").value;
+  const message = document.getElementById("generateAllMessage");
+  const button = document.getElementById("confirmGenerateAllButton");
+
+  message.textContent = "";
+
+  if (!payCycleId) {
+    message.textContent = "Please select a pay cycle.";
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Generating...";
+
+  try {
+    const response = await fetch(`/api/payroll/pay-cycle/${encodeURIComponent(payCycleId)}/generate-all`, {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Unable to generate payroll.");
+    }
+
+    showGenerateAllResult(await response.json());
+    await loadPayrollRecords();
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Generate";
+  }
+}
+
+function showGenerateAllResult(result) {
+  const body = document.getElementById("generateAllTableBody");
+
+  document.getElementById("generateAllSummary").textContent =
+    `${result.payCycleName}: ${result.created} created, ${result.skipped} skipped.`;
+
+  body.innerHTML = "";
+
+  if (result.outcomes.length === 0) {
+    body.innerHTML = '<tr><td colspan="3" class="empty-row">No employees to generate payroll for.</td></tr>';
+  }
+
+  result.outcomes.forEach((outcome) => {
+    const row = document.createElement("tr");
+    const created = outcome.result === "CREATED";
+
+    row.innerHTML = `
+      <td>${escapeHtml(outcome.employeeName)}</td>
+      <td><span class="status-badge ${created ? "status-draft" : "status-skipped"}">${created ? "Created" : "Skipped"}</span></td>
+      <td>${escapeHtml(outcome.message)}</td>`;
+
+    body.appendChild(row);
+  });
+
+  document.getElementById("generateAllResult").classList.remove("hidden");
 }
 
 // =========================

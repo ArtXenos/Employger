@@ -3,6 +3,7 @@ package com.employger.controller;
 import com.employger.dto.PayrollResponse;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.service.PayrollService;
+import com.employger.service.bulk.BulkPayrollService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +20,14 @@ import java.util.Map;
 public class PayrollController {
 
     private final PayrollService payrollService;
+    private final BulkPayrollService bulkPayrollService;
 
     public PayrollController(
-            PayrollService payrollService) {
+            PayrollService payrollService,
+            BulkPayrollService bulkPayrollService) {
 
         this.payrollService = payrollService;
+        this.bulkPayrollService = bulkPayrollService;
     }
 
     @GetMapping
@@ -89,6 +93,13 @@ public class PayrollController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body("Payroll already exists for this employee and pay cycle");
         }
+    }
+
+    // DRAFT payroll for every employee who can be paid in this cycle; the
+    // others are listed as skipped, with the reason.
+    @PostMapping("/pay-cycle/{payCycleId}/generate-all")
+    public BulkPayrollService.Result generateForCycle(@PathVariable Integer payCycleId) {
+        return bulkPayrollService.generateForCycle(payCycleId);
     }
 
     // Recalculates a DRAFT payroll from current records. Any request body is

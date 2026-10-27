@@ -770,3 +770,45 @@ input:focus {
   gap: 10px;
   margin-top: 24px;
 }
+
+/* Generate for All */
+.section-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.generate-all-modal {
+  max-width: 760px;
+}
+
+.generate-all-result {
+  max-height: 340px;
+  overflow: auto;
+  margin-bottom: 16px;
+}
+
+.generate-all-result table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.generate-all-result th,
+.generate-all-result td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.generate-all-summary {
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.status-skipped {
+  background: #f1f5f9;
+  color: #475569;
+}
+

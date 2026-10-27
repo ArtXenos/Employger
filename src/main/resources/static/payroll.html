@@ -120,9 +120,15 @@
               <p>View, generate, and manage employee payroll records.</p>
             </div>
 
-            <button id="generatePayrollButton" class="primary-button">
-              + Generate Payroll
-            </button>
+            <div class="section-buttons">
+              <button id="generateAllButton" class="secondary-button" type="button">
+                Generate for All
+              </button>
+
+              <button id="generatePayrollButton" class="primary-button">
+                + Generate Payroll
+              </button>
+            </div>
           </div>
 
           <!-- Filters -->
@@ -389,6 +395,61 @@
 
             <button type="submit" class="primary-button">
               Generate Payroll
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Generate for All Modal -->
+    <div id="generateAllModal" class="modal hidden">
+      <div class="modal-content generate-all-modal">
+        <div class="modal-header">
+          <div>
+            <h3>Generate Payroll for All</h3>
+            <p>
+              Creates a DRAFT payroll for every employee who can be paid in
+              the pay cycle. Anyone who can't is skipped, with the reason.
+              Running it again skips payroll that already exists.
+            </p>
+          </div>
+
+          <button id="closeGenerateAllButton" class="close-button" type="button" aria-label="Close">×</button>
+        </div>
+
+        <form id="generateAllForm">
+          <div class="form-group">
+            <label for="generateAllCycle"> Pay Cycle <span>*</span> </label>
+
+            <select id="generateAllCycle" required>
+              <option value="">Select pay cycle</option>
+            </select>
+          </div>
+
+          <p id="generateAllMessage" class="form-message" role="alert"></p>
+
+          <div id="generateAllResult" class="generate-all-result hidden" aria-live="polite">
+            <p id="generateAllSummary" class="generate-all-summary"></p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Result</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="generateAllTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" id="cancelGenerateAllButton" class="secondary-button">
+              Close
+            </button>
+
+            <button type="submit" id="confirmGenerateAllButton" class="primary-button">
+              Generate
             </button>
           </div>
         </form>

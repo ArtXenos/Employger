@@ -13,6 +13,7 @@
     "#addOvertimeButton",
     "#addPayCycleButton",
     "#generatePayrollButton",
+    "#generateAllButton",
     "#addHolidayButton",
     "#addEarningButton",
     "#addPriorButton",

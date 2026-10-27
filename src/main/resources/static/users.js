@@ -20,6 +20,7 @@ const $ = (id) => document.getElementById(id);
 document.addEventListener("DOMContentLoaded", () => {
   $("addUserButton").addEventListener("click", () => openUserModal(null));
   $("userForm").addEventListener("submit", saveUser);
+  $("copyTemporaryButton").addEventListener("click", copyTemporaryPassword);
 
   document.querySelectorAll("[data-close]").forEach((button) => {
     button.addEventListener("click", () => closeModal(button.dataset.close));
@@ -30,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
     logout();
   });
 
-  Promise.all([loadCurrentUser(), loadEmployees()]).then(loadUsers);
+  Promise.all([loadCurrentUser(), loadEmployees()]).then(() => Promise.all([loadUsers(), loadResetRequests()]));
 });
 
 // ---------- requests ----------
@@ -110,14 +111,17 @@ async function loadUsers() {
     row.innerHTML = `
       <td>${escapeHtml(user.username)}${isMe ? ` <span class="badge">You</span>` : ""}</td>
       <td>${escapeHtml(ROLE_LABELS[user.role] || user.role)}</td>
-      <td><span class="${statusClass}">${user.status === "ACTIVE" ? "Active" : "Inactive"}</span></td>
+      <td><span class="${statusClass}">${user.status === "ACTIVE" ? "Active" : "Inactive"}</span>${
+        user.mustChangePassword ? ` <span class="badge badge-warning" title="Has not yet replaced the temporary password">Temporary password</span>` : ""}</td>
       <td>${escapeHtml(employeeLabel(user.employeeId))}</td>
       <td>
         <button type="button" class="action-button edit-button">Edit</button>
+        ${isMe || user.status !== "ACTIVE" ? "" : `<button type="button" class="action-button reset-button">Reset password</button>`}
         ${isMe ? "" : `<button type="button" class="action-button delete-button">Delete</button>`}
       </td>`;
 
     row.querySelector(".edit-button").addEventListener("click", () => openUserModal(user));
+    row.querySelector(".reset-button")?.addEventListener("click", () => setTemporaryPassword(user, "pageMessage"));
 
     if (!isMe) {
       row.querySelector(".delete-button").addEventListener("click", () => deleteUser(user));
@@ -125,6 +129,104 @@ async function loadUsers() {
 
     body.appendChild(row);
   });
+}
+
+// ---------- forgot password ----------
+
+async function loadResetRequests() {
+  let requests;
+
+  try {
+    requests = await api("/api/users/password-resets");
+  } catch (error) {
+    requests = [];
+  }
+
+  $("resetSection").hidden = requests.length === 0;
+
+  const body = $("resetTableBody");
+  body.innerHTML = "";
+
+  requests.forEach((request) => {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${escapeHtml(formatDateTime(request.requestedAt))}</td>
+      <td>${escapeHtml(request.username)}</td>
+      <td>${escapeHtml(ROLE_LABELS[request.role] || request.role)}</td>
+      <td>${escapeHtml(request.employeeName || "-")}</td>
+      <td>${escapeHtml(request.requestedFrom || "-")}</td>
+      <td>
+        <button type="button" class="action-button edit-button">Set temporary password</button>
+        <button type="button" class="action-button delete-button">Dismiss</button>
+      </td>`;
+
+    row.querySelector(".edit-button").addEventListener("click", () =>
+      setTemporaryPassword({ userId: request.userId, username: request.username }, "resetMessage"));
+    row.querySelector(".delete-button").addEventListener("click", () => dismissRequest(request));
+
+    body.appendChild(row);
+  });
+
+  if (window.refreshPasswordResetBadge) {
+    window.refreshPasswordResetBadge();
+  }
+}
+
+async function setTemporaryPassword(user, messageId) {
+  if (!confirm(`Set a temporary password for "${user.username}"? Their current password stops working at once. `
+    + "Do this only after checking that the request really comes from them.")) {
+    return;
+  }
+
+  let result;
+
+  try {
+    result = await api(`/api/users/${user.userId}/temporary-password`, { method: "POST" });
+  } catch (error) {
+    showError(messageId, error.message);
+    return;
+  }
+
+  clearMessage(messageId);
+  $("temporaryHint").textContent = `For ${result.username}. Give it to them in person.`;
+  $("temporaryValue").textContent = result.temporaryPassword;
+  clearMessage("temporaryMessage");
+  openModal("temporaryModal");
+
+  await Promise.all([loadUsers(), loadResetRequests()]);
+}
+
+async function dismissRequest(request) {
+  if (!confirm(`Dismiss the password reset request from "${request.username}"? Their password stays as it is.`)) {
+    return;
+  }
+
+  try {
+    await api(`/api/users/password-resets/${request.requestId}/dismiss`, { method: "POST" });
+  } catch (error) {
+    showError("resetMessage", error.message);
+    return;
+  }
+
+  showSuccess("pageMessage", `Dismissed the request from ${request.username}.`);
+  await loadResetRequests();
+}
+
+async function copyTemporaryPassword() {
+  try {
+    await navigator.clipboard.writeText($("temporaryValue").textContent);
+    showSuccess("temporaryMessage", "Copied.");
+  } catch (error) {
+    showError("temporaryMessage", "Could not copy. Select the password and copy it by hand.");
+  }
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
 }
 
 // ---------- add / edit ----------

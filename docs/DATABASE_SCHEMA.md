@@ -1,6 +1,6 @@
 # Em-Ployger Database: Primary and Foreign Keys
 
-This document lists the primary key of every table in `employger_db`, every foreign key that links the tables, and what each foreign key does when a linked row is deleted. It covers migrations V1 to V14, in [db/migrations](../db/migrations).
+This document lists the primary key of every table in `employger_db`, every foreign key that links the tables, and what each foreign key does when a linked row is deleted. It covers migrations V1 to V15, in [db/migrations](../db/migrations).
 
 The keys are defined in the database itself, not only in the application code. MariaDB enforces them: it refuses a row that points to something that doesn't exist, and it applies each delete rule automatically. The query in [section 6](#6-checking-the-keys-in-the-database) lists them straight from MariaDB.
 
@@ -40,8 +40,9 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 | 15 | `audit_logs` | `audit_id` | 1 | Who changed what, and when |
 | 16 | `login_attempts` | `attempt_id` | none | Failed logins, for lockouts |
 | 17 | `deductions` | `deduction_id` | 2 | Not used yet (reserved for loans and cash advances) |
+| 18 | `password_reset_requests` | `request_id` | 2 | "Forgot password" requests waiting for an administrator |
 
-17 tables and 30 foreign keys in all.
+18 tables and 32 foreign keys in all.
 
 ---
 
@@ -56,6 +57,13 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 | Column | References | On delete | Why |
 |---|---|---|---|
 | `employee_id` | `employees.employee_id` | SET NULL | A login belongs to one employee. If that employee's row is deleted, the login stays, unlinked, for an administrator to deal with. |
+
+**`password_reset_requests`** (V15): PK `request_id`.
+
+| Column | References | On delete | Why |
+|---|---|---|---|
+| `user_id` | `users.user_id` | CASCADE | The login that asked for a reset. A request means nothing without its login, so it goes with it. |
+| `handled_by` | `users.user_id` | SET NULL | The administrator who set the temporary password or dismissed the request. |
 
 ### Time and requests
 
@@ -165,7 +173,7 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 ## 4. What the delete rules protect
 
 - **Paid payroll can't disappear.** `payroll.employee_id` is RESTRICT, so an employee with payroll can't be deleted, and `payroll_adjustments.corrected_payroll_id` keeps the payroll it corrects. The app also refuses these deletes with a clear message before MariaDB has to.
-- **History outlives the people who made it.** Every "who did it" column (`approved_by`, `processed_by`, `cancelled_by`, `changed_by`, `created_by`, `generated_by`, `updated_by`, `audit_logs.user_id`) is SET NULL. Removing a login never removes the records that login made.
+- **History outlives the people who made it.** Every "who did it" column (`approved_by`, `processed_by`, `cancelled_by`, `changed_by`, `created_by`, `generated_by`, `updated_by`, `handled_by`, `audit_logs.user_id`) is SET NULL. Removing a login never removes the records that login made.
 - **Nothing is left dangling.** When an employee with no payroll is removed, their attendance, overtime, leave, earnings and salary history go with them (CASCADE), so no row points to an employee who doesn't exist.
 
 ---
@@ -206,6 +214,8 @@ erDiagram
     users |o--o{ salary_changes : "changed_by"
     users |o--o{ system_settings : "updated_by"
     users |o--o{ deductions : "created_by"
+    users ||--o{ password_reset_requests : "user_id"
+    users |o--o{ password_reset_requests : "handled_by"
 
     employees {
         int employee_id PK
@@ -286,6 +296,11 @@ erDiagram
         int audit_id PK
         int user_id FK
     }
+    password_reset_requests {
+        int request_id PK
+        int user_id FK
+        int handled_by FK
+    }
     holidays {
         int holiday_id PK
         date holiday_date UK
@@ -328,7 +343,7 @@ WHERE k.TABLE_SCHEMA = 'employger_db' AND k.REFERENCED_TABLE_NAME IS NOT NULL
 ORDER BY k.TABLE_NAME, k.COLUMN_NAME;
 ```
 
-The second query should return 30 rows once V13 and V14 are applied. Before them it returns 26: `salary_changes` (2 keys) and the two `cancelled_by` keys (V14) aren't there yet. A foreign key with no `ON DELETE` rule in its migration shows as `RESTRICT`, MariaDB's default.
+The second query should return 32 rows once V13, V14 and V15 are applied. Without them it returns 26: `salary_changes` (2 keys, V13), the two `cancelled_by` keys (V14) and `password_reset_requests` (2 keys, V15) aren't there yet. A foreign key with no `ON DELETE` rule in its migration shows as `RESTRICT`, MariaDB's default.
 
 **One table's full definition:**
 

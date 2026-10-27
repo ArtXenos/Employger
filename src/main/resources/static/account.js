@@ -1,6 +1,10 @@
 // "Change password" for every logged-in user, on every page with a sidebar.
 // Adds a button above Logout that opens a small form. Load it after csrf.js
 // and before password-toggle.js, so the new fields get show/hide buttons.
+//
+// After logging in with a temporary password from an administrator, the
+// form opens by itself and can't be closed until a new password is chosen.
+// The server enforces the same: every other request is refused until then.
 
 (function () {
   const MIN_PASSWORD_LENGTH = 12;
@@ -58,7 +62,7 @@
       <form id="passwordForm" autocomplete="on" novalidate>
         <input type="text" name="username" autocomplete="username" hidden />
         <div class="account-field">
-          <label for="currentPassword">Current password</label>
+          <label for="currentPassword" id="currentPasswordLabel">Current password</label>
           <input type="password" id="currentPassword" maxlength="72" autocomplete="current-password" required />
         </div>
         <div class="account-field">
@@ -80,6 +84,7 @@
 
   const form = modal.querySelector("#passwordForm");
   const message = modal.querySelector("#passwordMessage");
+  let mustChange = false;
 
   function show(text, kind) {
     message.textContent = text;
@@ -98,6 +103,9 @@
   }
 
   function close() {
+    if (mustChange) {
+      return;
+    }
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
     button.focus();
@@ -159,10 +167,54 @@
 
       form.reset();
       show(text || "Your password has been changed.", "success");
+
+      if (mustChange) {
+        // The rest of the page could not load until now.
+        show("Your password has been changed. Loading the page...", "success");
+        setTimeout(() => window.location.reload(), 1200);
+      }
     } catch (error) {
       show("The server could not be reached. Please try again.", "error");
     } finally {
       submit.disabled = false;
     }
   });
+
+  // A temporary password: open the form and keep it open.
+  function requireNewPassword() {
+    mustChange = true;
+    modal.querySelector("#passwordModalTitle").textContent = "Choose your own password";
+    modal.querySelector(".account-modal-header p").textContent =
+      "You logged in with a temporary password from an administrator. Choose your own " +
+      `password to continue: at least ${MIN_PASSWORD_LENGTH} characters; a few unrelated words work well.`;
+    modal.querySelector("#currentPasswordLabel").textContent = "Temporary password";
+    modal.querySelector(".close-button").style.display = "none";
+
+    // The sidebar is behind the form, so offer Log out here instead of Cancel.
+    const cancel = modal.querySelector(".cancel-button");
+    const logOut = cancel.cloneNode(false);
+    logOut.removeAttribute("data-close-password");
+    logOut.textContent = "Log out";
+    logOut.addEventListener("click", async () => {
+      try {
+        await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+      } finally {
+        window.location.href = "/";
+      }
+    });
+    cancel.replaceWith(logOut);
+
+    open();
+  }
+
+  fetch("/api/auth/me", { credentials: "same-origin" })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((user) => {
+      if (user && user.mustChangePassword) {
+        requireNewPassword();
+      }
+    })
+    .catch(() => {
+      // The page's own requests report connection problems.
+    });
 })();

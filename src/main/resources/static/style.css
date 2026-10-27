@@ -157,3 +157,34 @@ button:disabled {
 
     min-height: 20px;
 }
+
+/* "Forgot password?" and "Back to login": text links, not the blue button. */
+.link-button {
+    display: block;
+    width: auto;
+    margin: 12px auto 0;
+    padding: 4px 6px;
+    background: none;
+    color: #2563eb;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.link-button:hover {
+    background: none;
+    color: #1d4ed8;
+    text-decoration: underline;
+}
+
+.forgot-title {
+    margin-bottom: 8px;
+    color: #0f172a;
+    font-size: 18px;
+}
+
+.forgot-help {
+    margin-bottom: 20px;
+    color: #475569;
+    font-size: 14px;
+    line-height: 1.5;
+}

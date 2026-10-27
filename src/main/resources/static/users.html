@@ -9,6 +9,15 @@
     <link rel="stylesheet" href="/dashboard.css" />
     <link rel="stylesheet" href="/pay-cycles.css" />
     <link rel="stylesheet" href="/benefits.css" />
+    <style>
+      .temporary-content { max-width: 460px; }
+      .temporary-content .type-hint, .temporary-content .form-message { margin: 0; }
+      .temporary-password { margin: 0; padding: 14px; border-radius: 8px; background: #f1f5f9;
+        border: 1px solid #cbd5e1; font: 600 22px/1.3 Consolas, "Courier New", monospace;
+        letter-spacing: 1px; text-align: center; color: #0f172a; user-select: all; overflow-wrap: anywhere; }
+      .badge-warning { background: #fef3c7; color: #92400e; }
+      .records-section[hidden] { display: none; }
+    </style>
   </head>
 
   <body>
@@ -77,6 +86,39 @@
             </p>
           </div>
         </header>
+
+        <!-- FORGOT PASSWORD REQUESTS: shown only while some are waiting -->
+        <section class="records-section" id="resetSection" hidden>
+          <div class="section-header">
+            <div>
+              <h3>Password reset requests</h3>
+              <p>
+                Sent from "Forgot password?" on the login page. Check that it
+                is really the person (in person or by phone) before you set a
+                temporary password, then give it to them yourself. Dismiss a
+                request you didn't expect.
+              </p>
+            </div>
+          </div>
+
+          <p id="resetMessage" class="form-message report-message" role="alert"></p>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Requested</th>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Employee</th>
+                  <th>From address</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="resetTableBody"></tbody>
+            </table>
+          </div>
+        </section>
 
         <section class="records-section">
           <div class="section-header with-actions">
@@ -180,6 +222,35 @@
                 <button type="submit" class="save-button">Save User</button>
               </div>
             </form>
+          </div>
+        </div>
+        <!-- TEMPORARY PASSWORD: shown once -->
+        <div class="modal" id="temporaryModal" aria-hidden="true">
+          <div class="modal-content temporary-content" role="dialog" aria-modal="true" aria-labelledby="temporaryTitle">
+            <div class="modal-header">
+              <div>
+                <h3 id="temporaryTitle">Temporary password</h3>
+                <p id="temporaryHint"></p>
+              </div>
+              <button type="button" class="close-button" data-close="temporaryModal" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="modal-form">
+              <p class="temporary-password" id="temporaryValue"></p>
+
+              <p class="type-hint">
+                It is shown only this once and isn't saved anywhere. They log in
+                with it and must then choose their own password. Don't send it by
+                e-mail or chat.
+              </p>
+
+              <p class="form-message" id="temporaryMessage" role="status"></p>
+
+              <div class="modal-actions">
+                <button type="button" class="cancel-button" id="copyTemporaryButton">Copy</button>
+                <button type="button" class="save-button" data-close="temporaryModal">Done</button>
+              </div>
+            </div>
           </div>
         </div>
       </main>

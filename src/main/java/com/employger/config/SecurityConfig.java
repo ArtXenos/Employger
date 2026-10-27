@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfException;
 
@@ -59,6 +60,11 @@ public class SecurityConfig {
                                                 new ActiveAccountFilter(userRepository),
                                                 AnonymousAuthenticationFilter.class)
 
+                                // A temporary password only lets you choose a new one.
+                                .addFilterBefore(
+                                                new PasswordChangeRequiredFilter(userRepository),
+                                                AuthorizationFilter.class)
+
                                 // Session cookies are sent automatically, so a page on another
                                 // site could otherwise submit changes as the logged-in user.
                                 // spa(): the token travels in the XSRF-TOKEN cookie, and csrf.js
@@ -72,7 +78,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/", "/*.html", "/*.css", "/*.js")
                                                 .permitAll()
 
-                                                // Login, logout, and current-user information
+                                                // Login, logout, current-user information and
+                                                // forgot-password requests
                                                 .requestMatchers("/api/auth/**")
                                                 .permitAll()
 

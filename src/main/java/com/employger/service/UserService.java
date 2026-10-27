@@ -198,7 +198,7 @@ public class UserService {
 
         checkPasswordStrength(request.newPassword());
 
-        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.changeOwnPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
 
         auditService.record("PASSWORD_CHANGED",

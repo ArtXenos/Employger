@@ -9,6 +9,7 @@ public class UserResponse {
     private String username;
     private String role;
     private String status;
+    private boolean mustChangePassword;
 
     public UserResponse(User user) {
         this.userId = user.getUserId();
@@ -18,6 +19,7 @@ public class UserResponse {
         this.username = user.getUsername();
         this.role = user.getRole().name();
         this.status = user.getStatus().name();
+        this.mustChangePassword = user.isMustChangePassword();
     }
 
     public Integer getUserId() {
@@ -38,5 +40,9 @@ public class UserResponse {
 
     public String getStatus() {
         return status;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
     }
 }

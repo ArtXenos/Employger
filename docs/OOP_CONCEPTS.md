@@ -148,6 +148,12 @@ Spring finds every `SalaryChangeRule` subclass and passes them in as a list. Add
 
 **Generate for All** returns one outcome per employee: `Created` or `Skipped`. Both implement the sealed interface `GenerationOutcome` and override `result()` and `message()`. The page and the summary call `message()` on every outcome and never check which kind it is. A created payroll answers with its number and net pay, and a skipped one with the reason it was refused.
 
+### Two security filters, one shape
+
+[PasswordChangeRequiredFilter.java](../src/main/java/com/employger/config/PasswordChangeRequiredFilter.java), [ActiveAccountFilter.java](../src/main/java/com/employger/config/ActiveAccountFilter.java)
+
+Both extend Spring's `OncePerRequestFilter`, which already makes sure a filter runs once per request. Each overrides `doFilterInternal()` with its own check: `ActiveAccountFilter` ends the session of a deactivated login, and `PasswordChangeRequiredFilter` refuses everything except choosing a new password while a login still has a temporary one. The second also overrides `shouldNotFilter()` to say which requests are always allowed (pages, login and logout, and the password change itself). Spring calls both the same way.
+
 ### Two implementations of one interface
 
 `DatabaseLoginAttemptStore` saves lockouts to the database, so a restart doesn't clear them. `MemoryOnlyLoginAttemptStore` saves nothing, so unit tests need no database. `LoginAttemptService` works the same way with either one.
@@ -177,6 +183,14 @@ There is no `setStatus()`. `process()`, `approve()`, `sendBack()` and `markPaid(
 [SalaryChange.java](../src/main/java/com/employger/entity/SalaryChange.java), [SalaryTimeline.java](../src/main/java/com/employger/service/salary/SalaryTimeline.java)
 
 A `SalaryChange` has no setters, and `SalaryChange.record()` is the only way to make one. It refuses a salary of zero or less, and a missing date. Payroll never reads the salary history directly. It asks a `SalaryTimeline` for `salaryOn(date)`, and the timeline alone decides which change was in effect that day.
+
+### A password reset request is closed once, and a temporary password never prints itself
+
+[PasswordResetRequest.java](../src/main/java/com/employger/entity/PasswordResetRequest.java), [TemporaryPassword.java](../src/main/java/com/employger/service/password/TemporaryPassword.java)
+
+A `PasswordResetRequest` has no setters. `open()` makes one, and `complete()` or `dismiss()` closes it; closing it a second time is refused. `User` likewise has no setter for its "must change password" flag: `setTemporaryPassword()` turns it on, and only `changeOwnPassword()` turns it off.
+
+`TemporaryPassword` is a record that **overrides `toString()`** to return `TemporaryPassword[hidden]`. A record's default `toString()` would print the password, so one careless log line or error message could leak it. The value comes out only through `value()`, once, for the administrator to hand over.
 
 ### The audit log filter builds its own query
 

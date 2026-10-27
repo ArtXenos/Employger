@@ -75,6 +75,66 @@
                     aria-live="polite"
                 ></p>
 
+                <button
+                    type="button"
+                    class="link-button"
+                    id="forgotPasswordLink"
+                >
+                    Forgot password?
+                </button>
+
+            </form>
+
+            <!-- Forgot password: a request to the administrators, who give
+                 a temporary password in person. Shown instead of the login. -->
+            <form id="forgotForm" hidden>
+
+                <h2 class="forgot-title">Forgot your password?</h2>
+
+                <p class="forgot-help">
+                    Enter your username. An administrator will be notified,
+                    check that it's you, and give you a temporary password in
+                    person. You'll choose a new password when you log in with it.
+                </p>
+
+                <div class="form-group">
+
+                    <label for="forgotUsername">
+                        Username
+                    </label>
+
+                    <input
+                        type="text"
+                        id="forgotUsername"
+                        maxlength="100"
+                        autocomplete="username"
+                        required
+                    >
+
+                </div>
+
+                <button
+                    type="submit"
+                    id="forgotButton"
+                >
+                    Send request
+                </button>
+
+                <p
+                    id="forgotMessage"
+                    class="login-message"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+
+                <button
+                    type="button"
+                    class="link-button"
+                    id="backToLoginLink"
+                >
+                    Back to login
+                </button>
+
             </form>
 
         </section>

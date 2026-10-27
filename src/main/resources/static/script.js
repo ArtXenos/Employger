@@ -133,3 +133,66 @@ function showLoginMessage(text, color) {
     loginMessage.textContent = text;
     loginMessage.style.color = color;
 }
+
+
+// ---------- forgot password ----------
+
+const forgotForm = document.getElementById("forgotForm");
+const forgotButton = document.getElementById("forgotButton");
+const forgotMessage = document.getElementById("forgotMessage");
+
+function showForgotForm(show) {
+    loginForm.hidden = show;
+    forgotForm.hidden = !show;
+    forgotMessage.textContent = "";
+
+    if (show) {
+        const username = document.getElementById("forgotUsername");
+        username.value = document.getElementById("username").value.trim();
+        username.focus();
+    } else {
+        document.getElementById("username").focus();
+    }
+}
+
+document.getElementById("forgotPasswordLink")
+    .addEventListener("click", () => showForgotForm(true));
+document.getElementById("backToLoginLink")
+    .addEventListener("click", () => showForgotForm(false));
+
+forgotForm.addEventListener("submit", async function (event) {
+
+    event.preventDefault();
+
+    const username = document.getElementById("forgotUsername").value.trim();
+
+    if (!username) {
+        forgotMessage.textContent = "Enter your username.";
+        forgotMessage.style.color = "#dc2626";
+        return;
+    }
+
+    forgotButton.disabled = true;
+    forgotMessage.textContent = "";
+
+    try {
+        const response = await fetch("/api/auth/forgot-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ username: username })
+        });
+        const text = (await response.text()).trim();
+
+        forgotMessage.textContent = text
+            || (response.ok ? "Your request has been sent." : "The request could not be sent.");
+        forgotMessage.style.color = response.ok ? "#16a34a" : "#dc2626";
+
+    } catch (error) {
+        forgotMessage.textContent = "Unable to connect to the server. Check that Em-Ployger is running.";
+        forgotMessage.style.color = "#dc2626";
+
+    } finally {
+        forgotButton.disabled = false;
+    }
+});

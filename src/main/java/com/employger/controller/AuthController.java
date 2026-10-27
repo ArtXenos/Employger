@@ -8,6 +8,7 @@ import com.employger.repository.UserRepository;
 import com.employger.service.AuditService;
 import com.employger.service.LoginAttemptService;
 import com.employger.service.UserService;
+import com.employger.service.password.PasswordResetService;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -43,6 +44,7 @@ public class AuthController {
         private final UserRepository userRepository;
         private final LoginAttemptService loginAttemptService;
         private final AuditService auditService;
+        private final PasswordResetService passwordResetService;
 
         private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
@@ -51,13 +53,15 @@ public class AuthController {
                         UserService userService,
                         UserRepository userRepository,
                         LoginAttemptService loginAttemptService,
-                        AuditService auditService) {
+                        AuditService auditService,
+                        PasswordResetService passwordResetService) {
 
                 this.authenticationManager = authenticationManager;
                 this.userService = userService;
                 this.userRepository = userRepository;
                 this.loginAttemptService = loginAttemptService;
                 this.auditService = auditService;
+                this.passwordResetService = passwordResetService;
         }
 
         @PostMapping("/login")
@@ -147,6 +151,33 @@ public class AuthController {
                                 .body("Login failed");
         }
 
+        /**
+         * "Forgot password?" on the login page. The answer is the same whether
+         * or not the username exists, so it can't be used to find usernames.
+         */
+        @PostMapping("/forgot-password")
+        public ResponseEntity<String> forgotPassword(
+                        @RequestBody ForgotPasswordRequest body,
+                        HttpServletRequest request) {
+
+                String username = body.username();
+
+                if (username != null && username.length() > 100) {
+                        throw new IllegalArgumentException("Enter your username.");
+                }
+
+                passwordResetService.requestReset(username, request.getRemoteAddr());
+
+                return ResponseEntity.ok()
+                                .contentType(MediaType.TEXT_PLAIN)
+                                .body("Your request has been sent. If this username has an active account, "
+                                                + "an administrator will contact you and give you a temporary "
+                                                + "password in person.");
+        }
+
+        public record ForgotPasswordRequest(String username) {
+        }
+
         private static ResponseEntity<String> tooManyAttempts(LoginAttemptService.Lock lock) {
 
                 long minutes = lock.minutesRemaining();
@@ -222,6 +253,7 @@ public class AuthController {
                 response.put("userId", user.getUserId());
                 response.put("username", user.getUsername());
                 response.put("role", user.getRole().name());
+                response.put("mustChangePassword", user.isMustChangePassword());
 
                 return ResponseEntity.ok(response);
         }

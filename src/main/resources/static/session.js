@@ -5,6 +5,7 @@
 //   not ADMINISTRATOR -> Settings, Users and Audit Log links hidden (admin-only)
 //   GENERAL_MANAGER  -> Reports link hidden (reports are admin and HR only)
 //   HR_MANAGER       -> payroll sign-off buttons hidden (GM or admin approves)
+//   ADMINISTRATOR    -> a badge on the Users link counts waiting password resets
 
 (function () {
   const READ_ONLY_CONTROLS = [
@@ -37,7 +38,9 @@
     " { display: none !important; }" +
     ' html[data-role="HR_MANAGER"] .signoff-button { display: none !important; }' +
     " .read-only-banner { margin: 0 0 16px; padding: 10px 14px; border-radius: 8px;" +
-    " background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; font-size: 14px; }";
+    " background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; font-size: 14px; }" +
+    " .nav-badge { margin-left: auto; min-width: 20px; padding: 1px 7px; border-radius: 999px;" +
+    " background: #dc2626; color: #fff; font-size: 12px; font-weight: 700; text-align: center; }";
   document.head.appendChild(style);
 
   async function applyRole() {
@@ -74,6 +77,11 @@
         .forEach((link) => link.remove());
     }
 
+    if (user.role === "ADMINISTRATOR") {
+      window.refreshPasswordResetBadge = refreshPasswordResetBadge;
+      refreshPasswordResetBadge();
+    }
+
     // Reports list government ID numbers: administrators and HR only.
     if (user.role !== "ADMINISTRATOR" && user.role !== "HR_MANAGER") {
       document
@@ -96,6 +104,37 @@
         main.prepend(banner);
       }
     }
+  }
+
+  // Forgot-password requests waiting for an administrator: a red count on
+  // the Users link, on every page, so they are noticed.
+  async function refreshPasswordResetBadge() {
+    let pending = 0;
+
+    try {
+      const response = await fetch("/api/users/password-resets/count", { credentials: "same-origin" });
+      if (response.ok) {
+        pending = (await response.json()).pending;
+      }
+    } catch (error) {
+      return;
+    }
+
+    const label = `${pending} password reset request${pending === 1 ? "" : "s"} waiting`;
+
+    document.querySelectorAll('a[href$="users.html"]').forEach((link) => {
+      link.querySelector(".nav-badge")?.remove();
+      link.removeAttribute("title");
+
+      if (pending > 0) {
+        const badge = document.createElement("span");
+        badge.className = "nav-badge";
+        badge.textContent = String(pending);
+        badge.setAttribute("aria-label", label);
+        link.appendChild(badge);
+        link.title = label;
+      }
+    });
   }
 
   if (document.readyState === "loading") {

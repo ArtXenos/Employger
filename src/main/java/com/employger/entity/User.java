@@ -33,6 +33,11 @@ public class User {
     @Column(nullable = false)
     private Status status = Status.ACTIVE;
 
+    // Set when an administrator gives this login a temporary password; the
+    // user must choose their own before using anything else. Migration V15.
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -112,6 +117,23 @@ public class User {
 
         status = Status.INACTIVE;
         return true;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    // A temporary password from an administrator: usable once, to log in
+    // and choose a new one.
+    public void setTemporaryPassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.mustChangePassword = true;
+    }
+
+    // The user's own choice of password ends the temporary one.
+    public void changeOwnPassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.mustChangePassword = false;
     }
 
     public LocalDateTime getCreatedAt() {

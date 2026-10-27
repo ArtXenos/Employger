@@ -460,7 +460,7 @@ function renderPayrollTable() {
 
                     <button
                       class="delete-button"
-                      onclick="deletePayroll(${payroll.payrollId})"
+                      onclick="openDeleteConfirmModal(${payroll.payrollId})"
                     >
                       Delete
                     </button>

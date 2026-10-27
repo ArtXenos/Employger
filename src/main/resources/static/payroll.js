@@ -1159,6 +1159,16 @@ function viewPayroll(payrollId) {
     payroll.deductionAmount,
   );
 
+  // Not recorded for payroll calculated before the shares were kept per contribution.
+  [
+    ["detailsSss", payroll.sssContribution],
+    ["detailsPhilHealth", payroll.philHealthContribution],
+    ["detailsPagIbig", payroll.pagIbigContribution],
+  ].forEach(([id, amount]) => {
+    document.getElementById(id).textContent =
+      amount == null ? "Not recorded" : formatCurrency(amount);
+  });
+
   document.getElementById("detailsNetPay").textContent = formatCurrency(
     payroll.netPay,
   );

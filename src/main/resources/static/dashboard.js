@@ -372,182 +372,14 @@ async function decide(record, status, who) {
       throw new Error(await readError(response, `Unable to ${verb.toLowerCase()} this overtime.`));
     }
 
-    await Promise.all([loadApprovals(), loadOverview(), loadDashboardSummary()]);
+    await Promise.all([loadApprovals(), window.CompanyOverview.reload(), loadDashboardSummary()]);
     feedback("approvalsMessage", `Overtime for ${who} on ${record.overtimeDate} ${status.toLowerCase()}.`, "success");
   } catch (error) {
     feedback("approvalsMessage", error.message, "error");
   }
 }
 
-// ---------- company overview (administrators, HR, general managers) ----------
-
-const overviewMonth = $("overviewMonth");
-const monthName = new Intl.DateTimeFormat("en-PH", { month: "short", year: "numeric" });
-
-function monthLabel(yearMonth) {
-  const [year, month] = String(yearMonth).split("-").map(Number);
-  return monthName.format(new Date(year, month - 1, 1));
-}
-
-function compactMoney(value) {
-  const number = Number(value) || 0;
-  return number >= 1000 ? `₱${(number / 1000).toLocaleString("en-PH", { maximumFractionDigits: 1 })}k` : money(number);
-}
-
-async function loadOverview() {
-  const [year, month] = overviewMonth.value.split("-");
-
-  feedback("overviewMessage", "Loading...", null);
-
-  let summary;
-
-  try {
-    summary = await fetchJson(`/api/dashboard/executive?year=${Number(year)}&month=${Number(month)}`);
-  } catch (error) {
-    feedback("overviewMessage", "The company overview could not be loaded.", "error");
-    console.error(error);
-    return;
-  }
-
-  feedback("overviewMessage", "", null);
-  renderTotals(summary);
-  renderDepartments(summary);
-  renderTrend(summary.trend);
-
-  $("overviewNotes").replaceChildren(
-    ...(summary.notes || []).map((note) => {
-      const item = document.createElement("li");
-      item.textContent = note;
-      return item;
-    }),
-  );
-}
-
-function renderTotals(summary) {
-  const tiles = summary.totals.map((total) => [total.label, money(total.amount), total.key === "laborCost"]);
-
-  tiles.push(["Active employees", String(summary.activeEmployees), false]);
-  tiles.push(["Pending overtime requests", String(summary.pendingOvertimeRequests), false]);
-
-  $("overviewTotals").replaceChildren(
-    ...tiles.map(([label, value, primary]) => {
-      const tile = document.createElement("div");
-      const name = document.createElement("span");
-      const amount = document.createElement("strong");
-
-      tile.className = "overview-tile" + (primary ? " primary" : "");
-      name.textContent = label;
-      amount.textContent = value;
-      tile.append(name, amount);
-
-      return tile;
-    }),
-  );
-}
-
-function renderDepartments(summary) {
-  const body = $("departmentTableBody");
-
-  if (summary.departments.length === 0) {
-    emptyRow(body, 5, "No employees or payroll for this month.");
-    return;
-  }
-
-  body.replaceChildren(
-    ...summary.departments.map((department) => {
-      const row = document.createElement("tr");
-
-      row.append(
-        tableCell(department.department),
-        tableCell(String(department.activeEmployees), "amount"),
-        tableCell(money(department.amounts.grossPay), "amount"),
-        tableCell(money(department.amounts.employerContributions), "amount"),
-        tableCell(money(department.amounts.laborCost), "amount"),
-      );
-
-      return row;
-    }),
-  );
-}
-
-function renderTrend(trend) {
-  const chart = $("trendChart");
-  const tooltip = $("trendTooltip");
-  const highest = Math.max(...trend.map((point) => Number(point.amounts.laborCost) || 0), 0);
-
-  chart.replaceChildren(
-    ...trend.map((point, index) => {
-      const value = Number(point.amounts.laborCost) || 0;
-      const column = document.createElement("button");
-      const bar = document.createElement("span");
-      const label = `${monthLabel(point.month)}: ${money(value)}`;
-
-      column.type = "button";
-      column.className = "trend-column";
-      column.setAttribute("aria-label", `Labor cost ${label}`);
-
-      bar.className = "trend-bar";
-      bar.style.height = highest > 0 ? `${(value / highest) * 100}%` : "0";
-      column.appendChild(bar);
-
-      // Direct label on the latest month only; the rest are in the tooltip and table.
-      if (index === trend.length - 1 && value > 0) {
-        const tip = document.createElement("span");
-        tip.className = "trend-value";
-        tip.textContent = compactMoney(value);
-        tip.style.bottom = bar.style.height;
-        column.appendChild(tip);
-      }
-
-      const show = () => {
-        tooltip.textContent = label;
-        tooltip.hidden = false;
-        tooltip.style.left = `${column.offsetLeft + column.offsetWidth / 2}px`;
-        tooltip.style.top = `${column.offsetTop + column.offsetHeight - bar.offsetHeight - 6}px`;
-      };
-      const hide = () => {
-        tooltip.hidden = true;
-      };
-
-      column.addEventListener("mouseenter", show);
-      column.addEventListener("focus", show);
-      column.addEventListener("mouseleave", hide);
-      column.addEventListener("blur", hide);
-
-      return column;
-    }),
-  );
-
-  let labels = chart.nextElementSibling;
-  if (!labels || !labels.classList.contains("trend-labels")) {
-    labels = document.createElement("div");
-    labels.className = "trend-labels";
-    labels.setAttribute("aria-hidden", "true");
-    chart.after(labels);
-  }
-  labels.replaceChildren(
-    ...trend.map((point) => {
-      const name = document.createElement("span");
-      name.textContent = monthLabel(point.month).replace(/ \d{4}$/, "");
-      return name;
-    }),
-  );
-
-  $("trendTableBody").replaceChildren(
-    ...trend.slice().reverse().map((point) => {
-      const row = document.createElement("tr");
-
-      row.append(
-        tableCell(monthLabel(point.month)),
-        tableCell(money(point.amounts.grossPay), "amount"),
-        tableCell(money(point.amounts.overtimePay), "amount"),
-        tableCell(money(point.amounts.laborCost), "amount"),
-      );
-
-      return row;
-    }),
-  );
-}
+// The Company Overview is drawn by company-overview.js.
 
 logoutButton.addEventListener("click", async () => {
   logoutButton.disabled = true;
@@ -573,15 +405,7 @@ async function initializeDashboard() {
   try {
     const user = await loadCurrentUser();
 
-    const today = new Date();
-    overviewMonth.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    overviewMonth.addEventListener("change", () => {
-      if (overviewMonth.value) {
-        loadOverview();
-      }
-    });
-
-    const tasks = [loadDashboardSummary(), loadOverview()];
+    const tasks = [loadDashboardSummary()];
 
     if (user.role === "GENERAL_MANAGER" || user.role === "ADMINISTRATOR") {
       tasks.push(loadSignoffNotice());

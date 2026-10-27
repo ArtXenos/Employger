@@ -529,7 +529,7 @@ textarea {
   color: #94a3b8;
   font-size: 11px;
 }
-.dashboard-container .section-card {
+:is(.dashboard-container, .company-overview) .section-card {
   margin-bottom: 24px;
   padding: 24px;
   background: white;
@@ -537,18 +537,18 @@ textarea {
   border-radius: 12px;
   box-shadow: 0 3px 10px rgb(15 23 42 / 3%);
 }
-.dashboard-container .section-header {
+:is(.dashboard-container, .company-overview) .section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 18px;
 }
-.dashboard-container .section-header h2 {
+:is(.dashboard-container, .company-overview) .section-header h2 {
   margin: 0 0 5px;
   font-size: 17px;
 }
-.dashboard-container .section-header p {
+:is(.dashboard-container, .company-overview) .section-header p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
@@ -618,7 +618,13 @@ textarea {
   color: #b91c1c;
 }
 /* ---------- dashboard: pending approvals and company overview ---------- */
-.dashboard-container .visually-hidden {
+/* On other pages (Reports) the overview sits among their own section
+   headers; keep the dashboard's look. */
+.company-overview .section-header {
+  padding: 0;
+  border-bottom: 0;
+}
+:is(.dashboard-container, .company-overview) .visually-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -626,124 +632,124 @@ textarea {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
-.dashboard-container .overview-filter {
+:is(.dashboard-container, .company-overview) .overview-filter {
   display: flex;
   flex-direction: column;
   gap: 4px;
   font-size: 13px;
   font-weight: 600;
 }
-.dashboard-container .overview-filter input {
+:is(.dashboard-container, .company-overview) .overview-filter input {
   padding: 8px 10px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 14px;
 }
-.dashboard-container .overview-filter input:focus-visible {
+:is(.dashboard-container, .company-overview) .overview-filter input:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 1px;
 }
-.dashboard-container .overview-feedback {
+:is(.dashboard-container, .company-overview) .overview-feedback {
   margin: 0 0 12px;
   color: var(--muted);
   font-size: 13px;
 }
-.dashboard-container .overview-feedback:empty {
+:is(.dashboard-container, .company-overview) .overview-feedback:empty {
   display: none;
 }
-.dashboard-container .overview-feedback.error {
+:is(.dashboard-container, .company-overview) .overview-feedback.error {
   color: #b91c1c;
 }
-.dashboard-container .overview-feedback.success {
+:is(.dashboard-container, .company-overview) .overview-feedback.success {
   color: #047857;
 }
-.dashboard-container .overview-totals {
+:is(.dashboard-container, .company-overview) .overview-totals {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
 }
-.dashboard-container .overview-tile {
+:is(.dashboard-container, .company-overview) .overview-tile {
   padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
 }
-.dashboard-container .overview-tile span {
+:is(.dashboard-container, .company-overview) .overview-tile span {
   display: block;
   color: var(--muted);
   font-size: 12px;
 }
-.dashboard-container .overview-tile strong {
+:is(.dashboard-container, .company-overview) .overview-tile strong {
   display: block;
   margin-top: 4px;
   color: var(--text);
   font-size: 20px;
   font-variant-numeric: tabular-nums;
 }
-.dashboard-container .overview-tile.primary {
+:is(.dashboard-container, .company-overview) .overview-tile.primary {
   border-color: #bfdbfe;
   background: #eff6ff;
 }
-.dashboard-container .overview-notes {
+:is(.dashboard-container, .company-overview) .overview-notes {
   margin: 0 0 12px;
   padding-left: 18px;
   color: var(--muted);
   font-size: 13px;
 }
-.dashboard-container .overview-notes:empty {
+:is(.dashboard-container, .company-overview) .overview-notes:empty {
   display: none;
 }
-.dashboard-container .overview-columns {
+:is(.dashboard-container, .company-overview) .overview-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
-.dashboard-container .overview-columns > * {
+:is(.dashboard-container, .company-overview) .overview-columns > * {
   min-width: 0;
 }
-.dashboard-container .overview-subheading {
+:is(.dashboard-container, .company-overview) .overview-subheading {
   margin: 8px 0 10px;
   color: var(--text);
   font-size: 14px;
   font-weight: 600;
 }
-.dashboard-container .overview-table {
+:is(.dashboard-container, .company-overview) .overview-table {
   position: relative;
   overflow-x: auto;
 }
-.dashboard-container .overview-table table {
+:is(.dashboard-container, .company-overview) .overview-table table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
-.dashboard-container .overview-table :is(th, td) {
+:is(.dashboard-container, .company-overview) .overview-table :is(th, td) {
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;
 }
-.dashboard-container .overview-table th {
+:is(.dashboard-container, .company-overview) .overview-table th {
   color: var(--muted);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.dashboard-container .overview-table .amount {
+:is(.dashboard-container, .company-overview) .overview-table .amount {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.dashboard-container .overview-table .empty {
+:is(.dashboard-container, .company-overview) .overview-table .empty {
   color: var(--muted);
   text-align: center;
   white-space: normal;
 }
-.dashboard-container .overview-table .action-buttons {
+:is(.dashboard-container, .company-overview) .overview-table .action-buttons {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
 }
-.dashboard-container .trend-figure {
+:is(.dashboard-container, .company-overview) .trend-figure {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -755,22 +761,22 @@ textarea {
   align-items: start;
   margin: 0;
 }
-.dashboard-container .trend-figure > figcaption {
+:is(.dashboard-container, .company-overview) .trend-figure > figcaption {
   grid-area: title;
 }
-.dashboard-container .trend-figure > .trend-chart {
+:is(.dashboard-container, .company-overview) .trend-figure > .trend-chart {
   grid-area: chart;
 }
-.dashboard-container .trend-figure > .trend-labels {
+:is(.dashboard-container, .company-overview) .trend-figure > .trend-labels {
   grid-area: labels;
 }
-.dashboard-container .trend-figure > .overview-table {
+:is(.dashboard-container, .company-overview) .trend-figure > .overview-table {
   grid-area: table;
 }
 /* Single-series column chart: one hue, columns <= 24px, 4px rounded tops
    on one baseline, value label on the latest month only, tooltip on hover
    and keyboard focus, and the table below as the full data view. */
-.dashboard-container .trend-chart {
+:is(.dashboard-container, .company-overview) .trend-chart {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   align-items: end;
@@ -779,7 +785,7 @@ textarea {
   padding-top: 20px;
   border-bottom: 1px solid #cbd5e1;
 }
-.dashboard-container .trend-column {
+:is(.dashboard-container, .company-overview) .trend-column {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -791,21 +797,21 @@ textarea {
   padding: 0;
   cursor: default;
 }
-.dashboard-container .trend-column:focus-visible {
+:is(.dashboard-container, .company-overview) .trend-column:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
   border-radius: 4px;
 }
-.dashboard-container .trend-bar {
+:is(.dashboard-container, .company-overview) .trend-bar {
   width: min(24px, 60%);
   min-height: 0;
   border-radius: 4px 4px 0 0;
   background: var(--blue);
 }
-.dashboard-container .trend-column:is(:hover, :focus-visible) .trend-bar {
+:is(.dashboard-container, .company-overview) .trend-column:is(:hover, :focus-visible) .trend-bar {
   background: var(--blue-dark);
 }
-.dashboard-container .trend-value {
+:is(.dashboard-container, .company-overview) .trend-value {
   position: absolute;
   padding-bottom: 4px;
   color: var(--text);
@@ -813,7 +819,7 @@ textarea {
   font-weight: 600;
   white-space: nowrap;
 }
-.dashboard-container .trend-labels {
+:is(.dashboard-container, .company-overview) .trend-labels {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   margin: -6px 0 14px;
@@ -821,7 +827,7 @@ textarea {
   font-size: 11px;
   text-align: center;
 }
-.dashboard-container .trend-tooltip {
+:is(.dashboard-container, .company-overview) .trend-tooltip {
   position: absolute;
   z-index: 5;
   padding: 6px 10px;
@@ -834,7 +840,7 @@ textarea {
   transform: translate(-50%, -100%);
 }
 @media (max-width: 1150px) {
-  .dashboard-container .trend-figure {
+  :is(.dashboard-container, .company-overview) .trend-figure {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "title"
@@ -844,18 +850,18 @@ textarea {
   }
 }
 @media (max-width: 760px) {
-  .dashboard-container .overview-totals {
+  :is(.dashboard-container, .company-overview) .overview-totals {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .dashboard-container .section-header {
+  :is(.dashboard-container, .company-overview) .section-header {
     flex-wrap: wrap;
   }
 }
 @media (max-width: 1150px) {
-  .dashboard-container .summary-grid {
+  :is(.dashboard-container, .company-overview) .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .dashboard-container .quick-actions {
+  :is(.dashboard-container, .company-overview) .quick-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -896,30 +902,30 @@ textarea {
     margin-top: 12px;
     text-align: center;
   }
-  .dashboard-container .topbar {
+  :is(.dashboard-container, .company-overview) .topbar {
     min-height: auto;
     padding: 18px;
   }
-  .dashboard-container .topbar h2 {
+  :is(.dashboard-container, .company-overview) .topbar h2 {
     font-size: 22px;
   }
-  .dashboard-container .dashboard-content {
+  :is(.dashboard-container, .company-overview) .dashboard-content {
     padding: 18px;
   }
-  .dashboard-container .welcome-card {
+  :is(.dashboard-container, .company-overview) .welcome-card {
     align-items: flex-start;
     flex-direction: column;
     padding: 22px;
   }
-  .dashboard-container .summary-grid,
-  .dashboard-container .quick-actions {
+  :is(.dashboard-container, .company-overview) .summary-grid,
+  :is(.dashboard-container, .company-overview) .quick-actions {
     grid-template-columns: 1fr;
     gap: 12px;
   }
-  .dashboard-container .summary-card {
+  :is(.dashboard-container, .company-overview) .summary-card {
     padding: 17px;
   }
-  .dashboard-container .quick-actions .action-button {
+  :is(.dashboard-container, .company-overview) .quick-actions .action-button {
     min-height: 115px;
   }
 }

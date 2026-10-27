@@ -54,6 +54,9 @@
           <a href="/users.html" class="nav-item"
             ><span aria-hidden="true">⚿</span>Users</a
           >
+          <a href="/audit-log.html" class="nav-item"
+            ><span aria-hidden="true">☰</span>Audit Log</a
+          >
         </nav>
 
         <button id="logoutButton" class="logout-button" type="button">
@@ -75,6 +78,11 @@
             </p>
           </div>
         </header>
+
+        <!-- COMPANY OVERVIEW (same as the Dashboard): drawn by company-overview.js -->
+        <div class="company-overview">
+          <section class="section-card" data-company-overview></section>
+        </div>
 
         <!-- MONTHLY REMITTANCES -->
         <section class="records-section">
@@ -351,6 +359,7 @@
 
     <script src="/csrf.js"></script>
     <script src="/session.js"></script>
+    <script src="/company-overview.js"></script>
     <script src="/reports.js"></script>
     <script src="/account.js"></script>
     <script src="/password-toggle.js"></script>

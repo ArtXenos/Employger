@@ -48,6 +48,9 @@
           <a href="/users.html" class="nav-item"
             ><span aria-hidden="true">⚿</span>Users</a
           >
+          <a href="/audit-log.html" class="nav-item"
+            ><span aria-hidden="true">☰</span>Audit Log</a
+          >
         </nav>
 
         <button id="logoutButton" class="logout-button" type="button">
@@ -172,64 +175,8 @@
             </div>
           </section>
 
-          <section class="section-card" id="overviewSection" aria-labelledby="overviewHeading">
-            <div class="section-header">
-              <div>
-                <h2 id="overviewHeading">Company Overview</h2>
-                <p>Payroll cost from processed and paid payroll, by the month the pay cycle ends. Totals only, no personal data.</p>
-              </div>
-              <div class="overview-filter">
-                <label for="overviewMonth">Month</label>
-                <input id="overviewMonth" type="month" />
-              </div>
-            </div>
-
-            <p id="overviewMessage" class="overview-feedback" role="status" aria-live="polite"></p>
-
-            <div id="overviewTotals" class="overview-totals" aria-label="Totals for the month"></div>
-            <ul id="overviewNotes" class="overview-notes"></ul>
-
-            <div class="overview-columns">
-              <div>
-                <h3 class="overview-subheading">By department</h3>
-                <div class="overview-table">
-                  <table>
-                    <caption class="visually-hidden">Payroll cost by department</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Department</th>
-                        <th scope="col" class="amount">Active employees</th>
-                        <th scope="col" class="amount">Gross pay</th>
-                        <th scope="col" class="amount">Employer contributions</th>
-                        <th scope="col" class="amount">Labor cost</th>
-                      </tr>
-                    </thead>
-                    <tbody id="departmentTableBody"></tbody>
-                  </table>
-                </div>
-              </div>
-
-              <figure class="trend-figure" aria-labelledby="trendTitle">
-                <figcaption id="trendTitle" class="overview-subheading">Labor cost, last 6 months</figcaption>
-                <div id="trendChart" class="trend-chart"></div>
-                <div id="trendTooltip" class="trend-tooltip" role="tooltip" hidden></div>
-                <div class="overview-table">
-                  <table>
-                    <caption class="visually-hidden">Labor cost by month</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">Month</th>
-                        <th scope="col" class="amount">Gross pay</th>
-                        <th scope="col" class="amount">Overtime pay</th>
-                        <th scope="col" class="amount">Labor cost</th>
-                      </tr>
-                    </thead>
-                    <tbody id="trendTableBody"></tbody>
-                  </table>
-                </div>
-              </figure>
-            </div>
-          </section>
+          <!-- Company Overview: drawn by company-overview.js -->
+          <section class="section-card" data-company-overview></section>
 
           <section class="section-card">
             <div class="section-header">
@@ -276,6 +223,7 @@
     <script src="/account.js"></script>
     <script src="/password-toggle.js"></script>
     <script src="/reason-dialog.js"></script>
+    <script src="/company-overview.js" defer></script>
     <script src="/dashboard.js" defer></script>
   </body>
 </html>

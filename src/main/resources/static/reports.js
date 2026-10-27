@@ -1,5 +1,6 @@
 // Reports page: monthly SSS / PhilHealth / Pag-IBIG / BIR 1601-C figures with
-// CSV downloads, and BIR Form 2316 for one employee and year. The server
+// CSV downloads, the monthly attendance and overtime summaries, 13th month
+// pay, and BIR Form 2316 for one employee and year. The server
 // limits these to administrators and HR managers.
 
 const AGENCIES = [
@@ -15,10 +16,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const month = String(today.getMonth() + 1).padStart(2, "0");
 
   $("reportMonth").value = `${today.getFullYear()}-${month}`;
+  $("summaryMonth").value = `${today.getFullYear()}-${month}`;
   $("form2316Year").value = today.getFullYear();
   $("thirteenthYear").value = today.getFullYear();
 
   $("reportMonth").addEventListener("change", loadMonthly);
+  $("summaryMonth").addEventListener("change", loadSummaries);
   $("thirteenthYear").addEventListener("change", loadThirteenthMonth);
   $("form2316Form").addEventListener("submit", loadForm2316);
   $("print2316Button").addEventListener("click", () => window.print());
@@ -29,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   loadMonthly();
+  loadSummaries();
   loadThirteenthMonth();
   loadEmployees();
 });
@@ -191,6 +195,122 @@ function renderBir1601c(bir) {
 }
 
 // ---------- 13th month pay ----------
+
+// ---------- attendance and overtime summaries ----------
+
+async function loadSummaries() {
+  const [year, month] = ($("summaryMonth").value || "").split("-").map(Number);
+  const attendanceBody = $("attendanceSummaryTableBody");
+  const overtimeBody = $("overtimeSummaryTableBody");
+
+  clearMessage("summaryMessage");
+
+  if (!year || !month) {
+    setEmptyRow(attendanceBody, 7, "Choose a month.");
+    setEmptyRow(overtimeBody, 5, "Choose a month.");
+    return;
+  }
+
+  setEmptyRow(attendanceBody, 7, "Loading...");
+  setEmptyRow(overtimeBody, 5, "Loading...");
+
+  let attendance;
+  let overtime;
+
+  try {
+    [attendance, overtime] = await Promise.all([
+      api(`/api/reports/attendance-summary?year=${year}&month=${month}`),
+      api(`/api/reports/overtime-summary?year=${year}&month=${month}`),
+    ]);
+  } catch (error) {
+    // A denied role already sees the message in the first section.
+    if (!error.denied) {
+      showError("summaryMessage", error.message);
+    }
+    setEmptyRow(attendanceBody, 7, "-");
+    setEmptyRow(overtimeBody, 5, "-");
+    return;
+  }
+
+  renderAttendanceSummary(attendance);
+  renderOvertimeSummary(overtime);
+}
+
+function renderAttendanceSummary(report) {
+  const body = $("attendanceSummaryTableBody");
+
+  if (report.employees.length === 0) {
+    setEmptyRow(body, 7, `No employees in ${report.period}.`);
+    return;
+  }
+
+  body.innerHTML = "";
+
+  report.employees.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(row.employeeName)}</td>
+      <td>${escapeHtml(row.department)}</td>
+      <td class="money">${row.present}</td>
+      <td class="money">${row.late}</td>
+      <td class="money">${row.absent}</td>
+      <td class="money">${row.onLeave}</td>
+      <td class="money">${formatHours(row.regularHours)}</td>`;
+    body.appendChild(tr);
+  });
+
+  const total = document.createElement("tr");
+  total.className = "total-row";
+  total.innerHTML = `
+    <td colspan="2">Total</td>
+    <td class="money">${report.totalPresent}</td>
+    <td class="money">${report.totalLate}</td>
+    <td class="money">${report.totalAbsent}</td>
+    <td class="money">${report.totalOnLeave}</td>
+    <td class="money">${formatHours(report.totalRegularHours)}</td>`;
+  body.appendChild(total);
+}
+
+function renderOvertimeSummary(report) {
+  const body = $("overtimeSummaryTableBody");
+
+  $("overtimeSummaryInfo").textContent =
+    `Approved overtime in ${report.period}. Pending and rejected overtime is left out. ` +
+    `Company-wide: ${formatHours(report.totalHours)} hours over ${report.employees.length} employees, ` +
+    `an average of ${formatHours(report.averageHoursPerEmployee)} hours per employee ` +
+    `(${report.employeesWithOvertime} worked overtime).`;
+
+  if (report.employees.length === 0) {
+    setEmptyRow(body, 5, `No employees in ${report.period}.`);
+    return;
+  }
+
+  body.innerHTML = "";
+
+  report.employees.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(row.employeeName)}</td>
+      <td>${escapeHtml(row.department)}</td>
+      <td class="money">${row.overtimeDays}</td>
+      <td class="money">${formatHours(row.totalHours)}</td>
+      <td class="money">${row.overtimeDays > 0 ? formatHours(row.averageHours) : "-"}</td>`;
+    body.appendChild(tr);
+  });
+
+  const total = document.createElement("tr");
+  total.className = "total-row";
+  total.innerHTML = `
+    <td colspan="2">Total</td>
+    <td class="money">${report.overtimeDays}</td>
+    <td class="money">${formatHours(report.totalHours)}</td>
+    <td class="money">${report.overtimeDays > 0 ? formatHours(report.averageHoursPerOvertimeDay) : "-"}</td>`;
+  body.appendChild(total);
+}
+
+function formatHours(value) {
+  return Number(value || 0).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 async function loadThirteenthMonth() {
   const year = Number($("thirteenthYear").value);

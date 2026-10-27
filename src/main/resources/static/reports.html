@@ -70,7 +70,8 @@
               Monthly SSS, PhilHealth, Pag-IBIG and BIR 1601-C figures, 13th
               month pay for the year, and BIR Form 2316 for each employee. Built from processed and paid
               payroll only; a payroll belongs to the month its pay cycle ends.
-              Copy the figures into each agency's portal.
+              Copy the figures into each agency's portal. The attendance and
+              overtime summaries are built from attendance and approved overtime.
             </p>
           </div>
         </header>
@@ -193,6 +194,75 @@
             <table class="figures-table">
               <tbody id="birTableBody">
                 <tr><td colspan="2" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ATTENDANCE SUMMARY -->
+        <section class="records-section">
+          <div class="section-header with-actions">
+            <div>
+              <h3>Attendance Summary</h3>
+              <p id="attendanceSummaryInfo">
+                Days with an attendance record, per employee. Late days are
+                counted separately from present days.
+              </p>
+            </div>
+
+            <div class="section-actions">
+              <label for="summaryMonth" class="inline-label">Month</label>
+              <input type="month" id="summaryMonth" class="year-input month-input" />
+            </div>
+          </div>
+
+          <p id="summaryMessage" class="form-message report-message" role="alert"></p>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Department</th>
+                  <th class="money">Present</th>
+                  <th class="money">Late</th>
+                  <th class="money">Absent</th>
+                  <th class="money">On Leave</th>
+                  <th class="money">Regular Hours</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceSummaryTableBody">
+                <tr><td colspan="7" class="empty-row">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- OVERTIME SUMMARY -->
+        <section class="records-section">
+          <div class="section-header">
+            <div>
+              <h3>Overtime Summary</h3>
+              <p id="overtimeSummaryInfo">
+                Approved overtime in the month chosen above. Pending and
+                rejected overtime is left out.
+              </p>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Department</th>
+                  <th class="money">Overtime Days</th>
+                  <th class="money">Total Hours</th>
+                  <th class="money">Average Hours per Day</th>
+                </tr>
+              </thead>
+              <tbody id="overtimeSummaryTableBody">
+                <tr><td colspan="5" class="empty-row">Loading...</td></tr>
               </tbody>
             </table>
           </div>

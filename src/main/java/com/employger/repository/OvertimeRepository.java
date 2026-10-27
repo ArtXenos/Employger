@@ -24,6 +24,11 @@ public interface OvertimeRepository
         Integer employeeId,
         LocalDate overtimeDate);
 
+    List<Overtime> findByOvertimeDateBetweenAndStatus(
+        LocalDate startDate,
+        LocalDate endDate,
+        ApprovalRequest.Status status);
+
     List<Overtime> findByEmployeeEmployeeIdAndOvertimeDateBetweenAndStatus(
         Integer employeeId,
         LocalDate startDate,

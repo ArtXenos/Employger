@@ -101,6 +101,33 @@ class ReportsAndBenefitsApiIntegrationTest {
     }
 
     @Test
+    void attendanceAndOvertimeSummariesForAMonth() throws Exception {
+        mockMvc.perform(get("/api/reports/attendance-summary").param("year", "2026").param("month", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.period").value("October 2026"))
+                .andExpect(jsonPath("$.employees").isArray())
+                .andExpect(jsonPath("$.totalRegularHours").exists());
+
+        mockMvc.perform(get("/api/reports/overtime-summary").param("year", "2026").param("month", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.period").value("October 2026"))
+                .andExpect(jsonPath("$.averageHoursPerEmployee").exists())
+                .andExpect(jsonPath("$.employeesWithOvertime").exists());
+
+        mockMvc.perform(get("/api/reports/overtime-summary").param("year", "2026").param("month", "13"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "gm.user", roles = "GENERAL_MANAGER")
+    void generalManagersCannotOpenTheSummaries() throws Exception {
+        mockMvc.perform(get("/api/reports/attendance-summary").param("year", "2026").param("month", "10"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/reports/overtime-summary").param("year", "2026").param("month", "10"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void form2316SumsTheYearAndComputesTaxDue() throws Exception {
         mockMvc.perform(get("/api/reports/2316").param("year", "2026").param("employeeId", ana.getEmployeeId().toString()))
                 .andExpect(status().isOk())

@@ -2,16 +2,20 @@ package com.employger.controller;
 
 import com.employger.service.EarningService;
 import com.employger.service.ReportService;
+import com.employger.service.summary.AttendanceSummaryReport;
+import com.employger.service.summary.OvertimeSummaryReport;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
+import java.time.YearMonth;
 
 /**
- * Remittance working reports and BIR Form 2316 figures. Administrators and
- * HR managers only (SecurityConfig): they include government ID numbers.
+ * Remittance working reports, BIR Form 2316 figures, and the monthly
+ * attendance and overtime summaries. Administrators and HR managers only
+ * (SecurityConfig): they include government ID numbers.
  */
 @RestController
 @RequestMapping("/api/reports")
@@ -19,10 +23,18 @@ public class ReportController {
 
     private final ReportService reportService;
     private final EarningService earningService;
+    private final AttendanceSummaryReport attendanceSummaryReport;
+    private final OvertimeSummaryReport overtimeSummaryReport;
 
-    public ReportController(ReportService reportService, EarningService earningService) {
+    public ReportController(
+            ReportService reportService,
+            EarningService earningService,
+            AttendanceSummaryReport attendanceSummaryReport,
+            OvertimeSummaryReport overtimeSummaryReport) {
         this.reportService = reportService;
         this.earningService = earningService;
+        this.attendanceSummaryReport = attendanceSummaryReport;
+        this.overtimeSummaryReport = overtimeSummaryReport;
     }
 
     @GetMapping("/monthly")
@@ -71,6 +83,23 @@ public class ReportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"13th-month-" + year + ".csv\"")
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .body(body);
+    }
+
+    @GetMapping("/attendance-summary")
+    public AttendanceSummaryReport.Report attendanceSummary(@RequestParam int year, @RequestParam int month) {
+        return attendanceSummaryReport.report(yearMonth(year, month));
+    }
+
+    @GetMapping("/overtime-summary")
+    public OvertimeSummaryReport.Report overtimeSummary(@RequestParam int year, @RequestParam int month) {
+        return overtimeSummaryReport.report(yearMonth(year, month));
+    }
+
+    private static YearMonth yearMonth(int year, int month) {
+        if (month < 1 || month > 12 || year < 2000 || year > 2100) {
+            throw new IllegalArgumentException("Choose a month between January 2000 and December 2100");
+        }
+        return YearMonth.of(year, month);
     }
 
     @GetMapping("/2316")

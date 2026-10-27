@@ -40,12 +40,17 @@ public class PayrollCalculationService {
         public BigDecimal calculateAnnualSalary(
                         Employee employee) {
 
-                if (employee.getBaseSalary() == null) {
+                return annualSalaryFor(employee.getBaseSalary());
+        }
+
+        /** Monthly salary x 12; zero when no salary is set. */
+        public BigDecimal annualSalaryFor(BigDecimal monthlySalary) {
+
+                if (monthlySalary == null) {
                         return BigDecimal.ZERO;
                 }
 
-                return employee.getBaseSalary()
-                                .multiply(MONTHS_PER_YEAR);
+                return monthlySalary.multiply(MONTHS_PER_YEAR);
         }
 
         public BigDecimal calculateFactorRate() {
@@ -120,11 +125,17 @@ public class PayrollCalculationService {
         public BigDecimal calculateHourlyRate(
                         Employee employee) {
 
-                if (employee.getBaseSalary() == null) {
+                return hourlyRateFor(employee.getBaseSalary());
+        }
+
+        /** The hourly rate of this monthly salary (see calculateHourlyRate). */
+        public BigDecimal hourlyRateFor(BigDecimal monthlySalary) {
+
+                if (monthlySalary == null) {
                         return BigDecimal.ZERO.setScale(INTERMEDIATE_SCALE);
                 }
 
-                BigDecimal annualSalary = calculateAnnualSalary(employee);
+                BigDecimal annualSalary = annualSalaryFor(monthlySalary);
 
                 BigDecimal factorRate = calculateFactorRate();
 
@@ -168,11 +179,19 @@ public class PayrollCalculationService {
                         Employee employee,
                         PayCycle.CycleType cycleType) {
 
-                if (employee.getBaseSalary() == null) {
+                return cycleBasePayFor(employee.getBaseSalary(), cycleType);
+        }
+
+        /** Full base pay for one cycle of this monthly salary. */
+        public BigDecimal cycleBasePayFor(
+                        BigDecimal monthlySalary,
+                        PayCycle.CycleType cycleType) {
+
+                if (monthlySalary == null) {
                         return BigDecimal.ZERO.setScale(INTERMEDIATE_SCALE);
                 }
 
-                return calculateAnnualSalary(employee).divide(
+                return annualSalaryFor(monthlySalary).divide(
                                 BigDecimal.valueOf(periodsPerYear(cycleType)),
                                 INTERMEDIATE_SCALE,
                                 RoundingMode.HALF_UP);
@@ -183,7 +202,15 @@ public class PayrollCalculationService {
                         Employee employee,
                         BigDecimal overtimeMultiplier) {
 
-                return calculateHourlyRate(employee)
+                return overtimeRateFor(employee.getBaseSalary(), overtimeMultiplier);
+        }
+
+        /** Overtime hourly rate of this monthly salary, rounded to centavos. */
+        public BigDecimal overtimeRateFor(
+                        BigDecimal monthlySalary,
+                        BigDecimal overtimeMultiplier) {
+
+                return hourlyRateFor(monthlySalary)
                                 .multiply(overtimeMultiplier)
                                 .setScale(
                                                 FINAL_MONETARY_SCALE,
@@ -199,6 +226,15 @@ public class PayrollCalculationService {
                         BigDecimal overtimeHours,
                         BigDecimal overtimeMultiplier) {
 
+                return overtimePayFor(employee.getBaseSalary(), overtimeHours, overtimeMultiplier);
+        }
+
+        /** Overtime pay at this monthly salary, rounded once at the end. */
+        public BigDecimal overtimePayFor(
+                        BigDecimal monthlySalary,
+                        BigDecimal overtimeHours,
+                        BigDecimal overtimeMultiplier) {
+
                 if (overtimeHours == null
                                 || overtimeHours.compareTo(
                                                 BigDecimal.ZERO) <= 0) {
@@ -208,7 +244,7 @@ public class PayrollCalculationService {
                                         RoundingMode.HALF_UP);
                 }
 
-                return calculateHourlyRate(employee)
+                return hourlyRateFor(monthlySalary)
                                 .multiply(overtimeMultiplier)
                                 .multiply(overtimeHours)
                                 .setScale(

@@ -2,7 +2,7 @@
 
 These test cases are carried out by hand in the browser at <http://localhost:8080>. There are four groups: Salary Management, Employee Management, Work Hour Tracking and Document Generation. After running each case, fill in **Actual Result** and set **Status** to Pass or Fail.
 
-The 327 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This document is the hand-run check of what a user sees.
+The 342 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This document is the hand-run check of what a user sees.
 
 ## Before you start
 
@@ -56,6 +56,8 @@ Covers: salary per employee including tax, custom pay cycles, and bonuses and ov
 | SM-19 | Payment method is required | An APPROVED payroll | Click **Mark as Paid** and confirm without choosing a method. | Method: (none) | Not paid. Message: "Please select a payment method." If the page check is bypassed, the server refuses it with "Payment method is required". | | |
 | SM-20 | Only DRAFT payroll can be deleted | SM-18, plus any DRAFT payroll | 1. Look at the PAID payroll's buttons.<br>2. Click **Delete** on a DRAFT payroll and confirm. | | A PAID payroll has no Delete button. A DRAFT payroll is removed after confirming. | | |
 | SM-21 | General Manager cannot change salary data | Logged in as General Manager | Open **Employees**, **Pay Cycles** and **Payroll**. | | A read-only banner shows. The Add, Edit, Delete, Generate and Process controls are hidden. Approve and Send back are still available on PROCESSED payroll. | | |
+| SM-22 | Generate payroll for all employees | A new OPEN pay cycle, several active employees, and one employee hired after the cycle ends | 1. Open **Payroll**.<br>2. Click **Generate for All**.<br>3. Choose the pay cycle and click **Generate**. | Pay Cycle: December 1-15, 2026 | A DRAFT payroll is created for each employee who can be paid in the cycle. The list shows each employee as Created (with payroll number and net pay) or Skipped (with the reason, e.g. "hired on ..., after this pay cycle ends"). The payroll table shows the new drafts. | | |
+| SM-23 | Generate for All skips payroll that already exists | SM-22 | Click **Generate** again for the same pay cycle. | | Nothing new is created: "0 created". Each employee is Skipped with "Payroll already exists for this employee and pay cycle". | | |
 
 ## 2. Employee Management
 
@@ -77,6 +79,9 @@ Covers: a complete database of employees shown in a table, where employees can b
 | EM-12 | Drop an employee by making them Inactive | EM-11 | Edit Maria Santos, set Employment Status to Inactive and save. | Status: Inactive | The table shows status Inactive. The employee stays on record. | | |
 | EM-13 | Inactive employees get no new payroll | EM-12 and a new OPEN pay cycle | Try to generate payroll for Maria Santos in the new cycle. | | Refused. The message says payroll can only be generated for ACTIVE employees. Set her back to Active afterwards for the later tests. | | |
 | EM-14 | Only staff roles can manage employees | Logged in as General Manager, then as Employee | 1. As General Manager, open **Employees**.<br>2. As Employee, try to open `/employees.html`. | | General Manager sees the table read-only with no Add, Edit or Delete. Employee is redirected to **My Payroll**. | | |
+| EM-15 | Salary change with an effective date | EM-01, logged in as HR Manager | 1. Click **Edit** on Maria Santos.<br>2. Change Base Salary.<br>3. In the box that appears, enter the effective date and a reason, and save.<br>4. Click **Edit** again. | Base Salary: 28,710.00<br>Effective: 2026-11-23<br>Reason: Promotion | The effective-date box appears only when the salary is changed. After saving, **Salary History** lists 2026-11-23, from ₱26,100.00 to ₱28,710.00, Promotion, and who changed it. | | |
+| EM-16 | A raise in the middle of a pay cycle | EM-15, no payroll yet for November 16-30 | Generate payroll for Maria Santos for November 16-30, 2026 and click **View**. | Cycle: 2026-11-16 to 2026-11-30 | Base pay is split by working days: Nov 16-20 (5 days) at ₱26,100 and Nov 23-30 (6 days) at ₱28,710, i.e. 13,050 × 5/11 + 14,355 × 6/11 = ₱13,761.82. The payroll notes say how it was split. | | |
+| EM-17 | A salary change can't reach into processed payroll | Maria Santos has PAID payroll for November 1-15 (SM-18) | Edit Maria Santos, change the salary and set the effective date inside that cycle. | Effective: 2026-11-10 | Not saved. Message: "Payroll up to 2026-11-15 (...) is already processed. Choose a date after it, and record a correction on the Payroll page for pay owed before then." | | |
 
 ## 3. Work Hour Tracking
 

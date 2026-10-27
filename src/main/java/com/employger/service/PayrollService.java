@@ -19,6 +19,8 @@ import com.employger.repository.AttendanceRepository;
 import com.employger.repository.EarningRepository;
 import com.employger.repository.PayrollAdjustmentRepository;
 import com.employger.repository.PayslipRepository;
+import com.employger.service.salary.SalaryHistoryService;
+import com.employger.service.salary.SalaryTimeline;
 import com.employger.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 @Service
 public class PayrollService {
@@ -59,6 +62,7 @@ public class PayrollService {
         private final YearEndTaxService yearEndTaxService;
         private final PayrollAdjustmentRepository payrollAdjustmentRepository;
         private final PayslipRepository payslipRepository;
+        private final SalaryHistoryService salaryHistoryService;
 
         public PayrollService(
                         PayrollRepository payrollRepository,
@@ -75,11 +79,13 @@ public class PayrollService {
                         EarningRepository earningRepository,
                         YearEndTaxService yearEndTaxService,
                         PayrollAdjustmentRepository payrollAdjustmentRepository,
-                        PayslipRepository payslipRepository) {
+                        PayslipRepository payslipRepository,
+                        SalaryHistoryService salaryHistoryService) {
 
                 this.statutoryDeductionService = statutoryDeductionService;
                 this.payrollAdjustmentRepository = payrollAdjustmentRepository;
                 this.payslipRepository = payslipRepository;
+                this.salaryHistoryService = salaryHistoryService;
                 this.holidayService = holidayService;
                 this.earningsCalculator = earningsCalculator;
                 this.earningRepository = earningRepository;
@@ -397,6 +403,11 @@ public class PayrollService {
          *    another payroll is included.
          *  - Intermediate values keep 6 decimals; only final amounts are
          *    rounded to centavos.
+         *  - Salary history (V13): each day is paid at the salary in effect
+         *    that day. A change inside the cycle splits base pay by working
+         *    days, and each day's deductions and premiums use its own hourly
+         *    rate. Contributions and the stored hourly rate use the salary
+         *    on the last day employed in the cycle.
          *
          * `existing` is the payroll being recalculated (null for a new one),
          * so overtime already linked to it is still included.
@@ -408,7 +419,11 @@ public class PayrollService {
 
                 PayrollCalculationService rates = payrollCalculationService;
 
-                BigDecimal hourlyRate = rates.calculateHourlyRate(employee);
+                SalaryTimeline salaries = salaryHistoryService.timeline(employee);
+                Map<LocalDate, BigDecimal> hourlyRates = new HashMap<>();
+                Function<LocalDate, BigDecimal> hourlyRateOn = date -> hourlyRates.computeIfAbsent(
+                                date, day -> rates.hourlyRateFor(salaries.salaryOn(day)));
+
                 BigDecimal factorRate = rates.calculateFactorRate();
                 BigDecimal regularHoursPerDay = rates.calculateRegularHoursPerDay();
                 Set<DayOfWeek> restDays = rates.getRestDays();
@@ -434,15 +449,48 @@ public class PayrollService {
 
                 List<String> notes = new ArrayList<>();
 
+                // The salary on the last day employed in the cycle.
+                LocalDate lastDayPaid = employedUntil.isBefore(employedFrom) ? cycleEnd : employedUntil;
+                BigDecimal monthlySalary = salaries.salaryOn(lastDayPaid);
+                BigDecimal hourlyRate = hourlyRateOn.apply(lastDayPaid);
+
                 // ---------- base pay, prorated by working days ----------
 
-                BigDecimal cycleBasePay = rates.calculateCycleBasePay(
-                                employee,
+                BigDecimal cycleBasePay = rates.cycleBasePayFor(
+                                monthlySalary,
                                 payCycle.getCycleType());
 
                 BigDecimal basePay = cycleBasePay;
 
-                if (workingDaysInCycle > 0 && workingDaysEmployed < workingDaysInCycle) {
+                List<LocalDate> salaryChanges = salaries.changeDatesWithin(employedFrom, employedUntil);
+
+                if (!salaryChanges.isEmpty() && workingDaysInCycle > 0) {
+
+                        // Each stretch between changes is paid at its own salary.
+                        basePay = ZERO;
+                        List<String> parts = new ArrayList<>();
+                        LocalDate partStart = employedFrom;
+                        List<LocalDate> boundaries = new ArrayList<>(salaryChanges);
+                        boundaries.add(employedUntil.plusDays(1));
+
+                        for (LocalDate boundary : boundaries) {
+                                int days = rates.countWorkingDays(partStart, boundary.minusDays(1), restDays);
+                                BigDecimal salary = salaries.salaryOn(partStart);
+
+                                basePay = basePay.add(rates.cycleBasePayFor(salary, payCycle.getCycleType())
+                                                .multiply(BigDecimal.valueOf(days))
+                                                .divide(BigDecimal.valueOf(workingDaysInCycle),
+                                                                PayrollCalculationService.INTERMEDIATE_SCALE,
+                                                                RoundingMode.HALF_UP));
+
+                                parts.add(days + " working day(s) from " + partStart + " at a monthly salary of "
+                                                + money(salary == null ? ZERO : salary));
+                                partStart = boundary;
+                        }
+
+                        notes.add("Salary changed during this cycle; base pay split: " + String.join("; ", parts) + ".");
+
+                } else if (workingDaysInCycle > 0 && workingDaysEmployed < workingDaysInCycle) {
 
                         basePay = cycleBasePay
                                         .multiply(BigDecimal.valueOf(workingDaysEmployed))
@@ -517,6 +565,7 @@ public class PayrollService {
 
                 List<PayrollBreakdown.AttendanceDay> attendanceDays = new ArrayList<>();
                 BigDecimal totalUnpaidHours = BigDecimal.ZERO;
+                BigDecimal unpaidAmount = BigDecimal.ZERO;
                 BigDecimal premiumPay = BigDecimal.ZERO;
                 BigDecimal nightDifferentialPay = BigDecimal.ZERO;
 
@@ -546,6 +595,7 @@ public class PayrollService {
                                         : unpaidHours(attendance.getStatus(), recordedHours, regularHoursPerDay);
 
                         totalUnpaidHours = totalUnpaidHours.add(unpaidHours);
+                        unpaidAmount = unpaidAmount.add(hourlyRateOn.apply(date).multiply(unpaidHours));
 
                         // Base pay already pays 1.00 for each non-rest day; a
                         // rest day is not covered and is paid in full.
@@ -553,7 +603,9 @@ public class PayrollService {
                                         ? dayRates.worked()
                                         : dayRates.worked().subtract(BigDecimal.ONE);
 
-                        BigDecimal dayPremium = hourlyRate.multiply(workedHours).multiply(premiumMultiplier);
+                        BigDecimal dayRate = hourlyRateOn.apply(date);
+
+                        BigDecimal dayPremium = dayRate.multiply(workedHours).multiply(premiumMultiplier);
                         premiumPay = premiumPay.add(dayPremium);
 
                         BigDecimal dayNight = BigDecimal.ZERO;
@@ -565,7 +617,7 @@ public class PayrollService {
                                                 overtimeHoursByAttendance.getOrDefault(
                                                                 attendance.getAttendanceId(), BigDecimal.ZERO));
 
-                                dayNight = hourlyRate.multiply(nightRate).multiply(
+                                dayNight = dayRate.multiply(nightRate).multiply(
                                                 night.regular().multiply(dayRates.worked())
                                                                 .add(overtimeNight.multiply(dayRates.overtime())));
 
@@ -580,7 +632,7 @@ public class PayrollService {
                                         holidayType,
                                         recordedHours,
                                         unpaidHours,
-                                        money(hourlyRate.multiply(unpaidHours)),
+                                        money(dayRate.multiply(unpaidHours)),
                                         money(dayPremium),
                                         money(dayNight)));
                 }
@@ -611,6 +663,7 @@ public class PayrollService {
 
                         if (!worked && absentDayBefore) {
                                 totalUnpaidHours = totalUnpaidHours.add(regularHoursPerDay);
+                                unpaidAmount = unpaidAmount.add(hourlyRateOn.apply(date).multiply(regularHoursPerDay));
                                 notes.add("No holiday pay for " + date + ": absent on the working day before ("
                                                 + dayBefore + ").");
                                 continue;
@@ -622,13 +675,13 @@ public class PayrollService {
                                 BigDecimal workedHours = worked ? onHoliday.getRegularHours() : BigDecimal.ZERO;
                                 BigDecimal unworkedHours = regularHoursPerDay.subtract(workedHours).max(BigDecimal.ZERO);
 
-                                premiumPay = premiumPay.add(hourlyRate.multiply(unworkedHours)
+                                premiumPay = premiumPay.add(hourlyRateOn.apply(date).multiply(unworkedHours)
                                                 .multiply(rates.dayRates(holidayType, false).unworked()
                                                                 .subtract(BigDecimal.ONE)));
                         }
                 }
 
-                BigDecimal attendanceDeduction = money(hourlyRate.multiply(totalUnpaidHours));
+                BigDecimal attendanceDeduction = money(unpaidAmount);
                 premiumPay = money(premiumPay);
                 nightDifferentialPay = money(nightDifferentialPay);
 
@@ -702,7 +755,7 @@ public class PayrollService {
                 // deductions; withholding tax applies to taxable pay less them.
                 StatutoryDeductionService.StatutoryDeductions statutory = statutoryDeductionService
                                 .calculate(
-                                                employee.getBaseSalary(),
+                                                monthlySalary,
                                                 payCycle.getCycleType(),
                                                 grossPay,
                                                 earnings.nonTaxable(),

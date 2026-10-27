@@ -219,6 +219,27 @@
               />
             </div>
 
+            <!-- Shown when an existing employee's salary is changed -->
+            <div id="salaryChangeFields" class="form-group full-width salary-change hidden">
+              <div class="salary-change-row">
+                <div>
+                  <label for="salaryEffectiveDate">New salary takes effect on</label>
+                  <input type="date" id="salaryEffectiveDate" aria-describedby="salaryEffectiveHint" />
+                </div>
+
+                <div>
+                  <label for="salaryChangeReason">Reason <span class="optional">(optional)</span></label>
+                  <input type="text" id="salaryChangeReason" maxlength="255" placeholder="e.g. Annual increase" />
+                </div>
+              </div>
+
+              <small id="salaryEffectiveHint">
+                Payroll pays the old salary before this date and the new one
+                from it, even in the middle of a pay cycle. It must be after
+                any payroll already processed.
+              </small>
+            </div>
+
             <div class="form-group full-width checkbox-group">
               <label for="minimumWageEarner">
                 <input type="checkbox" id="minimumWageEarner" />
@@ -250,6 +271,24 @@
 
               <input type="date" id="separationDate" aria-describedby="separationHint" />
               <small id="separationHint">The final payroll pays only up to this day.</small>
+            </div>
+
+            <!-- Salary history, when editing -->
+            <div id="salaryHistory" class="form-group full-width salary-history hidden">
+              <label>Salary History</label>
+
+              <table>
+                <thead>
+                  <tr>
+                    <th>Effective</th>
+                    <th class="money">From</th>
+                    <th class="money">To</th>
+                    <th>Reason</th>
+                    <th>Changed By</th>
+                  </tr>
+                </thead>
+                <tbody id="salaryHistoryBody"></tbody>
+              </table>
             </div>
 
             <div class="form-group">

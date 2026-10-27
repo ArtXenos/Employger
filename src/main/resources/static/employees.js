@@ -20,6 +20,10 @@ let employees = [];
 
 let editingEmployeeId = null;
 
+// The salary when the edit form opened; a different value asks for the
+// date the new salary takes effect.
+let originalSalary = null;
+
 /* =========================
    LOAD EMPLOYEES
 ========================= */
@@ -170,6 +174,10 @@ document.getElementById("addEmployeeButton").addEventListener("click", () => {
 
   document.getElementById("employmentStatus").value = "ACTIVE";
 
+  originalSalary = null;
+  updateSalaryChangeFields();
+  document.getElementById("salaryHistory").classList.add("hidden");
+
   formMessage.textContent = "";
 
   employeeModal.classList.add("show");
@@ -232,6 +240,12 @@ window.editEmployee = function (employeeId) {
     document.getElementById(field).value = employee[field] || "";
   });
 
+  originalSalary = employee.baseSalary == null ? null : Number(employee.baseSalary);
+  document.getElementById("salaryEffectiveDate").value = todayIso();
+  document.getElementById("salaryChangeReason").value = "";
+  updateSalaryChangeFields();
+  loadSalaryHistory(employeeId);
+
   formMessage.textContent = "";
 
   employeeModal.classList.add("show");
@@ -291,6 +305,11 @@ employeeForm.addEventListener("submit", async (event) => {
 
     tin: document.getElementById("tin").value.trim(),
   };
+
+  if (salaryChanged()) {
+    employeeData.salaryEffectiveDate = document.getElementById("salaryEffectiveDate").value || null;
+    employeeData.salaryChangeReason = document.getElementById("salaryChangeReason").value.trim();
+  }
 
   try {
     let response;
@@ -404,6 +423,70 @@ searchEmployee.addEventListener("input", () => {
 /* =========================
    MODAL CONTROLS
 ========================= */
+
+/* =========================
+   SALARY CHANGES
+========================= */
+
+document.getElementById("baseSalary").addEventListener("input", updateSalaryChangeFields);
+
+function salaryChanged() {
+  const value = document.getElementById("baseSalary").value;
+  return editingEmployeeId !== null && value !== "" && Number(value) !== originalSalary;
+}
+
+function updateSalaryChangeFields() {
+  const changed = salaryChanged();
+  document.getElementById("salaryChangeFields").classList.toggle("hidden", !changed);
+  document.getElementById("salaryEffectiveDate").required = changed;
+}
+
+async function loadSalaryHistory(employeeId) {
+  const section = document.getElementById("salaryHistory");
+  const body = document.getElementById("salaryHistoryBody");
+
+  section.classList.add("hidden");
+
+  try {
+    const response = await fetch(`/api/employees/${employeeId}/salary-history`);
+
+    if (!response.ok || editingEmployeeId !== employeeId) {
+      return;
+    }
+
+    const changes = await response.json();
+
+    if (changes.length === 0) {
+      return;
+    }
+
+    body.innerHTML = "";
+
+    changes.forEach((change) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${escapeHtml(change.effectiveDate)}</td>
+        <td class="money">${change.previousSalary == null ? "-" : formatPeso(change.previousSalary)}</td>
+        <td class="money">${formatPeso(change.newSalary)}</td>
+        <td>${escapeHtml(change.reason || "-")}</td>
+        <td>${escapeHtml(change.changedBy ? change.changedBy.username : "-")}</td>`;
+      body.appendChild(row);
+    });
+
+    section.classList.remove("hidden");
+  } catch (error) {
+    console.error("Salary history loading error:", error);
+  }
+}
+
+function formatPeso(value) {
+  return "₱" + Number(value).toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function todayIso() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
 
 function closeModal() {
   employeeModal.classList.remove("show");

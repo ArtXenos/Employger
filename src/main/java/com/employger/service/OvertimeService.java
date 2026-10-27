@@ -12,6 +12,7 @@ import com.employger.repository.EmployeeRepository;
 import com.employger.repository.OvertimeRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.UserRepository;
+import com.employger.service.salary.SalaryHistoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class OvertimeService {
         private final SystemSettingService systemSettingService;
         private final AuditService auditService;
         private final HolidayService holidayService;
+        private final SalaryHistoryService salaryHistoryService;
 
         public OvertimeService(
                         OvertimeRepository overtimeRepository,
@@ -46,8 +48,10 @@ public class OvertimeService {
                         PayrollCalculationService payrollCalculationService,
                         SystemSettingService systemSettingService,
                         AuditService auditService,
-                        HolidayService holidayService) {
+                        HolidayService holidayService,
+                        SalaryHistoryService salaryHistoryService) {
 
+                this.salaryHistoryService = salaryHistoryService;
                 this.auditService = auditService;
                 this.holidayService = holidayService;
                 this.overtimeRepository = overtimeRepository;
@@ -374,7 +378,8 @@ public class OvertimeService {
          * depends on the day (migration V6): default_overtime_rate (1.25) on
          * an ordinary working day; on a rest day or holiday, that day's rate
          * x overtime_premium_factor (1.30), e.g. 2.00 x 1.30 = 2.60 on a
-         * regular holiday. Set when the overtime is created or approved.
+         * regular holiday. Set when the overtime is created or approved,
+         * at the salary in effect on the overtime date (salary history, V13).
          */
         private void calculateOvertimeValues(
                         Employee employee,
@@ -390,14 +395,17 @@ public class OvertimeService {
                                 ? getOvertimeMultiplier()
                                 : payrollCalculationService.dayRates(holidayType, restDay).overtime();
 
+                BigDecimal salary = salaryHistoryService.timeline(employee)
+                                .salaryOn(overtime.getOvertimeDate());
+
                 BigDecimal overtimeRate = payrollCalculationService
-                                .calculateOvertimeRate(
-                                                employee,
+                                .overtimeRateFor(
+                                                salary,
                                                 overtimeMultiplier);
 
                 BigDecimal overtimeAmount = payrollCalculationService
-                                .calculateOvertimePay(
-                                                employee,
+                                .overtimePayFor(
+                                                salary,
                                                 overtime.getHours(),
                                                 overtimeMultiplier);
 
@@ -406,6 +414,42 @@ public class OvertimeService {
 
                 overtime.setOvertimeAmount(
                                 overtimeAmount);
+        }
+
+        /**
+         * After a salary change: prices again the employee's overtime dated
+         * on or after the effective date that no processed payroll has paid
+         * (pending, or approved and not yet in payroll or only in a DRAFT).
+         * Its hours and status stay as they are. Returns how many changed.
+         */
+        @Transactional
+        public int repriceUnpaidOvertime(Employee employee, LocalDate from) {
+
+                int changed = 0;
+
+                for (Overtime overtime : overtimeRepository.findByEmployeeEmployeeId(employee.getEmployeeId())) {
+
+                        boolean unpaid = overtime.getPayroll() == null || overtime.getPayroll().isDraft();
+                        boolean open = overtime.getStatus() == ApprovalRequest.Status.PENDING
+                                        || overtime.getStatus() == ApprovalRequest.Status.APPROVED;
+
+                        if (!unpaid || !open || overtime.getOvertimeDate().isBefore(from)) {
+                                continue;
+                        }
+
+                        BigDecimal before = overtime.getOvertimeAmount();
+                        calculateOvertimeValues(employee, overtime);
+
+                        if (before == null || before.compareTo(overtime.getOvertimeAmount()) != 0) {
+                                overtimeRepository.save(overtime);
+                                auditService.record("OVERTIME_REPRICED", "Overtime #" + overtime.getOvertimeId()
+                                                + " on " + overtime.getOvertimeDate() + " repriced after a salary change: "
+                                                + before + " -> " + overtime.getOvertimeAmount());
+                                changed++;
+                        }
+                }
+
+                return changed;
         }
 
         private BigDecimal getOvertimeMultiplier() {

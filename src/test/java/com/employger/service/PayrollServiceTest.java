@@ -16,6 +16,8 @@ import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollAdjustmentRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.PayslipRepository;
+import com.employger.repository.SalaryChangeRepository;
+import com.employger.service.salary.SalaryHistoryService;
 import com.employger.repository.PriorEmployerCompensationRepository;
 import com.employger.repository.UserRepository;
 import com.employger.service.contribution.PagIbigContribution;
@@ -88,6 +90,9 @@ class PayrollServiceTest {
     @Mock
     private PayslipRepository payslipRepository;
 
+    @Mock
+    private SalaryChangeRepository salaryChangeRepository;
+
     private PayrollService payrollService;
 
     private Employee employee;
@@ -125,7 +130,8 @@ class PayrollServiceTest {
                 earningRepository,
                 new YearEndTaxService(payrollRepository, priorEmployerRepository),
                 payrollAdjustmentRepository,
-                payslipRepository);
+                payslipRepository,
+                new SalaryHistoryService(salaryChangeRepository, List.of()));
 
         employee = new Employee();
         employee.setEmployeeId(35);
@@ -212,6 +218,48 @@ class PayrollServiceTest {
         assertThat(payroll.getWorkingDaysEmployed()).isEqualTo(8);
         assertThat(payroll.getBasePay()).isEqualByComparingTo("9090.91");
         assertThat(payroll.getCalculationNotes()).contains("prorated");
+    }
+
+    @Test
+    void calculation_paysAMidCycleRaiseFromItsEffectiveDate() {
+        // Raised from 25,000 to 27,000 from Thursday Oct 8.
+        employee.setBaseSalary(new BigDecimal("27000.00"));
+        when(salaryChangeRepository.findByEmployeeEmployeeIdOrderByEffectiveDateAscSalaryChangeIdAsc(35))
+                .thenReturn(List.of(com.employger.entity.SalaryChange.record(employee,
+                        new BigDecimal("25000.00"), new BigDecimal("27000.00"),
+                        LocalDate.of(2026, 10, 8), "Annual increase", null)));
+        when(attendanceRepository.findByEmployeeEmployeeIdAndAttendanceDateBetween(eq(35), any(), eq(OCT_15)))
+                .thenReturn(List.of(
+                        attendance(LocalDate.of(2026, 10, 5), Attendance.Status.ABSENT, "0"),
+                        attendance(LocalDate.of(2026, 10, 12), Attendance.Status.ABSENT, "0")));
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        // Oct 1-7 has 5 working days at 25,000, Oct 8-15 has 6 at 27,000:
+        // 12,500 x 5/11 + 13,500 x 6/11 = 143,500 / 11 = 13,045.4545... -> 13,045.45
+        assertThat(payroll.getBasePay()).isEqualByComparingTo("13045.45");
+        // Each absence at its own day's rate: 8 x 143.678161 + 8 x 155.172414 = 2,390.80
+        assertThat(payroll.getAttendanceDeduction()).isEqualByComparingTo("2390.80");
+        // The stored rate is the one in effect at the end of the cycle.
+        assertThat(payroll.getHourlyRate()).isEqualByComparingTo("155.172414");
+        assertThat(payroll.getCalculationNotes())
+                .contains("Salary changed during this cycle")
+                .contains("5 working day(s) from 2026-10-01 at a monthly salary of 25000.00")
+                .contains("6 working day(s) from 2026-10-08 at a monthly salary of 27000.00");
+    }
+
+    @Test
+    void calculation_usesTheOldSalaryBeforeAFutureRaise() {
+        employee.setBaseSalary(new BigDecimal("27000.00"));
+        when(salaryChangeRepository.findByEmployeeEmployeeIdOrderByEffectiveDateAscSalaryChangeIdAsc(35))
+                .thenReturn(List.of(com.employger.entity.SalaryChange.record(employee,
+                        new BigDecimal("25000.00"), new BigDecimal("27000.00"),
+                        LocalDate.of(2026, 11, 1), null, null)));
+
+        Payroll payroll = payrollService.createPayroll(35, 1);
+
+        assertThat(payroll.getBasePay()).isEqualByComparingTo("12500.00");
+        assertThat(payroll.getHourlyRate()).isEqualByComparingTo("143.678161");
     }
 
     @Test

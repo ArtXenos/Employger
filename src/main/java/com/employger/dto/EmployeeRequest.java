@@ -94,6 +94,13 @@ public class EmployeeRequest {
     // Optional last day of work; empty means still employed.
     private LocalDate separationDate;
 
+    // When the base salary changes on an update: the date the new salary
+    // takes effect (today if left out) and an optional reason.
+    private LocalDate salaryEffectiveDate;
+
+    @Size(max = 255, message = "The reason for the salary change must be at most 255 characters.")
+    private String salaryChangeReason;
+
     @Size(max = 100, message = "Job title must be at most 100 characters.")
     private String jobTitle;
 
@@ -251,6 +258,22 @@ public class EmployeeRequest {
 
     public void setSeparationDate(LocalDate separationDate) {
         this.separationDate = separationDate;
+    }
+
+    public LocalDate getSalaryEffectiveDate() {
+        return salaryEffectiveDate;
+    }
+
+    public void setSalaryEffectiveDate(LocalDate salaryEffectiveDate) {
+        this.salaryEffectiveDate = salaryEffectiveDate;
+    }
+
+    public String getSalaryChangeReason() {
+        return salaryChangeReason;
+    }
+
+    public void setSalaryChangeReason(String salaryChangeReason) {
+        this.salaryChangeReason = salaryChangeReason;
     }
 
     public void setDateHired(LocalDate dateHired) {

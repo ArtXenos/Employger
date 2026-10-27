@@ -357,3 +357,55 @@ tbody tr:hover {
     width: 100%;
   }
 }
+
+/* Salary change and history */
+.salary-change {
+  padding: 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.salary-change-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+
+.salary-change-row label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.salary-change-row input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.salary-history table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.salary-history th,
+.salary-history td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.salary-history .money {
+  text-align: right;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 640px) {
+  .salary-change-row {
+    grid-template-columns: 1fr;
+  }
+}
+

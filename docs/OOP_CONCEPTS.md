@@ -28,6 +28,18 @@ SSS, PhilHealth and Pag-IBIG each use a different formula. Payroll asks each of 
 
 The interface says what a store of failed logins must do (`failureCounted()`, `locked()`, `forget()`, `loadActive()`). It doesn't say how. `LoginAttemptService` uses the interface only and never sees how the store works.
 
+### `SalaryChangeRule`: "a rule for when a raise may take effect"
+
+[SalaryChangeRule.java](../src/main/java/com/employger/service/salary/SalaryChangeRule.java)
+
+```java
+public abstract class SalaryChangeRule {
+    public abstract void check(Employee employee, LocalDate effectiveDate, LocalDate today);
+}
+```
+
+A salary change must pass several rules before it is saved. `SalaryHistoryService` only knows that each rule can `check()` a date. It doesn't know what any rule checks.
+
 ---
 
 ## 2. Inheritance
@@ -64,6 +76,20 @@ public final void approve(User decidedBy) {
 
 `Underpayment` and `OverpaymentRecovery` share the corrected payroll, the amount, the reason, the lock and all the checks. Each one adds only its sign (+ or −) and its own rule. A recovery needs the employee's written consent under Labor Code Art. 113. Both are stored in one table, `payroll_adjustments`, with a `kind` column (single-table inheritance).
 
+### Three salary rules extend `SalaryChangeRule`
+
+| Class | Refuses |
+|---|---|
+| `NotBeforeHireDate` | A date before the employee was hired |
+| `NotMoreThanAYearAhead` | A date more than a year from today (a mistyped year) |
+| `NotIntoProcessedPayroll` | A date inside a cycle whose payroll is already processed or paid. Pay owed for it is recorded as a correction instead. |
+
+### Two summary reports extend `EmployeePeriodReport`
+
+[EmployeePeriodReport.java](../src/main/java/com/employger/service/summary/EmployeePeriodReport.java)
+
+The parent's `final rows()` decides once which employees are listed for a month, and in what order. `AttendanceSummaryReport` and `OvertimeSummaryReport` only say which records to read and how one employee's records become a row (`@Override rowFor()`).
+
 > **Composition instead of inheritance.** A `User` (a login) **has an** `Employee`. It doesn't inherit from one. `LaborCostMetric` likewise **holds** the gross pay and employer contribution metrics and adds them up, because labor cost is made of those two amounts. It isn't a kind of either one.
 
 ---
@@ -92,6 +118,24 @@ adjustments.stream().map(PayrollAdjustment::signedAmount).reduce(BigDecimal.ZERO
 
 An underpayment of ₱500 and a recovery of ₱120.50 add up to +₱379.50. Payroll never asks which kind each correction is.
 
+### Every salary rule is checked the same way
+
+[SalaryHistoryService.java](../src/main/java/com/employger/service/salary/SalaryHistoryService.java)
+
+```java
+for (SalaryChangeRule rule : rules) {
+    rule.check(employee, effectiveDate, today);
+}
+```
+
+Spring finds every `SalaryChangeRule` subclass and passes them in as a list. Adding a rule means adding one class; this loop doesn't change.
+
+### Generating payroll for everyone: each outcome describes itself
+
+[GenerationOutcome.java](../src/main/java/com/employger/service/bulk/GenerationOutcome.java)
+
+**Generate for All** returns one outcome per employee: `Created` or `Skipped`. Both implement the sealed interface `GenerationOutcome` and override `result()` and `message()`. The page and the summary call `message()` on every outcome and never check which kind it is. A created payroll answers with its number and net pay, and a skipped one with the reason it was refused.
+
 ### Two implementations of one interface
 
 `DatabaseLoginAttemptStore` saves lockouts to the database, so a restart doesn't clear them. `MemoryOnlyLoginAttemptStore` saves nothing, so unit tests need no database. `LoginAttemptService` works the same way with either one.
@@ -115,6 +159,12 @@ public void markPaid(String paymentMethod, String paymentReference, LocalDateTim
 ```
 
 There is no `setStatus()`. `process()`, `approve()`, `sendBack()` and `markPaid()` are the only ways to change the status, and each checks the current state first. The payroll object itself refuses a review by the same person who processed it.
+
+### Salary history can't be edited, only added to
+
+[SalaryChange.java](../src/main/java/com/employger/entity/SalaryChange.java), [SalaryTimeline.java](../src/main/java/com/employger/service/salary/SalaryTimeline.java)
+
+A `SalaryChange` has no setters, and `SalaryChange.record()` is the only way to make one. It refuses a salary of zero or less, and a missing date. Payroll never reads the salary history directly. It asks a `SalaryTimeline` for `salaryOn(date)`, and the timeline alone decides which change was in effect that day.
 
 ### Only the allowed fields can come in, and only safe fields go out
 

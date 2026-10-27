@@ -2,8 +2,10 @@ package com.employger.controller;
 
 import com.employger.dto.EmployeeRequest;
 import com.employger.dto.EmployeeResponse;
+import com.employger.dto.SalaryChangeResponse;
 import com.employger.exception.ResourceNotFoundException;
 import com.employger.service.EmployeeService;
+import com.employger.service.salary.SalaryHistoryService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +20,11 @@ import java.util.List;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final SalaryHistoryService salaryHistoryService;
 
-    public EmployeeController(EmployeeService employeeService) {
+    public EmployeeController(EmployeeService employeeService, SalaryHistoryService salaryHistoryService) {
         this.employeeService = employeeService;
+        this.salaryHistoryService = salaryHistoryService;
     }
 
     // Get all employees
@@ -43,6 +47,17 @@ public class EmployeeController {
     }
 
     // Add a new employee
+    /** Salary changes, newest first. */
+    @GetMapping("/{id}/salary-history")
+    public List<SalaryChangeResponse> getSalaryHistory(@PathVariable Integer id) {
+        employeeService.getEmployeeById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
+
+        return salaryHistoryService.history(id).reversed().stream()
+                .map(SalaryChangeResponse::from)
+                .toList();
+    }
+
     @PostMapping
     public EmployeeResponse createEmployee(@Valid @RequestBody EmployeeRequest request) {
         // Only administrators and HR managers can write here (SecurityConfig).

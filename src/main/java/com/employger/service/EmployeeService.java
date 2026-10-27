@@ -8,6 +8,7 @@ import com.employger.entity.User;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.UserRepository;
+import com.employger.service.salary.SalaryHistoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,16 +27,22 @@ public class EmployeeService {
     private final UserRepository userRepository;
 
     private final AuditService auditService;
+    private final SalaryHistoryService salaryHistoryService;
+    private final OvertimeService overtimeService;
 
     public EmployeeService(
             EmployeeRepository employeeRepository,
             PayrollRepository payrollRepository,
             UserRepository userRepository,
-            AuditService auditService) {
+            AuditService auditService,
+            SalaryHistoryService salaryHistoryService,
+            OvertimeService overtimeService) {
         this.employeeRepository = employeeRepository;
         this.payrollRepository = payrollRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
+        this.salaryHistoryService = salaryHistoryService;
+        this.overtimeService = overtimeService;
     }
 
     // Get all employees
@@ -141,16 +148,28 @@ public class EmployeeService {
 
         BigDecimal previousSalary = employee.getBaseSalary();
         BigDecimal newSalary = request.getBaseSalary();
-
-        if (previousSalary == null || previousSalary.compareTo(newSalary) != 0) {
-            auditService.record("EMPLOYEE_SALARY_CHANGED",
-                    "Employee #" + id + " base salary: " + previousSalary + " -> " + newSalary);
-        }
+        boolean salaryChanged = previousSalary == null || previousSalary.compareTo(newSalary) != 0;
+        LocalDate salaryEffectiveDate = request.getSalaryEffectiveDate() != null
+                ? request.getSalaryEffectiveDate()
+                : LocalDate.now();
 
         Employee.EmploymentStatus previousStatus = employee.getEmploymentStatus();
         LocalDate previousSeparation = employee.getSeparationDate();
 
         copyFields(request, employee);
+
+        // Salary history (V13): recorded with the date it takes effect, once
+        // the rules accept that date (checked against the updated hire date).
+        // Overtime not yet in processed payroll is then paid at the new
+        // salary from that date.
+        if (salaryChanged) {
+            salaryHistoryService.record(employee, previousSalary, newSalary, salaryEffectiveDate,
+                    request.getSalaryChangeReason(), auditService.currentUser().orElse(null));
+            auditService.record("EMPLOYEE_SALARY_CHANGED",
+                    "Employee #" + id + " base salary: " + previousSalary + " -> " + newSalary
+                            + " from " + salaryEffectiveDate);
+            overtimeService.repriceUnpaidOvertime(employee, salaryEffectiveDate);
+        }
 
         // Changes how much the final payroll pays, so it is audited.
         if (!Objects.equals(previousSeparation, employee.getSeparationDate())) {

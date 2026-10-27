@@ -136,10 +136,11 @@ public class PayrollController {
     public PayrollResponse markPayrollAsPaid(
             @PathVariable Integer id,
             @RequestParam String paymentMethod,
-            @RequestParam(required = false) String paymentReference) {
+            @RequestParam(required = false) String paymentReference,
+            Authentication authentication) {
 
         return PayrollResponse.from(
-                payrollService.markPayrollAsPaid(id, paymentMethod, paymentReference));
+                payrollService.markPayrollAsPaid(id, paymentMethod, paymentReference, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")

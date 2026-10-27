@@ -57,11 +57,23 @@ public class PayslipService {
                 .orElseThrow(() -> new ResourceNotFoundException("Payslip not found"));
     }
 
+    /**
+     * The payslip of a payroll. Payroll paid before payslips were recorded
+     * on payment has no saved record; for those the payslip is built from
+     * the payroll itself, dated at its payment, and nothing is saved.
+     */
+    @Transactional(readOnly = true)
     public Payslip getPayslipByPayrollId(Integer payrollId) {
         return payslipRepository
                 .findByPayrollPayrollId(payrollId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Payslip not found for payroll"));
+                .orElseGet(() -> {
+                    Payroll payroll = payrollRepository.findById(payrollId)
+                            .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
+                    if (payroll.getStatus() != Payroll.Status.PAID) {
+                        throw new ResourceNotFoundException("Payslip not found for payroll");
+                    }
+                    return Payslip.forPaidPayroll(payroll, null, payroll.getPaymentDate());
+                });
     }
 
     public Payslip generatePayslip(
@@ -70,11 +82,6 @@ public class PayslipService {
 
         Payroll payroll = payrollRepository.findById(payrollId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
-
-        if (payroll.getStatus() != Payroll.Status.PAID) {
-            throw new IllegalStateException(
-                    "Payslip can only be generated for PAID payroll");
-        }
 
         if (payslipRepository
                 .findByPayrollPayrollId(payrollId)
@@ -87,13 +94,8 @@ public class PayslipService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        Payslip payslip = new Payslip();
-
-        payslip.setPayroll(payroll);
-        payslip.setGeneratedAt(LocalDateTime.now());
-        payslip.setGeneratedBy(user);
-
-        return payslipRepository.save(payslip);
+        return payslipRepository.save(
+                Payslip.forPaidPayroll(payroll, user, LocalDateTime.now()));
     }
 
     public void deletePayslip(Integer id) {

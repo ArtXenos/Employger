@@ -30,6 +30,18 @@ public class Payslip {
     public Payslip() {
     }
 
+    /** The payslip of a PAID payroll; refuses payroll that hasn't been paid. */
+    public static Payslip forPaidPayroll(Payroll payroll, User generatedBy, LocalDateTime generatedAt) {
+        if (payroll.getStatus() != Payroll.Status.PAID) {
+            throw new IllegalStateException("Payslip can only be generated for PAID payroll");
+        }
+        Payslip payslip = new Payslip();
+        payslip.payroll = payroll;
+        payslip.generatedBy = generatedBy;
+        payslip.generatedAt = generatedAt;
+        return payslip;
+    }
+
     public Integer getPayslipId() {
         return payslipId;
     }

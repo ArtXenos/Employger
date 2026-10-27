@@ -202,7 +202,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadPayslip();
 });
-
-document.getElementById("printPayslipButton").addEventListener("click", () => {
-  window.print();
-});

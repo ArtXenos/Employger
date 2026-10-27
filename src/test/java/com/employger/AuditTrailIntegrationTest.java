@@ -156,6 +156,15 @@ class AuditTrailIntegrationTest {
         assertThat(entries).allSatisfy(entry ->
                 assertThat(entry.getDescription()).contains("payroll #" + payrollId));
         assertThat(entries.get(0).getDescription()).contains("BANK_TRANSFER", "REF-123");
+
+        // Marking it paid also recorded the payslip, so the payslip page can open it.
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/payslips/payroll/{id}", payrollId))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.payroll.payrollId").value(payrollId))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.generatedBy.username").value("hr"));
     }
 
     @Test

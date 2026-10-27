@@ -10,6 +10,7 @@ import com.employger.entity.Attendance;
 import com.employger.entity.Earning;
 import com.employger.entity.Holiday;
 import com.employger.entity.PayrollAdjustment;
+import com.employger.entity.Payslip;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollRepository;
@@ -17,6 +18,7 @@ import com.employger.repository.OvertimeRepository;
 import com.employger.repository.AttendanceRepository;
 import com.employger.repository.EarningRepository;
 import com.employger.repository.PayrollAdjustmentRepository;
+import com.employger.repository.PayslipRepository;
 import com.employger.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +58,7 @@ public class PayrollService {
         private final EarningRepository earningRepository;
         private final YearEndTaxService yearEndTaxService;
         private final PayrollAdjustmentRepository payrollAdjustmentRepository;
+        private final PayslipRepository payslipRepository;
 
         public PayrollService(
                         PayrollRepository payrollRepository,
@@ -71,10 +74,12 @@ public class PayrollService {
                         EarningsCalculator earningsCalculator,
                         EarningRepository earningRepository,
                         YearEndTaxService yearEndTaxService,
-                        PayrollAdjustmentRepository payrollAdjustmentRepository) {
+                        PayrollAdjustmentRepository payrollAdjustmentRepository,
+                        PayslipRepository payslipRepository) {
 
                 this.statutoryDeductionService = statutoryDeductionService;
                 this.payrollAdjustmentRepository = payrollAdjustmentRepository;
+                this.payslipRepository = payslipRepository;
                 this.holidayService = holidayService;
                 this.earningsCalculator = earningsCalculator;
                 this.earningRepository = earningRepository;
@@ -1124,7 +1129,8 @@ public class PayrollService {
         public Payroll markPayrollAsPaid(
                         Integer id,
                         String paymentMethod,
-                        String paymentReference) {
+                        String paymentReference,
+                        String username) {
 
                 Payroll payroll = payrollRepository.findById(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Payroll not found"));
@@ -1157,7 +1163,17 @@ public class PayrollService {
                                 payroll.getPayCycle(),
                                 payroll.getPayrollId());
 
-                payroll.markPaid(paymentMethod, paymentReference, LocalDateTime.now());
+                LocalDateTime paidAt = LocalDateTime.now();
+                payroll.markPaid(paymentMethod, paymentReference, paidAt);
+                Payroll saved = payrollRepository.save(payroll);
+
+                // The payslip record is made with the payment, in the same transaction.
+                if (payslipRepository.findByPayrollPayrollId(saved.getPayrollId()).isEmpty()) {
+                        com.employger.entity.User paidBy = username == null
+                                        ? null
+                                        : userRepository.findByUsername(username).orElse(null);
+                        payslipRepository.save(Payslip.forPaidPayroll(saved, paidBy, paidAt));
+                }
 
                 auditService.record("PAYROLL_PAID",
                                 "Marked " + describe(payroll) + " as PAID: net pay " + payroll.getNetPay()
@@ -1166,7 +1182,7 @@ public class PayrollService {
                                                                 ? ", reference " + paymentReference
                                                                 : ""));
 
-                return payrollRepository.save(payroll);
+                return saved;
         }
 
         @Transactional

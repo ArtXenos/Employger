@@ -15,6 +15,7 @@ import com.employger.repository.OvertimeRepository;
 import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollAdjustmentRepository;
 import com.employger.repository.PayrollRepository;
+import com.employger.repository.PayslipRepository;
 import com.employger.repository.PriorEmployerCompensationRepository;
 import com.employger.repository.UserRepository;
 import com.employger.service.contribution.PagIbigContribution;
@@ -84,6 +85,9 @@ class PayrollServiceTest {
     @Mock
     private PayrollAdjustmentRepository payrollAdjustmentRepository;
 
+    @Mock
+    private PayslipRepository payslipRepository;
+
     private PayrollService payrollService;
 
     private Employee employee;
@@ -120,7 +124,8 @@ class PayrollServiceTest {
                                 new MedicalCashAllowance(calculationService), new MonetizedLeave(calculationService))),
                 earningRepository,
                 new YearEndTaxService(payrollRepository, priorEmployerRepository),
-                payrollAdjustmentRepository);
+                payrollAdjustmentRepository,
+                payslipRepository);
 
         employee = new Employee();
         employee.setEmployeeId(35);
@@ -517,10 +522,31 @@ class PayrollServiceTest {
         when(payrollRepository.findById(7))
                 .thenReturn(Optional.of(payroll(7, wholeMonth, Payroll.Status.DRAFT)));
 
-        assertThatThrownBy(() -> payrollService.markPayrollAsPaid(7, "BANK_TRANSFER", null))
+        assertThatThrownBy(() -> payrollService.markPayrollAsPaid(7, "BANK_TRANSFER", null, "hr"))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(payrollRepository, never()).save(any());
+        verify(payslipRepository, never()).save(any());
+    }
+
+    @Test
+    void markPayrollAsPaid_recordsThePayslip() {
+        Payroll approved = payroll(7, wholeMonth, Payroll.Status.APPROVED);
+        User hr = new User();
+        hr.setUsername("hr");
+        when(payrollRepository.findById(7)).thenReturn(Optional.of(approved));
+        when(payrollRepository.save(any())).thenAnswer(call -> call.getArgument(0));
+        when(payslipRepository.findByPayrollPayrollId(7)).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("hr")).thenReturn(Optional.of(hr));
+
+        payrollService.markPayrollAsPaid(7, "BANK_TRANSFER", "REF-1", "hr");
+
+        org.mockito.ArgumentCaptor<com.employger.entity.Payslip> saved =
+                org.mockito.ArgumentCaptor.forClass(com.employger.entity.Payslip.class);
+        verify(payslipRepository).save(saved.capture());
+        assertThat(saved.getValue().getPayroll()).isSameAs(approved);
+        assertThat(saved.getValue().getGeneratedBy()).isSameAs(hr);
+        assertThat(saved.getValue().getGeneratedAt()).isEqualTo(approved.getPaymentDate());
     }
 
     // ---------- helpers ----------

@@ -5,6 +5,7 @@ import com.employger.entity.Employee;
 import com.employger.entity.PayCycle;
 import com.employger.entity.SystemSetting;
 import com.employger.entity.User;
+import com.employger.service.AuditService;
 import com.employger.repository.AuditLogRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayCycleRepository;
@@ -52,6 +53,8 @@ class AuditTrailIntegrationTest {
     private SystemSettingRepository systemSettingRepository;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private AuditService auditService;
 
     private Employee employee;
     private PayCycle cycle;
@@ -201,6 +204,85 @@ class AuditTrailIntegrationTest {
     @WithMockUser(username = "hr", roles = "HR_MANAGER")
     void auditLogIsAdministratorOnly() throws Exception {
         mockMvc.perform(get("/api/audit-logs")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/audit-logs/search")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/audit-logs/actions")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/audit-logs/export.csv")).andExpect(status().isForbidden());
+    }
+
+    // ---------- Audit Log page: search, actions, export ----------
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMINISTRATOR")
+    void searchFiltersByActionUserDescriptionAndDate() throws Exception {
+        User hr = userRepository.findByUsername("hr").orElseThrow();
+        User admin = userRepository.findByUsername("admin").orElseThrow();
+        auditService.record("PAYROLL_PAID", "Marked payroll #5 as PAID", hr);
+        auditService.record("SETTING_UPDATED", "Changed late_rate: 50% -> 60%", admin);
+        auditService.record("EMPLOYEE_SALARY_CHANGED", "Employee #3 base salary: 25000 -> 27000", hr);
+        String today = LocalDate.now().toString();
+
+        mockMvc.perform(get("/api/audit-logs/search"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalEntries").value(3))
+                // Newest first.
+                .andExpect(jsonPath("$.entries[0].action").value("EMPLOYEE_SALARY_CHANGED"));
+
+        mockMvc.perform(get("/api/audit-logs/search").param("action", "PAYROLL_PAID"))
+                .andExpect(jsonPath("$.totalEntries").value(1))
+                .andExpect(jsonPath("$.entries[0].username").value("hr"));
+
+        mockMvc.perform(get("/api/audit-logs/search").param("username", "HR"))
+                .andExpect(jsonPath("$.totalEntries").value(2));
+
+        // % and _ are matched literally, not as wildcards.
+        mockMvc.perform(get("/api/audit-logs/search").param("text", "50%"))
+                .andExpect(jsonPath("$.totalEntries").value(1));
+        mockMvc.perform(get("/api/audit-logs/search").param("text", "late_"))
+                .andExpect(jsonPath("$.totalEntries").value(1));
+        mockMvc.perform(get("/api/audit-logs/search").param("text", "%"))
+                .andExpect(jsonPath("$.totalEntries").value(1));
+
+        mockMvc.perform(get("/api/audit-logs/search").param("from", today).param("to", today))
+                .andExpect(jsonPath("$.totalEntries").value(3));
+        mockMvc.perform(get("/api/audit-logs/search").param("from", LocalDate.now().plusDays(1).toString()))
+                .andExpect(jsonPath("$.totalEntries").value(0));
+
+        mockMvc.perform(get("/api/audit-logs/search").param("size", "2"))
+                .andExpect(jsonPath("$.entries.length()").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMINISTRATOR")
+    void searchRefusesBadDatesAndPageSizes() throws Exception {
+        mockMvc.perform(get("/api/audit-logs/search").param("from", "2026-10-10").param("to", "2026-10-01"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/audit-logs/search").param("size", "500"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMINISTRATOR")
+    void actionsAndCsvExportFollowTheFilters() throws Exception {
+        User hr = userRepository.findByUsername("hr").orElseThrow();
+        auditService.record("PAYROLL_PAID", "Marked payroll #5 as PAID", hr);
+        auditService.record("LOGIN_LOCKED", "=HYPERLINK(\"x\") tried too often", null);
+
+        mockMvc.perform(get("/api/audit-logs/actions"))
+                .andExpect(jsonPath("$[0]").value("LOGIN_LOCKED"))
+                .andExpect(jsonPath("$[1]").value("PAYROLL_PAID"));
+
+        String csv = mockMvc.perform(get("/api/audit-logs/export.csv").param("action", "LOGIN_LOCKED"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Content-Disposition", org.hamcrest.Matchers.containsString("audit-log-")))
+                .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+
+        assertThat(csv).contains("\"Date and time\",\"User\",\"Action\",\"Description\"")
+                .contains("\"(system)\",\"LOGIN_LOCKED\"")
+                // A spreadsheet must not run it as a formula.
+                .contains("\"'=HYPERLINK(\"\"x\"\") tried too often\"")
+                .doesNotContain("PAYROLL_PAID");
     }
 
     private void setting(String name, String value) {

@@ -1,0 +1,110 @@
+/* Audit Log page. Builds on pay-cycles.css and benefits.css. */
+
+.audit-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 14px 16px;
+  padding: 20px 24px 8px;
+}
+
+.audit-filters .form-group {
+  display: grid;
+  gap: 6px;
+}
+
+.audit-filters label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.audit-filters input,
+.audit-filters select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  background: white;
+}
+
+.audit-search {
+  grid-column: span 2;
+}
+
+.audit-filter-actions {
+  grid-column: span 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.audit-filter-actions .download-link {
+  text-decoration: none;
+}
+
+.audit-summary {
+  margin: 0;
+  padding: 4px 24px 12px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.audit-time {
+  white-space: nowrap;
+  color: #475569;
+  font-size: 13px;
+}
+
+.audit-action {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.audit-description {
+  min-width: 280px;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.audit-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 20px;
+  color: #475569;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .audit-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .audit-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-search,
+  .audit-filter-actions {
+    grid-column: auto;
+  }
+
+  .audit-filter-actions {
+    justify-content: flex-start;
+  }
+}

@@ -2,7 +2,7 @@
 // server enforces the same rules, so this is about clarity, not security.
 //   EMPLOYEE         -> sent to their own payroll page
 //   GENERAL_MANAGER  -> read-only: write controls hidden, banner shown
-//   not ADMINISTRATOR -> Settings and Users links hidden (admin-only)
+//   not ADMINISTRATOR -> Settings, Users and Audit Log links hidden (admin-only)
 //   GENERAL_MANAGER  -> Reports link hidden (reports are admin and HR only)
 //   HR_MANAGER       -> payroll sign-off buttons hidden (GM or admin approves)
 
@@ -70,7 +70,7 @@
 
     if (user.role !== "ADMINISTRATOR") {
       document
-        .querySelectorAll('a[href$="settings.html"], a[href$="users.html"]')
+        .querySelectorAll('a[href$="settings.html"], a[href$="users.html"], a[href$="audit-log.html"]')
         .forEach((link) => link.remove());
     }
 

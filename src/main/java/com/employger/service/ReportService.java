@@ -422,6 +422,11 @@ public class ReportService {
     }
 
     /** One CSV line. A null cell is left out (no EC column for PhilHealth and Pag-IBIG). */
+    /** One CSV line of quoted, formula-safe cells; for other services' exports. */
+    static String csvLine(String... cells) {
+        return line(cells);
+    }
+
     private static String line(String... cells) {
 
         List<String> out = new ArrayList<>();

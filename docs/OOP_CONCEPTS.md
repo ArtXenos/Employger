@@ -178,6 +178,12 @@ There is no `setStatus()`. `process()`, `approve()`, `sendBack()` and `markPaid(
 
 A `SalaryChange` has no setters, and `SalaryChange.record()` is the only way to make one. It refuses a salary of zero or less, and a missing date. Payroll never reads the salary history directly. It asks a `SalaryTimeline` for `salaryOn(date)`, and the timeline alone decides which change was in effect that day.
 
+### The audit log filter builds its own query
+
+[AuditLogFilter.java](../src/main/java/com/employger/service/AuditLogFilter.java)
+
+The Audit Log page's filters (dates, user, action, text) are one record, `AuditLogFilter`. Its constructor refuses an end date before the start date and treats blank text as "any". `toSpecification()` turns the filter into the database query. The paged list and the CSV export both ask the filter for its query, so they can't disagree about which entries match.
+
 ### Only the allowed fields can come in, and only safe fields go out
 
 - Every entity field is `private`. `User.passwordHash` is never sent to the browser.

@@ -2,7 +2,7 @@
 
 These test cases are carried out by hand in the browser at <http://localhost:8080>. There are four groups: Salary Management, Employee Management, Work Hour Tracking and Document Generation. After running each case, fill in **Actual Result** and set **Status** to Pass or Fail.
 
-The 347 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This document is the hand-run check of what a user sees.
+The 350 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This document is the hand-run check of what a user sees.
 
 ## Before you start
 
@@ -132,3 +132,7 @@ Covers: a summarized report for employers (attendance and average overtime of em
 | DG-13 | 13th month pay report | PAID payroll in 2026 | Open **Reports**, go to **13th Month Pay** and choose the year. | Year: 2026 | Each employee shows basic salary earned, 13th month earned (basic ÷ 12), paid, entered but not yet paid, balance due and status. | | |
 | DG-14 | Monthly remittance report | PAID payroll in November 2026 | On **Reports**, choose the month under Monthly Remittances. | Month: 2026-11 | SSS, PhilHealth, Pag-IBIG and BIR 1601-C tables list each employee's shares and totals. | | |
 | DG-15 | General Manager has no Reports page | Logged in as General Manager | Look at the side menu and try to open `/reports.html`. | | The Reports link is hidden and the report data is refused. | | |
+| DG-16 | Audit Log page | Logged in as Administrator, after some changes (e.g. SM-01 to SM-18) | Open **Audit Log**. | | Entries are listed newest first with date and time, user, action and description, 50 per page with Previous and Next. There is no way to edit or delete an entry. | | |
+| DG-17 | Filter and export the audit log | DG-16 | 1. Choose an action, e.g. Payroll paid, and click **Search**.<br>2. Enter a date range and a word from the description.<br>3. Click **Export CSV**. | Action: Payroll paid | Only matching entries are listed, with their count. The CSV file holds the same entries. **Clear** shows everything again. | | |
+| DG-18 | Only administrators see the audit log | Logged in as HR Manager | Look at the side menu, then open `/audit-log.html`. | | There is no Audit Log link. The page shows "The audit log is available to administrators only." and lists nothing. | | |
+| DG-19 | Company Overview on the Reports page | PAID payroll (SM-18). Logged in as Administrator or HR Manager | Open **Reports**. | Month: November 2026 | The Company Overview at the top shows the same totals, department table and 6-month labor cost chart as on the **Dashboard** for the same month. | | |

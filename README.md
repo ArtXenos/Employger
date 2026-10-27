@@ -95,6 +95,7 @@ The tests run on an in-memory H2 database and never connect to MariaDB.
 | [docs/AUDIT_REPORT.md](docs/AUDIT_REPORT.md) | The initial audit, every fix since then and the progress log |
 | [docs/TEST_CASES.md](docs/TEST_CASES.md) | Manual test cases: salary, employees, work hours and documents |
 | [docs/STATUTORY_DEDUCTIONS.md](docs/STATUTORY_DEDUCTIONS.md) | SSS, PhilHealth, Pag-IBIG and tax rules, with their official sources |
+| [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) | Every table's primary key, the foreign keys between them and their delete rules, with a diagram |
 | [docs/DATABASE_ACCOUNT.md](docs/DATABASE_ACCOUNT.md) | The app's database account and credentials |
 | [docs/BACKUP_AND_RECOVERY.md](docs/BACKUP_AND_RECOVERY.md) | Backups (`scripts/backup-db.ps1`) and recovery |
 | [docs/MARIADB_UPGRADE.md](docs/MARIADB_UPGRADE.md) | The move from MariaDB 10.4 to 10.11 |

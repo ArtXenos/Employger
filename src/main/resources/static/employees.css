@@ -403,6 +403,94 @@ tbody tr:hover {
   display: none !important;
 }
 
+/* Department and job title lists */
+.topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.form-group select:disabled {
+  background: #f1f5f9;
+  color: #7b8497;
+}
+
+.add-option {
+  display: flex;
+  gap: 8px;
+}
+
+.add-option input {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-option button {
+  padding: 8px 12px;
+}
+
+.lists-content {
+  width: min(700px, 100%);
+}
+
+.lists-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.list-department {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.list-department.retired {
+  background: #f8fafc;
+}
+
+.list-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.list-name small {
+  margin-left: 6px;
+  color: #7b8497;
+}
+
+.list-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.list-titles {
+  list-style: none;
+  margin-top: 8px;
+  padding-left: 16px;
+  border-left: 2px solid #e2e8f0;
+}
+
+.list-titles li {
+  padding: 6px 0;
+}
+
+.list-titles li + li {
+  border-top: 1px solid #f1f5f9;
+}
+
+.list-empty {
+  margin-top: 8px;
+  color: #7b8497;
+  font-size: 14px;
+}
+
 @media (max-width: 640px) {
   .salary-change-row {
     grid-template-columns: 1fr;

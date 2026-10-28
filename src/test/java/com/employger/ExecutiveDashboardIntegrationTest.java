@@ -4,6 +4,7 @@ import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
 import com.employger.entity.PayCycle;
 import com.employger.entity.Payroll;
+import com.employger.repository.DepartmentRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.OvertimeRepository;
 import com.employger.repository.PayCycleRepository;
@@ -42,6 +43,8 @@ class ExecutiveDashboardIntegrationTest {
     private MockMvc mockMvc;
     @Autowired
     private EmployeeRepository employeeRepository;
+    @Autowired
+    private DepartmentRepository departmentRepository;
     @Autowired
     private PayCycleRepository payCycleRepository;
     @Autowired
@@ -123,7 +126,7 @@ class ExecutiveDashboardIntegrationTest {
                     payrollRepository.save(p);
                 });
 
-        ana.setDepartment("Finance");
+        ana.assignPosition(TestChoices.department(departmentRepository, "Finance"), null);
         employeeRepository.save(ana);
 
         mockMvc.perform(get("/api/dashboard/executive").param("year", "2026").param("month", "10"))
@@ -184,7 +187,7 @@ class ExecutiveDashboardIntegrationTest {
         employee.setFirstName("Test");
         employee.setLastName(email.substring(0, email.indexOf('@')));
         employee.setEmail(email);
-        employee.setDepartment(department);
+        employee.assignPosition(department == null ? null : TestChoices.department(departmentRepository, department), null);
         employee.setEmploymentStatus(status);
         employee.setDateOfBirth(LocalDate.of(1990, 1, 1));
         employee.setDateHired(LocalDate.of(2026, 1, 1));

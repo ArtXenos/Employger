@@ -37,7 +37,7 @@ You need a **JDK 25 or newer** and **MariaDB 10.11 or newer**. The commands belo
 .\mvnw.cmd package
 ```
 
-**2. Create the database.** The script creates `employger_db` and applies every migration in [db/migrations](db/migrations) in order, from `V1__base_schema.sql` through the newest (V15 today). It asks for the MariaDB root password. If `employger_db` already exists, it stops and changes nothing.
+**2. Create the database.** The script creates `employger_db` and applies every migration in [db/migrations](db/migrations) in order, from `V1__base_schema.sql` through the newest (V16 today). It asks for the MariaDB root password. If `employger_db` already exists, it stops and changes nothing.
 
 ```powershell
 .\scripts\setup-db.ps1

@@ -2,6 +2,7 @@ package com.employger.service.summary;
 
 import com.employger.entity.ApprovalRequest;
 import com.employger.entity.Attendance;
+import com.employger.entity.Department;
 import com.employger.entity.Employee;
 import com.employger.entity.Overtime;
 import com.employger.repository.AttendanceRepository;
@@ -116,7 +117,7 @@ class EmployeeSummaryReportsTest {
         employee.setEmployeeId(id);
         employee.setFirstName(first);
         employee.setLastName(last);
-        employee.setDepartment("Finance");
+        employee.assignPosition(new Department("Finance"), null);
         employee.setDateHired(hired);
         employee.setSeparationDate(left);
         employee.setEmploymentStatus(Employee.EmploymentStatus.ACTIVE);

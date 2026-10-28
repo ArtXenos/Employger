@@ -20,6 +20,7 @@ public class EmployeeResponse {
     private final String phone;
     private final String address;
     private final String department;
+    private final Integer departmentId;
     private final String gender;
     private final BigDecimal baseSalary;
     private final boolean minimumWageEarner;
@@ -34,6 +35,7 @@ public class EmployeeResponse {
     private final LocalDate dateHired;
     private final LocalDate separationDate;
     private final String jobTitle;
+    private final Integer jobTitleId;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
@@ -55,6 +57,8 @@ public class EmployeeResponse {
         this.phone = employee.getPhone();
         this.address = employee.getAddress();
         this.department = employee.getDepartment();
+        this.departmentId = employee.getDepartmentOption() == null
+                ? null : employee.getDepartmentOption().getDepartmentId();
         this.gender = employee.getGender();
         this.baseSalary = employee.getBaseSalary();
         this.minimumWageEarner = employee.isMinimumWageEarner();
@@ -71,6 +75,8 @@ public class EmployeeResponse {
         this.dateHired = employee.getDateHired();
         this.separationDate = employee.getSeparationDate();
         this.jobTitle = employee.getJobTitle();
+        this.jobTitleId = employee.getJobTitleOption() == null
+                ? null : employee.getJobTitleOption().getJobTitleId();
         this.createdAt = employee.getCreatedAt();
         this.updatedAt = employee.getUpdatedAt();
     }
@@ -105,6 +111,10 @@ public class EmployeeResponse {
 
     public String getDepartment() {
         return department;
+    }
+
+    public Integer getDepartmentId() {
+        return departmentId;
     }
 
     public String getGender() {
@@ -161,6 +171,10 @@ public class EmployeeResponse {
 
     public String getJobTitle() {
         return jobTitle;
+    }
+
+    public Integer getJobTitleId() {
+        return jobTitleId;
     }
 
     public LocalDateTime getCreatedAt() {

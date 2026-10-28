@@ -71,9 +71,15 @@
             <p>Manage employee records</p>
           </div>
 
-          <button id="addEmployeeButton" class="primary-button">
-            + Add Employee
-          </button>
+          <div class="topbar-actions">
+            <button id="manageListsButton" class="secondary-button" type="button">
+              Departments &amp; Job Titles
+            </button>
+
+            <button id="addEmployeeButton" class="primary-button">
+              + Add Employee
+            </button>
+          </div>
         </header>
 
         <!-- Employee Statistics -->
@@ -192,22 +198,38 @@
               <input type="text" id="address" />
             </div>
 
+            <!-- Choice lists: "+ Add new..." opens the row below the list -->
             <div class="form-group">
               <label for="department">Department</label>
 
-              <input type="text" id="department" />
+              <select id="department"></select>
+
+              <div id="departmentAdd" class="add-option hidden">
+                <input type="text" id="newDepartmentName" maxlength="100"
+                  placeholder="New department name" aria-label="New department name" />
+                <button type="button" class="primary-button" id="saveNewDepartment">Add</button>
+                <button type="button" class="secondary-button" id="cancelNewDepartment">Cancel</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="jobTitle">Job Title</label>
+
+              <select id="jobTitle" aria-describedby="jobTitleHint"></select>
+              <small id="jobTitleHint">Only the job titles of the department chosen are listed.</small>
+
+              <div id="jobTitleAdd" class="add-option hidden">
+                <input type="text" id="newJobTitleName" maxlength="100"
+                  placeholder="New job title name" aria-label="New job title name" />
+                <button type="button" class="primary-button" id="saveNewJobTitle">Add</button>
+                <button type="button" class="secondary-button" id="cancelNewJobTitle">Cancel</button>
+              </div>
             </div>
 
             <div class="form-group">
               <label for="designation">Designation</label>
 
               <input type="text" id="designation" />
-            </div>
-
-            <div class="form-group">
-              <label for="jobTitle">Job Title</label>
-
-              <input type="text" id="jobTitle" />
             </div>
 
             <div class="form-group">
@@ -356,6 +378,33 @@
             <button type="submit" class="primary-button">Save Employee</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Departments and job titles -->
+    <div id="listsModal" class="modal">
+      <div class="modal-content lists-content" role="dialog" aria-modal="true" aria-labelledby="listsTitle">
+        <div class="modal-header">
+          <div>
+            <h3 id="listsTitle">Departments &amp; Job Titles</h3>
+            <p>
+              The choices on the Employee form. Renaming changes the name for
+              every employee who has it. Retire an entry that should no longer
+              be chosen: employees who already have it keep it until you
+              change them. Past payroll keeps the department it was paid under.
+            </p>
+          </div>
+
+          <button id="closeListsModal" class="close-button" type="button" aria-label="Close">×</button>
+        </div>
+
+        <div class="lists-toolbar">
+          <button type="button" id="addDepartmentButton" class="primary-button">+ Add department</button>
+        </div>
+
+        <div id="listsMessage" class="form-message" role="alert"></div>
+
+        <div id="listsBody"></div>
       </div>
     </div>
 

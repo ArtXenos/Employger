@@ -12,6 +12,7 @@ import com.employger.entity.PriorEmployerCompensation;
 import com.employger.entity.SystemSetting;
 import com.employger.repository.AttendanceRepository;
 import com.employger.repository.EarningRepository;
+import com.employger.repository.DepartmentRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.HolidayRepository;
 import com.employger.repository.OvertimeRepository;
@@ -64,6 +65,8 @@ class HolidayBenefitsAndYearEndIntegrationTest {
     private EarningService earningService;
     @Autowired
     private EmployeeRepository employeeRepository;
+    @Autowired
+    private DepartmentRepository departmentRepository;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -211,7 +214,7 @@ class HolidayBenefitsAndYearEndIntegrationTest {
 
     @Test
     void processedPayrollStaysInItsDepartmentAfterTheEmployeeMoves() {
-        employee.setDepartment("Finance");
+        employee.assignPosition(TestChoices.department(departmentRepository, "Finance"), null);
         employeeRepository.save(employee);
         PayCycle november = cycle("November 2026", LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30),
                 PayCycle.CycleType.MONTHLY);
@@ -219,7 +222,7 @@ class HolidayBenefitsAndYearEndIntegrationTest {
         Payroll payroll = payrollService.createPayroll(employee.getEmployeeId(), november.getPayCycleId());
         payrollService.processPayroll(payroll.getPayrollId(), processor().getUsername());
 
-        employee.setDepartment("Sales");
+        employee.assignPosition(TestChoices.department(departmentRepository, "Sales"), null);
         employeeRepository.save(employee);
 
         ExecutiveDashboardService.ExecutiveSummary summary =
@@ -240,7 +243,7 @@ class HolidayBenefitsAndYearEndIntegrationTest {
 
     @Test
     void payrollForAnEmployeeWithoutADepartmentStaysUnassigned() {
-        employee.setDepartment(null);
+        employee.assignPosition(null, null);
         employeeRepository.save(employee);
         PayCycle november = cycle("November 2026", LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30),
                 PayCycle.CycleType.MONTHLY);
@@ -248,7 +251,7 @@ class HolidayBenefitsAndYearEndIntegrationTest {
         Payroll payroll = payrollService.createPayroll(employee.getEmployeeId(), november.getPayCycleId());
         payrollService.processPayroll(payroll.getPayrollId(), processor().getUsername());
 
-        employee.setDepartment("Sales");
+        employee.assignPosition(TestChoices.department(departmentRepository, "Sales"), null);
         employeeRepository.save(employee);
 
         assertThat(executiveDashboardService.summary(java.time.YearMonth.of(2026, 11)).departments())

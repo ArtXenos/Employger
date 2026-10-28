@@ -43,7 +43,7 @@ class EmployeeAndUserValidationIntegrationTest {
 
     private static final String VALID_EMPLOYEE = """
             {"firstName": " Maria ", "lastName": "Santos", "dateOfBirth": "1995-03-15",
-             "email": "maria@example.test", "phone": "  ", "department": "Finance",
+             "email": "maria@example.test", "phone": "  ",
              "baseSalary": 30000, "dateHired": "2026-09-01", "employmentStatus": "ACTIVE"}
             """;
 

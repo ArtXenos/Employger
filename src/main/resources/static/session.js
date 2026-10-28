@@ -11,6 +11,7 @@
   const READ_ONLY_CONTROLS = [
     "#addAttendanceButton",
     "#addEmployeeButton",
+    "#manageListsButton",
     "#addOvertimeButton",
     "#addPayCycleButton",
     "#generatePayrollButton",

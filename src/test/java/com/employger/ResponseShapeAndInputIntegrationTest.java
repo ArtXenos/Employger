@@ -1,10 +1,13 @@
 package com.employger;
 
+import com.employger.entity.Department;
 import com.employger.entity.Employee;
 import com.employger.entity.PayCycle;
 import com.employger.entity.Payroll;
 import com.employger.entity.Payslip;
 import com.employger.entity.User;
+import com.employger.repository.DepartmentRepository;
+import com.employger.repository.JobTitleRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayCycleRepository;
 import com.employger.repository.PayrollRepository;
@@ -49,6 +52,10 @@ class ResponseShapeAndInputIntegrationTest {
     @Autowired
     private EmployeeRepository employeeRepository;
     @Autowired
+    private DepartmentRepository departmentRepository;
+    @Autowired
+    private JobTitleRepository jobTitleRepository;
+    @Autowired
     private UserRepository userRepository;
     @Autowired
     private PayCycleRepository payCycleRepository;
@@ -71,8 +78,8 @@ class ResponseShapeAndInputIntegrationTest {
         employee.setEmail("ana@example.test");
         employee.setPhone("0917-000-0000");
         employee.setAddress("Davao City");
-        employee.setDepartment("Finance");
-        employee.setJobTitle("Clerk");
+        Department finance = TestChoices.department(departmentRepository, "Finance");
+        employee.assignPosition(finance, TestChoices.jobTitle(jobTitleRepository, finance, "Clerk"));
         employee.setDateOfBirth(LocalDate.of(1990, 1, 1));
         employee.setDateHired(LocalDate.of(2026, 1, 1));
         employee.setBaseSalary(new BigDecimal("25000.00"));

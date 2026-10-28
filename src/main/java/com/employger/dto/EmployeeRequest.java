@@ -43,8 +43,9 @@ public class EmployeeRequest {
     @Size(max = 255, message = "Address must be at most 255 characters.")
     private String address;
 
-    @Size(max = 100, message = "Department must be at most 100 characters.")
-    private String department;
+    // From the choice lists (GET /api/departments); null = none. A job
+    // title must belong to the department.
+    private Integer departmentId;
 
     @Size(max = 20, message = "Gender must be at most 20 characters.")
     private String gender;
@@ -101,8 +102,7 @@ public class EmployeeRequest {
     @Size(max = 255, message = "The reason for the salary change must be at most 255 characters.")
     private String salaryChangeReason;
 
-    @Size(max = 100, message = "Job title must be at most 100 characters.")
-    private String jobTitle;
+    private Integer jobTitleId;
 
     public String getFirstName() {
         return firstName;
@@ -152,12 +152,12 @@ public class EmployeeRequest {
         this.address = address;
     }
 
-    public String getDepartment() {
-        return department;
+    public Integer getDepartmentId() {
+        return departmentId;
     }
 
-    public void setDepartment(String department) {
-        this.department = department;
+    public void setDepartmentId(Integer departmentId) {
+        this.departmentId = departmentId;
     }
 
     public String getGender() {
@@ -280,11 +280,11 @@ public class EmployeeRequest {
         this.dateHired = dateHired;
     }
 
-    public String getJobTitle() {
-        return jobTitle;
+    public Integer getJobTitleId() {
+        return jobTitleId;
     }
 
-    public void setJobTitle(String jobTitle) {
-        this.jobTitle = jobTitle;
+    public void setJobTitleId(Integer jobTitleId) {
+        this.jobTitleId = jobTitleId;
     }
 }

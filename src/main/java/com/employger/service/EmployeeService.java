@@ -8,6 +8,7 @@ import com.employger.entity.User;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.PayrollRepository;
 import com.employger.repository.UserRepository;
+import com.employger.service.choice.ChoiceListService;
 import com.employger.service.salary.SalaryHistoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class EmployeeService {
     private final AuditService auditService;
     private final SalaryHistoryService salaryHistoryService;
     private final OvertimeService overtimeService;
+    private final ChoiceListService choiceListService;
 
     public EmployeeService(
             EmployeeRepository employeeRepository,
@@ -36,13 +38,15 @@ public class EmployeeService {
             UserRepository userRepository,
             AuditService auditService,
             SalaryHistoryService salaryHistoryService,
-            OvertimeService overtimeService) {
+            OvertimeService overtimeService,
+            ChoiceListService choiceListService) {
         this.employeeRepository = employeeRepository;
         this.payrollRepository = payrollRepository;
         this.userRepository = userRepository;
         this.auditService = auditService;
         this.salaryHistoryService = salaryHistoryService;
         this.overtimeService = overtimeService;
+        this.choiceListService = choiceListService;
     }
 
     // Get all employees
@@ -240,19 +244,18 @@ public class EmployeeService {
         }
     }
 
-    private static void copyFields(EmployeeRequest request, Employee employee) {
+    private void copyFields(EmployeeRequest request, Employee employee) {
         employee.setFirstName(request.getFirstName().trim());
         employee.setLastName(request.getLastName().trim());
         employee.setDateOfBirth(request.getDateOfBirth());
         employee.updateContactDetails(request.getEmail(), request.getPhone(), request.getAddress());
-        employee.setDepartment(blankToNull(request.getDepartment()));
+        choiceListService.assign(employee, request.getDepartmentId(), request.getJobTitleId());
         employee.setGender(blankToNull(request.getGender()));
         employee.setBaseSalary(request.getBaseSalary());
         employee.setPostalCode(blankToNull(request.getPostalCode()));
         employee.setDesignation(blankToNull(request.getDesignation()));
         employee.setDateHired(request.getDateHired());
         employee.setSeparationDate(request.getSeparationDate());
-        employee.setJobTitle(blankToNull(request.getJobTitle()));
         // Government numbers: left out = keep, empty = clear.
         if (request.getSssNumber() != null) {
             employee.setSssNumber(blankToNull(request.getSssNumber()));

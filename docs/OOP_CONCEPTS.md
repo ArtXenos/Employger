@@ -96,6 +96,12 @@ protected void checkCancellable() {
 | `NotMoreThanAYearAhead` | A date more than a year from today (a mistyped year) |
 | `NotIntoProcessedPayroll` | A date inside a cycle whose payroll is already processed or paid. Pay owed for it is recorded as a correction instead. |
 
+### Departments and job titles extend `ChoiceOption`
+
+[ChoiceOption.java](../src/main/java/com/employger/entity/ChoiceOption.java), [Department.java](../src/main/java/com/employger/entity/Department.java), [JobTitle.java](../src/main/java/com/employger/entity/JobTitle.java)
+
+Both choice lists on the Employee form work the same way: an entry has a name, can be renamed, retired and restored, and has a creation date. That is written once in the abstract `ChoiceOption` (a JPA `@MappedSuperclass`, so its columns appear in both tables). `rename()`, `retire()` and `restore()` are `final`, so the two lists can't drift apart. Each subclass adds only what differs: its own table and key (`@Override getId()`), what it is called (`@Override kind()`), and for `JobTitle`, its department. `JobTitle` also overrides `describe()` to add the department, since "Clerk" alone is ambiguous.
+
 ### Two summary reports extend `EmployeePeriodReport`
 
 [EmployeePeriodReport.java](../src/main/java/com/employger/service/summary/EmployeePeriodReport.java)
@@ -148,6 +154,12 @@ Spring finds every `SalaryChangeRule` subclass and passes them in as a list. Add
 
 **Generate for All** returns one outcome per employee: `Created` or `Skipped`. Both implement the sealed interface `GenerationOutcome` and override `result()` and `message()`. The page and the summary call `message()` on every outcome and never check which kind it is. A created payroll answers with its number and net pay, and a skipped one with the reason it was refused.
 
+### Renaming and retiring: one method for both lists
+
+[ChoiceListService.java](../src/main/java/com/employger/service/choice/ChoiceListService.java)
+
+`renamed()` and `statusChanged()` take any `ChoiceOption`. They call `rename()`, `retire()` or `restore()` and write the audit entry from `auditPrefix()` and `describe()`. The entry's own class decides the words: `DEPARTMENT_RETIRED` with `Retired department "Sales"`, or `JOB_TITLE_RENAMED` with `Renamed job title "Clerk" in Finance to ...`. The service never asks which kind it has.
+
 ### Two security filters, one shape
 
 [PasswordChangeRequiredFilter.java](../src/main/java/com/employger/config/PasswordChangeRequiredFilter.java), [ActiveAccountFilter.java](../src/main/java/com/employger/config/ActiveAccountFilter.java)
@@ -191,6 +203,12 @@ A `SalaryChange` has no setters, and `SalaryChange.record()` is the only way to 
 A `PasswordResetRequest` has no setters. `open()` makes one, and `complete()` or `dismiss()` closes it; closing it a second time is refused. `User` likewise has no setter for its "must change password" flag: `setTemporaryPassword()` turns it on, and only `changeOwnPassword()` turns it off.
 
 `TemporaryPassword` is a record that **overrides `toString()`** to return `TemporaryPassword[hidden]`. A record's default `toString()` would print the password, so one careless log line or error message could leak it. The value comes out only through `value()`, once, for the administrator to hand over.
+
+### An employee's department and job title change together
+
+[Employee.java](../src/main/java/com/employger/entity/Employee.java)
+
+`Employee` has no separate setters for its department and job title. `assignPosition(department, jobTitle)` sets both at once and refuses a job title without a department, a job title from another department, and a retired entry the employee didn't already have. Reports and payslips still call `getDepartment()` and `getJobTitle()` and get names, as before V16; they don't need to know the names now come from the lists.
 
 ### The audit log filter builds its own query
 

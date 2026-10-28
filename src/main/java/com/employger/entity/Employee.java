@@ -1,6 +1,7 @@
 package com.employger.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,8 +34,17 @@ public class Employee {
     @Column(length = 255)
     private String address;
 
-    @Column(length = 100)
-    private String department;
+    // From the choice lists (migration V16). The JSON keeps "department"
+    // and "jobTitle" as names: see getDepartment() and getJobTitle().
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "department_id")
+    private Department department;
+
+    @JsonIgnore
+    @ManyToOne
+    @JoinColumn(name = "job_title_id")
+    private JobTitle jobTitle;
 
     // Never serialized: attendance, overtime and payroll responses embed the
     // employee, and an image could add megabytes to each of them.
@@ -90,9 +100,6 @@ public class Employee {
     // base pay stops here; NULL while the employee still works here.
     @Column(name = "separation_date")
     private LocalDate separationDate;
-
-    @Column(name = "job_title", length = 100)
-    private String jobTitle;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -186,12 +193,51 @@ public class Employee {
         this.address = address;
     }
 
+    /** The department's name, or null. */
+    @JsonProperty("department")
     public String getDepartment() {
+        return department == null ? null : department.getName();
+    }
+
+    /** The job title's name, or null. */
+    @JsonProperty("jobTitle")
+    public String getJobTitle() {
+        return jobTitle == null ? null : jobTitle.getName();
+    }
+
+    public Department getDepartmentOption() {
         return department;
     }
 
-    public void setDepartment(String department) {
-        this.department = department;
+    public JobTitle getJobTitleOption() {
+        return jobTitle;
+    }
+
+    /**
+     * Sets the department and job title together, so a job title is never
+     * left under another department. Either may be null, but a job title
+     * needs its department. A retired entry may be kept by an employee
+     * who already has it, not newly given.
+     */
+    public void assignPosition(Department newDepartment, JobTitle newJobTitle) {
+        if (newJobTitle != null && newDepartment == null) {
+            throw new IllegalArgumentException("Choose the department before the job title.");
+        }
+        if (newJobTitle != null && !newJobTitle.belongsTo(newDepartment)) {
+            throw new IllegalArgumentException("The job title \"" + newJobTitle.getName()
+                    + "\" is not in the " + newDepartment.getName() + " department.");
+        }
+        if (newDepartment != null && !newDepartment.isActive() && !newDepartment.sameAs(department)) {
+            throw new IllegalStateException("The department \"" + newDepartment.getName()
+                    + "\" is retired and can't be chosen.");
+        }
+        if (newJobTitle != null && !newJobTitle.isSelectable() && !newJobTitle.sameAs(jobTitle)) {
+            throw new IllegalStateException("The job title \"" + newJobTitle.getName()
+                    + "\" is retired and can't be chosen.");
+        }
+
+        this.department = newDepartment;
+        this.jobTitle = newJobTitle;
     }
 
     public byte[] getProfileImage() {
@@ -310,14 +356,6 @@ public class Employee {
 
     public void setDateHired(LocalDate dateHired) {
         this.dateHired = dateHired;
-    }
-
-    public String getJobTitle() {
-        return jobTitle;
-    }
-
-    public void setJobTitle(String jobTitle) {
-        this.jobTitle = jobTitle;
     }
 
     public LocalDateTime getCreatedAt() {

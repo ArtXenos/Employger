@@ -22,9 +22,12 @@ import java.io.IOException;
 @Configuration
 public class SecurityConfig {
 
-        // Employee, attendance, overtime, leave, pay-cycle, payroll, and payslip data.
+        // Employee, attendance, overtime, leave, pay-cycle, payroll, and payslip
+        // data, and the Employee form's department and job title lists.
         private static final String[] PAYROLL_DATA_APIS = {
                         "/api/employees/**",
+                        "/api/departments/**",
+                        "/api/job-titles/**",
                         "/api/attendance/**",
                         "/api/overtime/**",
                         "/api/pay-cycles/**",

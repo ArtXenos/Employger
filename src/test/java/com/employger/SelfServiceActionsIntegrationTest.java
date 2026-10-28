@@ -11,6 +11,7 @@ import com.employger.entity.SystemSetting;
 import com.employger.entity.User;
 import com.employger.repository.AttendanceRepository;
 import com.employger.repository.AuditLogRepository;
+import com.employger.repository.DepartmentRepository;
 import com.employger.repository.EmployeeRepository;
 import com.employger.repository.OvertimeRepository;
 import com.employger.repository.PayCycleRepository;
@@ -61,6 +62,8 @@ class SelfServiceActionsIntegrationTest {
     private MockMvc mockMvc;
     @Autowired
     private EmployeeRepository employeeRepository;
+    @Autowired
+    private DepartmentRepository departmentRepository;
     @Autowired
     private UserRepository userRepository;
     @Autowired
@@ -287,7 +290,7 @@ class SelfServiceActionsIntegrationTest {
         employee.setFirstName(firstName);
         employee.setLastName("Test");
         employee.setEmail(email);
-        employee.setDepartment("Operations");
+        employee.assignPosition(TestChoices.department(departmentRepository, "Operations"), null);
         employee.setDateOfBirth(LocalDate.of(1990, 1, 1));
         employee.setDateHired(LocalDate.of(2026, 1, 1));
         employee.setBaseSalary(new BigDecimal("25000.00"));

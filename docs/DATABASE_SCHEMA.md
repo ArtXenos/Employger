@@ -1,6 +1,6 @@
 # Em-Ployger Database: Primary and Foreign Keys
 
-This document lists the primary key of every table in `employger_db`, every foreign key that links the tables, and what each foreign key does when a linked row is deleted. It covers migrations V1 to V15, in [db/migrations](../db/migrations).
+This document lists the primary key of every table in `employger_db`, every foreign key that links the tables, and what each foreign key does when a linked row is deleted. It covers migrations V1 to V16, in [db/migrations](../db/migrations).
 
 The keys are defined in the database itself, not only in the application code. MariaDB enforces them: it refuses a row that points to something that doesn't exist, and it applies each delete rule automatically. The query in [section 6](#6-checking-the-keys-in-the-database) lists them straight from MariaDB.
 
@@ -23,7 +23,7 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 
 | # | Table | Primary key | Foreign keys | What it holds |
 |---|---|---|---|---|
-| 1 | `employees` | `employee_id` | none | People on the payroll |
+| 1 | `employees` | `employee_id` | 2 | People on the payroll |
 | 2 | `users` | `user_id` | 1 | Logins and their roles |
 | 3 | `attendance` | `attendance_id` | 1 | One record per employee per day |
 | 4 | `overtime` | `overtime_id` | 5 | Overtime requests, decisions and cancellations |
@@ -41,8 +41,10 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 | 16 | `login_attempts` | `attempt_id` | none | Failed logins, for lockouts |
 | 17 | `deductions` | `deduction_id` | 2 | Not used yet (reserved for loans and cash advances) |
 | 18 | `password_reset_requests` | `request_id` | 2 | "Forgot password" requests waiting for an administrator |
+| 19 | `departments` | `department_id` | none | The Department choices on the Employee form |
+| 20 | `job_titles` | `job_title_id` | 1 | The Job Title choices, each under one department |
 
-18 tables and 32 foreign keys in all.
+20 tables and 35 foreign keys in all.
 
 ---
 
@@ -50,7 +52,22 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 
 ### People and logins
 
-**`employees`**: PK `employee_id`. Unique: `email`. No foreign keys: every other table points to it.
+**`employees`**: PK `employee_id`. Unique: `email`.
+
+| Column | References | On delete | Why |
+|---|---|---|---|
+| `department_id` | `departments.department_id` | RESTRICT | (V16) The employee's department, from the choice list. An entry in use can't be deleted; it is retired instead, and the employee keeps it. |
+| `job_title_id` | `job_titles.job_title_id` | RESTRICT | (V16) The employee's job title. The app checks that it belongs to the employee's department. |
+
+The old text columns `department` and `job_title` are still there after V16, holding the values from before it. The app no longer reads or writes them; a later migration can drop them once the lists are confirmed.
+
+**`departments`** (V16): PK `department_id`. Unique: `name`. No foreign keys.
+
+**`job_titles`** (V16): PK `job_title_id`. Unique: (`department_id`, `name`), so two departments may each have a "Clerk", but one department can't have two.
+
+| Column | References | On delete | Why |
+|---|---|---|---|
+| `department_id` | `departments.department_id` | RESTRICT | Job titles depend on the department. A department with job titles can't be deleted; it is retired instead. |
 
 **`users`**: PK `user_id`. Unique: `username`.
 
@@ -163,7 +180,7 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 
 | Table | Why it has none |
 |---|---|
-| `employees` | It is the main parent table. Most other tables point to it. |
+| `departments` | A department name. Employees and job titles point to it. |
 | `pay_cycles` | A period of time; it doesn't belong to anyone. Payroll points to it. |
 | `holidays` | A calendar date and its type, the same for everyone. Payroll looks it up by date. |
 | `login_attempts` | Counts failed logins by **username or IP address as typed**, including usernames that don't exist. A foreign key to `users` would make it impossible to count attempts on made-up usernames, which is exactly what lockouts must catch. |
@@ -174,6 +191,7 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 
 - **Paid payroll can't disappear.** `payroll.employee_id` is RESTRICT, so an employee with payroll can't be deleted, and `payroll_adjustments.corrected_payroll_id` keeps the payroll it corrects. The app also refuses these deletes with a clear message before MariaDB has to.
 - **History outlives the people who made it.** Every "who did it" column (`approved_by`, `processed_by`, `cancelled_by`, `changed_by`, `created_by`, `generated_by`, `updated_by`, `handled_by`, `audit_logs.user_id`) is SET NULL. Removing a login never removes the records that login made.
+- **A choice in use can't vanish.** `employees.department_id`, `employees.job_title_id` and `job_titles.department_id` are RESTRICT. Departments and job titles are never deleted, only retired, so no employee loses theirs.
 - **Nothing is left dangling.** When an employee with no payroll is removed, their attendance, overtime, leave, earnings and salary history go with them (CASCADE), so no row points to an employee who doesn't exist.
 
 ---
@@ -194,6 +212,9 @@ erDiagram
     employees ||--o{ salary_changes : "employee_id"
     employees ||--o{ prior_employer_compensation : "employee_id"
     employees ||--o{ deductions : "employee_id"
+    departments |o--o{ employees : "department_id (RESTRICT)"
+    job_titles |o--o{ employees : "job_title_id (RESTRICT)"
+    departments ||--o{ job_titles : "department_id (RESTRICT)"
 
     pay_cycles ||--o{ payroll : "pay_cycle_id"
     attendance |o--o{ overtime : "attendance_id"
@@ -220,6 +241,16 @@ erDiagram
     employees {
         int employee_id PK
         varchar email UK
+        int department_id FK
+        int job_title_id FK
+    }
+    departments {
+        int department_id PK
+        varchar name UK
+    }
+    job_titles {
+        int job_title_id PK
+        int department_id FK
     }
     users {
         int user_id PK
@@ -343,7 +374,7 @@ WHERE k.TABLE_SCHEMA = 'employger_db' AND k.REFERENCED_TABLE_NAME IS NOT NULL
 ORDER BY k.TABLE_NAME, k.COLUMN_NAME;
 ```
 
-The second query should return 32 rows once V13, V14 and V15 are applied. Without them it returns 26: `salary_changes` (2 keys, V13), the two `cancelled_by` keys (V14) and `password_reset_requests` (2 keys, V15) aren't there yet. A foreign key with no `ON DELETE` rule in its migration shows as `RESTRICT`, MariaDB's default.
+The second query should return 35 rows once V13 to V16 are applied. Without them it returns 26: `salary_changes` (2 keys, V13), the two `cancelled_by` keys (V14), `password_reset_requests` (2 keys, V15) and the three department and job title keys (V16) aren't there yet. A foreign key with no `ON DELETE` rule in its migration shows as `RESTRICT`, MariaDB's default.
 
 **One table's full definition:**
 

@@ -137,6 +137,35 @@ public class AttendanceService {
         return attendanceRepository.save(attendance);
     }
 
+    /**
+     * Saves a day changed by a kiosk scan under the same rules as an entry by
+     * HR: payroll lock, valid values, and hours derived from the times.
+     */
+    @Transactional
+    public Attendance saveClockedDay(Attendance attendance) {
+
+        ensureDateNotLocked(attendance.getEmployee(), attendance.getAttendanceDate());
+        validateAttendanceDetails(attendance);
+        deriveHoursFromTimes(attendance);
+
+        return attendanceRepository.save(attendance);
+    }
+
+    /**
+     * Whether arriving at this time is LATE: after the standard start plus
+     * the grace period. Arrivals after the standard end are a different
+     * shift (e.g. a night shift), not late.
+     */
+    public boolean isLateArrival(LocalTime timeIn) {
+
+        LocalTime standardStart = payrollCalculationService.getStandardStartTime();
+        LocalTime standardEnd = payrollCalculationService.getStandardEndTime();
+        int graceMinutes = payrollCalculationService.getLateGracePeriodMinutes();
+
+        return timeIn.isAfter(standardStart.plusMinutes(graceMinutes))
+                && timeIn.isBefore(standardEnd);
+    }
+
     private void validateAttendanceDetails(Attendance attendance) {
 
         if (attendance.getAttendanceDate() == null) {

@@ -1,0 +1,135 @@
+.badge-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.back-link {
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 600;
+}
+.badge-page h2 {
+  margin: 8px 0;
+}
+.badge-help {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.form-message {
+  min-height: 20px;
+  font-size: 14px;
+}
+.form-message.error {
+  color: #dc2626;
+}
+.form-message.success {
+  color: #16a34a;
+}
+.badge-none {
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--muted);
+}
+
+/* ID-1 card size (85.6 x 54 mm), the size of a standard ID holder. */
+.badge-card {
+  width: 85.6mm;
+  height: 54mm;
+  margin: 20px 0;
+  padding: 3.5mm 4mm;
+  border: 0.3mm solid #94a3b8;
+  border-radius: 3mm;
+  background: #fff;
+  color: #0f172a;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.badge-top {
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+  font-size: 3mm;
+  line-height: 1.2;
+}
+.badge-top span {
+  display: block;
+  color: #64748b;
+}
+.badge-logo {
+  width: 7mm;
+  height: 7mm;
+  border-radius: 1.5mm;
+  display: grid;
+  place-items: center;
+  background: #172033;
+  color: #fff;
+  font-weight: 800;
+  font-size: 2.6mm;
+}
+.badge-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  min-height: 0;
+}
+/* At least 3 cm wide, so a laptop webcam reads it easily. */
+.badge-main img {
+  width: 33mm;
+  height: 33mm;
+  flex: 0 0 33mm;
+}
+.badge-person {
+  min-width: 0;
+}
+.badge-name {
+  margin: 0 0 1.5mm;
+  font-size: 4.2mm;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.badge-detail {
+  margin: 0 0 1mm;
+  font-size: 2.8mm;
+  color: #475569;
+}
+.badge-code {
+  margin: 0;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 2.7mm;
+  letter-spacing: 0.2mm;
+}
+
+.badge-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+/* dashboard.css gives action buttons display: inline-flex, which would
+   otherwise beat the hidden attribute. */
+.badge-actions [hidden] {
+  display: none !important;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .no-print,
+  .read-only-banner {
+    display: none !important;
+  }
+  .badge-page {
+    padding: 0;
+  }
+  .badge-card {
+    margin: 10mm;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

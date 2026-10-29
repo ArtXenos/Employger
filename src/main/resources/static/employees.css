@@ -497,3 +497,8 @@ tbody tr:hover {
   }
 }
 
+
+/* The Badge action is a link styled like the buttons beside it. */
+.badge-link {
+  text-decoration: none;
+}

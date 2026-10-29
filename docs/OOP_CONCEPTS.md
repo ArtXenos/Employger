@@ -40,6 +40,21 @@ public abstract class SalaryChangeRule {
 
 A salary change must pass several rules before it is saved. `SalaryHistoryService` only knows that each rule can `check()` a date. It doesn't know what any rule checks.
 
+### `Punch`: "a badge scan at the kiosk"
+
+[Punch.java](../src/main/java/com/employger/service/kiosk/Punch.java)
+
+```java
+public abstract sealed class Punch permits ClockIn, ClockOut {
+    public abstract void writeTo(Attendance attendance);
+    public abstract String direction();
+    public abstract String auditAction();
+    public abstract String describe(Attendance saved);
+}
+```
+
+When an employee scans their badge, `KioskService` decides once whether it is a clock-in or a clock-out. From then on it only holds "a punch": something that can write itself into the day's attendance, name its audit action and describe itself for the kiosk screen. The class is `abstract` because a scan in general doesn't know what to write.
+
 ---
 
 ## 2. Inheritance
@@ -108,6 +123,17 @@ Both choice lists on the Employee form work the same way: an entry has a name, c
 
 The parent's `final rows()` decides once which employees are listed for a month, and in what order. `AttendanceSummaryReport` and `OvertimeSummaryReport` only say which records to read and how one employee's records become a row (`@Override rowFor()`).
 
+### Clock-in and clock-out extend `Punch`
+
+[ClockIn.java](../src/main/java/com/employger/service/kiosk/ClockIn.java), [ClockOut.java](../src/main/java/com/employger/service/kiosk/ClockOut.java)
+
+| Class | `writeTo()` does |
+|---|---|
+| `ClockIn` | Sets the time in, clears the time out, and starts the day as PRESENT, or LATE after the grace period |
+| `ClockOut` | Sets the time out of the open day; refuses a day with no time in |
+
+The parent keeps the time, rounded to the minute in its constructor, and `time()` is `final`, so neither subclass can record seconds or change the time. `Punch` is `sealed ... permits ClockIn, ClockOut`: the compiler refuses any third kind, because a scan is only ever one of these two. Both subclasses are package-private, so only `KioskService` can make one.
+
 > **Composition instead of inheritance.** A `User` (a login) **has an** `Employee`. It doesn't inherit from one. `LaborCostMetric` likewise **holds** the gross pay and employer contribution metrics and adds them up, because labor cost is made of those two amounts. It isn't a kind of either one.
 
 ---
@@ -170,6 +196,19 @@ Both extend Spring's `OncePerRequestFilter`, which already makes sure a filter r
 
 `DatabaseLoginAttemptStore` saves lockouts to the database, so a restart doesn't clear them. `MemoryOnlyLoginAttemptStore` saves nothing, so unit tests need no database. `LoginAttemptService` works the same way with either one.
 
+### The kiosk records a scan without asking which kind it is
+
+[KioskService.java](../src/main/java/com/employger/service/kiosk/KioskService.java)
+
+```java
+punch.writeTo(day);
+Attendance saved = attendanceService.saveClockedDay(day);
+auditService.record(punch.auditAction(), ...);
+return new KioskScanResponse(name, punch.direction(), ..., punch.describe(saved));
+```
+
+After choosing the punch, the service has no `if` on its kind. A clock-in writes the time in and answers "Clocked in at 7:55 AM (late)". A clock-out writes the time out and answers "Clocked out at 5:05 PM · 8.00 regular hours". Both are then saved by `saveClockedDay()`, under the same payroll-lock and hours rules as an attendance entry typed by HR.
+
 ---
 
 ## 4. Encapsulation
@@ -209,6 +248,16 @@ A `PasswordResetRequest` has no setters. `open()` makes one, and `complete()` or
 [Employee.java](../src/main/java/com/employger/entity/Employee.java)
 
 `Employee` has no separate setters for its department and job title. `assignPosition(department, jobTitle)` sets both at once and refuses a job title without a department, a job title from another department, and a retired entry the employee didn't already have. Reports and payslips still call `getDepartment()` and `getJobTitle()` and get names, as before V16; they don't need to know the names now come from the lists.
+
+### A badge code is valid, or it doesn't exist
+
+[BadgeCode.java](../src/main/java/com/employger/service/kiosk/BadgeCode.java), [Employee.java](../src/main/java/com/employger/entity/Employee.java)
+
+`BadgeCode` is a record whose constructor refuses anything that isn't `EMP-` and four groups of four characters from its own alphabet, so a `BadgeCode` in hand is always well-formed. `generate()` is the only way to make a new one, from a secure random source. `parse()` is the forgiving way in for scanned or typed text: case, spaces and dashes don't matter, and anything else gives an empty `Optional` instead of an exception.
+
+`Employee` has no setter for its badge code. `issueBadge()` replaces the code (so a lost card stops working), refuses a former employee, and the code is `@JsonIgnore`, so it never leaves the server with the employee record. Only the badge page sends it, to administrators and HR managers.
+
+`User.Role` answers `belongsToEmployee()` itself: every role does, except `KIOSK`. `UserService` asks the role instead of listing roles, so the rule "a login belongs to an employee, the kiosk computer's excepted" is written in one place.
 
 ### The audit log filter builds its own query
 
@@ -284,6 +333,17 @@ classDiagram
     LoginAttemptStore <|.. DatabaseLoginAttemptStore
     LoginAttemptStore <|.. MemoryOnlyLoginAttemptStore
     LoginAttemptService --> LoginAttemptStore
+
+    class Punch {
+        <<abstract>>
+        -LocalTime time
+        +time() LocalTime
+        +writeTo(Attendance)*
+        +describe(Attendance)* String
+    }
+    Punch <|-- ClockIn
+    Punch <|-- ClockOut
+    KioskService ..> Punch : writes and describes
 
     User --> "0..1" Employee : has a
 ```

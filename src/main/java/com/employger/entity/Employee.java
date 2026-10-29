@@ -89,6 +89,13 @@ public class Employee {
     @Column(length = 100)
     private String designation;
 
+    // The code printed on the attendance badge (migration V17); NULL until
+    // HR issues one. Never serialized with the employee: only the badge
+    // page shows it, to administrators and HR managers.
+    @JsonIgnore
+    @Column(name = "badge_code", unique = true, length = 32)
+    private String badgeCode;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "employment_status", nullable = false)
     private EmploymentStatus employmentStatus = EmploymentStatus.ACTIVE;
@@ -340,6 +347,26 @@ public class Employee {
 
     public void setDesignation(String designation) {
         this.designation = designation;
+    }
+
+    public String getBadgeCode() {
+        return badgeCode;
+    }
+
+    /**
+     * Gives the employee a new attendance badge. The previous code, if any,
+     * is replaced, so a lost card stops working. Only current employees get
+     * badges; there is no setter, so a code always comes from here.
+     */
+    public void issueBadge(String newBadgeCode) {
+        if (!isEmployed()) {
+            throw new IllegalStateException(
+                    "This employee no longer works for the company, so they can't be given a badge.");
+        }
+        if (newBadgeCode == null || newBadgeCode.isBlank()) {
+            throw new IllegalArgumentException("A badge needs a code.");
+        }
+        this.badgeCode = newBadgeCode;
     }
 
     public EmploymentStatus getEmploymentStatus() {

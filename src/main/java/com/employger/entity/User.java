@@ -48,7 +48,15 @@ public class User {
         HR_MANAGER,
         GENERAL_MANAGER,
         ADMINISTRATOR,
-        EMPLOYEE
+        EMPLOYEE,
+        // The attendance kiosk computer (migration V17): records badge scans
+        // and nothing else. A device, not a person.
+        KIOSK;
+
+        /** Every login belongs to an employee, except the kiosk device's. */
+        public boolean belongsToEmployee() {
+            return this != KIOSK;
+        }
     }
 
     public enum Status {

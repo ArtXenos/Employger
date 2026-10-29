@@ -1,6 +1,6 @@
 # Em-Ployger Database: Primary and Foreign Keys
 
-This document lists the primary key of every table in `employger_db`, every foreign key that links the tables, and what each foreign key does when a linked row is deleted. It covers migrations V1 to V16, in [db/migrations](../db/migrations).
+This document lists the primary key of every table in `employger_db`, every foreign key that links the tables, and what each foreign key does when a linked row is deleted. It covers migrations V1 to V17, in [db/migrations](../db/migrations).
 
 The keys are defined in the database itself, not only in the application code. MariaDB enforces them: it refuses a row that points to something that doesn't exist, and it applies each delete rule automatically. The query in [section 6](#6-checking-the-keys-in-the-database) lists them straight from MariaDB.
 
@@ -52,7 +52,7 @@ Every foreign key also has **ON UPDATE CASCADE**: if a primary key value ever ch
 
 ### People and logins
 
-**`employees`**: PK `employee_id`. Unique: `email`.
+**`employees`**: PK `employee_id`. Unique: `email`, and `badge_code` (V17: the code on the attendance badge, NULL until HR issues one; one card always means one employee).
 
 | Column | References | On delete | Why |
 |---|---|---|---|
@@ -74,6 +74,8 @@ The old text columns `department` and `job_title` are still there after V16, hol
 | Column | References | On delete | Why |
 |---|---|---|---|
 | `employee_id` | `employees.employee_id` | SET NULL | A login belongs to one employee. If that employee's row is deleted, the login stays, unlinked, for an administrator to deal with. |
+
+The `role` list gained `KIOSK` in V17: the attendance kiosk computer's login. It is the one kind of login with no `employee_id` (the app refuses one), because it is a device, not a person.
 
 **`password_reset_requests`** (V15): PK `request_id`.
 

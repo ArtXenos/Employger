@@ -1,0 +1,249 @@
+* {
+  box-sizing: border-box;
+}
+:root {
+  --navy: #172033;
+  --blue: #2563eb;
+  --page: #f1f5f9;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --white: #fff;
+  --in: #15803d;
+  --in-bg: #dcfce7;
+  --out: #1d4ed8;
+  --out-bg: #dbeafe;
+  --refused: #b45309;
+  --refused-bg: #fef3c7;
+  --error: #b91c1c;
+  --error-bg: #fee2e2;
+}
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  background: var(--page);
+  color: var(--text);
+}
+
+/* Exactly one screen high: a kiosk never scrolls. */
+.kiosk {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 20px 28px;
+  gap: 16px;
+}
+
+.kiosk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.kiosk-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.kiosk-brand h1 {
+  margin: 0;
+  font-size: 26px;
+}
+.kiosk-brand span {
+  color: var(--muted);
+  font-size: 15px;
+}
+.brand-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--navy);
+  color: var(--white);
+  font-weight: 800;
+}
+.kiosk-clock {
+  font-size: 44px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.kiosk-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.camera-panel {
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #0b1220;
+  min-height: 0;
+}
+.camera-panel video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Mirror view: moving the badge left moves it left on screen. */
+  transform: scaleX(-1);
+  display: block;
+}
+.scan-frame {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: min(60%, 320px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border: 4px solid rgba(255, 255, 255, 0.85);
+  border-radius: 18px;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.25);
+}
+.camera-note {
+  position: absolute;
+  inset: auto 16px 16px 16px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--error-bg);
+  color: var(--error);
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.result-panel {
+  border-radius: 18px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--white);
+  border: 2px solid var(--border);
+  transition: background 0.2s, border-color 0.2s;
+}
+.result-label {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.result-name {
+  margin: 0 0 12px;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.result-message {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.result-panel[data-state="in"] {
+  background: var(--in-bg);
+  border-color: var(--in);
+}
+.result-panel[data-state="in"] .result-label {
+  color: var(--in);
+}
+.result-panel[data-state="out"] {
+  background: var(--out-bg);
+  border-color: var(--out);
+}
+.result-panel[data-state="out"] .result-label {
+  color: var(--out);
+}
+.result-panel[data-state="refused"] {
+  background: var(--refused-bg);
+  border-color: var(--refused);
+}
+.result-panel[data-state="refused"] .result-label {
+  color: var(--refused);
+}
+.result-panel[data-state="error"] {
+  background: var(--error-bg);
+  border-color: var(--error);
+}
+.result-panel[data-state="error"] .result-label {
+  color: var(--error);
+}
+.result-panel[data-state="in"] .result-message,
+.result-panel[data-state="out"] .result-message,
+.result-panel[data-state="refused"] .result-message,
+.result-panel[data-state="error"] .result-message {
+  color: var(--text);
+}
+
+.kiosk-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.manual-form label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.manual-row {
+  display: flex;
+  gap: 8px;
+}
+.manual-row input {
+  width: min(320px, 60vw);
+  padding: 10px 12px;
+  font: inherit;
+  font-family: Consolas, "Courier New", monospace;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.manual-row button {
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--blue);
+  color: var(--white);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.logout-link {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .kiosk {
+    height: auto;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .camera-panel {
+    min-height: 260px;
+  }
+  .kiosk-body {
+    grid-template-columns: 1fr;
+  }
+  .kiosk-clock {
+    font-size: 30px;
+  }
+  .result-name {
+    font-size: 30px;
+  }
+}

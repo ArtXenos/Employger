@@ -1,6 +1,7 @@
 // Shared by the staff pages. Shows each role only what it may use; the
 // server enforces the same rules, so this is about clarity, not security.
 //   EMPLOYEE         -> sent to their own payroll page
+//   KIOSK            -> sent to the attendance kiosk page
 //   GENERAL_MANAGER  -> read-only: write controls hidden, banner shown
 //   not ADMINISTRATOR -> Settings, Users and Audit Log links hidden (admin-only)
 //   GENERAL_MANAGER  -> Reports link hidden (reports are admin and HR only)
@@ -69,6 +70,11 @@
 
     if (user.role === "EMPLOYEE") {
       window.location.replace("/my-payroll.html");
+      return;
+    }
+
+    if (user.role === "KIOSK") {
+      window.location.replace("/kiosk.html");
       return;
     }
 

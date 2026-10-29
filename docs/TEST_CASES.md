@@ -1,8 +1,8 @@
 # Em-Ployger: Manual Test Cases
 
-These test cases are carried out by hand in the browser at <http://localhost:8080>. There are four groups: Salary Management, Employee Management, Work Hour Tracking and Document Generation. After running each case, fill in **Actual Result** and set **Status** to Pass or Fail.
+These test cases are carried out by hand in the browser at <http://localhost:8080>. There are five groups: Salary Management, Employee Management, Work Hour Tracking, Document Generation and the Attendance Kiosk. After running each case, fill in **Actual Result** and set **Status** to Pass or Fail.
 
-The 367 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This document is the hand-run check of what a user sees.
+The 393 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This document is the hand-run check of what a user sees.
 
 ## Before you start
 
@@ -14,6 +14,7 @@ The 367 automated tests (`.\mvnw.cmd test`) cover the same rules in code. This d
 | HR Manager | Employees, attendance, overtime, pay cycles, generating and processing payroll |
 | General Manager | Read-only access to the staff pages, and approving or sending back payroll |
 | Employee | The My Payroll page only |
+| Kiosk | The attendance kiosk page only (section 5); created by the Administrator with no linked employee |
 
 **Sample data used below.** Most cases build on the same employee and pay cycle, so run them in order.
 
@@ -143,3 +144,25 @@ Covers: a summarized report for employers (attendance and average overtime of em
 | DG-17 | Filter and export the audit log | DG-16 | 1. Choose an action, e.g. Payroll paid, and click **Search**.<br>2. Enter a date range and a word from the description.<br>3. Click **Export CSV**. | Action: Payroll paid | Only matching entries are listed, with their count. The CSV file holds the same entries. **Clear** shows everything again. | | |
 | DG-18 | Only administrators see the audit log | Logged in as HR Manager | Look at the side menu, then open `/audit-log.html`. | | There is no Audit Log link. The page shows "The audit log is available to administrators only." and lists nothing. | | |
 | DG-19 | Company Overview on the Reports page | PAID payroll (SM-18). Logged in as Administrator or HR Manager | Open **Reports**. | Month: November 2026 | The Company Overview at the top shows the same totals, department table and 6-month labor cost chart as on the **Dashboard** for the same month. | | |
+
+---
+
+## 5. Attendance Kiosk
+
+Covers: badges issued by HR, employees clocking in and out with the webcam at the kiosk, and the kiosk accepting scans only on the kiosk computer. Needs migration V17 and a webcam on the server computer. Setup: [ATTENDANCE_KIOSK.md](ATTENDANCE_KIOSK.md).
+
+| Test ID | Test Case | Preconditions | Test Steps | Test Data | Expected Result | Actual Result | Status |
+|---|---|---|---|---|---|---|---|
+| AK-01 | Create the kiosk login | Logged in as Administrator | 1. Open **Users**, click **Add User**.<br>2. Choose role Kiosk. | Username: kiosk-entrance<br>Role: Kiosk | The Linked employee list is greyed out with "None: the kiosk is a computer, not a person". The login is saved with no employee. | | |
+| AK-02 | Issue and print a badge | EM-01. Logged in as HR Manager | 1. Open **Employees**, click **Badge** on Maria Santos.<br>2. Click **Issue badge**, then **Print badge**. | | A card with Maria's name, employee number, a QR code and a code like `EMP-XXXX-XXXX-XXXX-XXXX` appears. The print preview shows only the card, about 8.6 × 5.4 cm. | | |
+| AK-03 | General Manager can't see badges | Logged in as General Manager | Look at the Employees list, then open `/badge.html?employee=<ID>`. | | There is no **Badge** button. The page says only administrators and HR managers can view or issue badges. | | |
+| AK-04 | Kiosk opens after login | AK-01. On the server computer | Open <http://localhost:8080>, log in as kiosk-entrance, allow the camera. | | The kiosk page opens with the clock, the camera preview and "Hold your ID badge up to the camera". | | |
+| AK-05 | Clock in by badge | AK-02, AK-04, before 08:00 | Hold Maria's printed badge up to the camera. | | Green panel: "Clocked in", "Maria Santos", "Clocked in at 7:55 AM" (the current time). On **Attendance**, today's row shows that Time In and status PRESENT. | | |
+| AK-06 | A second scan right away is ignored | AK-05 | Scan the same badge again within 5 minutes (wait 10 seconds first, or type the code). | | Amber panel: "You already clocked in at … Scan again when you leave." Time Out stays empty. | | |
+| AK-07 | Clock out | AK-05, at least 5 minutes later | Scan the badge again. | | Blue panel: "Clocked out", with the time and the regular hours. On **Attendance**, Time Out and the hours are filled in. | | |
+| AK-08 | Late arrival | An employee with a badge and no attendance today, after 08:00 plus the grace period | Scan their badge. | | "Clocked in at … (late)". Status LATE. | | |
+| AK-09 | Typed code | AK-04 | Type the code printed under the QR in lower case with spaces, then **Submit**. | `emp xxxx xxxx xxxx xxxx` | Recorded the same way as a scan. | | |
+| AK-10 | Reissued badge stops the old card | AK-02 | 1. As HR Manager, click **Reissue** on Maria's badge page.<br>2. At the kiosk, scan the old printed card. | | Red panel: "Unknown card", "Card not recognized. Please see HR." | | |
+| AK-11 | A day on leave is refused | An approved leave for today | Scan that employee's badge. | | "Today is recorded as LEAVE for you. Please see HR." Nothing changes. | | |
+| AK-12 | The kiosk login works only on the kiosk computer | AK-01. A second device on the same network | On the other device, open `http://<server IP>:8080/kiosk.html`, log in as kiosk-entrance and type a badge code. | | The camera doesn't start (the page says so), and the typed code is refused: "Scans are only accepted at the kiosk computer." | | |
+| AK-13 | The kiosk login sees no payroll | AK-04 | While logged in as kiosk-entrance, open `/employees.html` and `/api/employees`. | | The page goes back to the kiosk; the data request is refused. | | |

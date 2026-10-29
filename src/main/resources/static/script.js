@@ -86,7 +86,8 @@ loginForm.addEventListener("submit", async function (event) {
 
 });
 
-// Employees go to their own payroll page; staff roles to the dashboard.
+// Employees go to their own payroll page, the kiosk login to the scanner,
+// staff roles to the dashboard.
 async function landingPageForCurrentUser() {
 
     try {
@@ -97,6 +98,10 @@ async function landingPageForCurrentUser() {
 
             if (user.role === "EMPLOYEE") {
                 return "my-payroll.html";
+            }
+
+            if (user.role === "KIOSK") {
+                return "kiosk.html";
             }
         }
     } catch (error) {

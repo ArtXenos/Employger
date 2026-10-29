@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Attendance Kiosk - Em-Ployger</title>
+
+    <link rel="stylesheet" href="/kiosk.css" />
+  </head>
+
+  <body>
+    <main class="kiosk">
+      <header class="kiosk-header">
+        <div class="kiosk-brand">
+          <div class="brand-logo">EP</div>
+          <div>
+            <h1>Attendance</h1>
+            <span id="kioskDate">&nbsp;</span>
+          </div>
+        </div>
+        <div class="kiosk-clock" id="kioskClock" aria-hidden="true">--:--</div>
+      </header>
+
+      <section class="kiosk-body">
+        <div class="camera-panel">
+          <video id="cameraVideo" playsinline muted aria-label="Camera preview"></video>
+          <div class="scan-frame" aria-hidden="true"></div>
+          <p class="camera-note" id="cameraNote" hidden></p>
+        </div>
+
+        <div class="result-panel" id="resultPanel" data-state="idle" aria-live="assertive">
+          <p class="result-label" id="resultLabel">Ready</p>
+          <p class="result-name" id="resultName">Hold your ID badge up to the camera</p>
+          <p class="result-message" id="resultMessage">
+            The QR code goes inside the square. The first scan of the day clocks you in; the next one clocks you out.
+          </p>
+        </div>
+      </section>
+
+      <footer class="kiosk-footer">
+        <form id="manualForm" class="manual-form" autocomplete="off">
+          <label for="manualCode">Badge won't scan? Type the code printed under the QR:</label>
+          <div class="manual-row">
+            <input id="manualCode" maxlength="40" placeholder="EMP-XXXX-XXXX-XXXX-XXXX" spellcheck="false" />
+            <button type="submit">Submit</button>
+          </div>
+        </form>
+        <button type="button" class="logout-link" id="kioskLogout">Log out of kiosk</button>
+      </footer>
+    </main>
+
+    <script src="/csrf.js"></script>
+    <script src="/jsQR.js"></script>
+    <script src="/kiosk.js"></script>
+  </body>
+</html>

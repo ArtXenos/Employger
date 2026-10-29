@@ -53,6 +53,13 @@
 			<version>2.0.3</version>
 		</dependency>
 
+		<!-- QR codes on attendance badges (Apache 2.0, core only: no AWT or network) -->
+		<dependency>
+			<groupId>com.google.zxing</groupId>
+			<artifactId>core</artifactId>
+			<version>3.5.3</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.mariadb.jdbc</groupId>
 			<artifactId>mariadb-java-client</artifactId>

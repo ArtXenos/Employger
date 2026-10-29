@@ -126,6 +126,14 @@ function displayEmployees(employeeList) {
                             Edit
                         </button>
 
+                        <a
+                            class="action-button edit-button badge-link"
+                            href="/badge.html?employee=${employee.employeeId}"
+                            title="Attendance badge for the kiosk"
+                        >
+                            Badge
+                        </a>
+
                         <button
                             class="action-button delete-button"
                             onclick="deleteEmployee(${employee.employeeId})"

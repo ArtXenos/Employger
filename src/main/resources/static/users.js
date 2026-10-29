@@ -7,7 +7,11 @@ const ROLE_LABELS = {
   HR_MANAGER: "HR manager",
   GENERAL_MANAGER: "General manager",
   EMPLOYEE: "Employee",
+  KIOSK: "Kiosk",
 };
+
+// The kiosk login is the attendance computer, not a person: no employee.
+const DEVICE_ROLES = ["KIOSK"];
 
 const MIN_PASSWORD_LENGTH = 12;
 
@@ -20,6 +24,7 @@ const $ = (id) => document.getElementById(id);
 document.addEventListener("DOMContentLoaded", () => {
   $("addUserButton").addEventListener("click", () => openUserModal(null));
   $("userForm").addEventListener("submit", saveUser);
+  $("userRole").addEventListener("change", applyRoleToEmployeeField);
   $("copyTemporaryButton").addEventListener("click", copyTemporaryPassword);
 
   document.querySelectorAll("[data-close]").forEach((button) => {
@@ -253,6 +258,7 @@ function openUserModal(user) {
   $("userPasswordLabel").textContent = editing ? "New password (optional)" : "Password";
 
   fillEmployeeOptions(editing ? user.employeeId : null, editing ? user.userId : null);
+  applyRoleToEmployeeField();
   clearMessage("userMessage");
   openModal("userModal");
   $("userUsername").focus();
@@ -278,6 +284,20 @@ function fillEmployeeOptions(selectedId, editingUserId) {
   select.value = selectedId ?? "";
 }
 
+function applyRoleToEmployeeField() {
+  const select = $("userEmployee");
+  const device = DEVICE_ROLES.includes($("userRole").value);
+
+  if (device) {
+    select.value = "";
+  }
+  select.disabled = device;
+  select.required = !device;
+  if (select.options[0]) {
+    select.options[0].textContent = device ? "None: the kiosk is a computer, not a person" : "Choose an employee";
+  }
+}
+
 async function saveUser(event) {
   event.preventDefault();
 
@@ -297,8 +317,9 @@ async function saveUser(event) {
     return;
   }
 
-  // Logins are only for people who work for the company; the server checks this too.
-  if (employeeId === null) {
+  // Logins are only for people who work for the company (the kiosk computer
+  // excepted); the server checks this too.
+  if (employeeId === null && !DEVICE_ROLES.includes(role)) {
     showError("userMessage", "Choose the employee this login belongs to. Logins are only for employees of the company.");
     return;
   }

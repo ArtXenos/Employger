@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Attendance Badge - Em-Ployger</title>
+
+    <link rel="stylesheet" href="/dashboard.css" />
+    <link rel="stylesheet" href="/badge.css" />
+  </head>
+
+  <body>
+    <main class="badge-page">
+      <p class="no-print"><a href="/employees.html" class="back-link">← Back to Employees</a></p>
+
+      <h2 class="no-print">Attendance badge</h2>
+      <p class="badge-help no-print">
+        Employees show this badge to the camera of the attendance kiosk to clock in and out.
+        Print it, cut it out, and put it in an ID holder. Whoever has the badge can clock in with it,
+        so if one is lost, <strong>reissue</strong> it: the old card stops working at once.
+      </p>
+
+      <p class="form-message report-message no-print" id="badgeMessage" role="alert"></p>
+
+      <div class="badge-card" id="badgeCard" hidden>
+        <div class="badge-top">
+          <div class="badge-logo">EP</div>
+          <div>
+            <strong>Em-Ployger</strong>
+            <span>Attendance badge</span>
+          </div>
+        </div>
+        <div class="badge-main">
+          <img id="badgeQr" alt="Badge QR code" />
+          <div class="badge-person">
+            <p class="badge-name" id="badgeName"></p>
+            <p class="badge-detail" id="badgeNumber"></p>
+            <p class="badge-detail" id="badgePosition"></p>
+          </div>
+        </div>
+        <p class="badge-code" id="badgeCode"></p>
+      </div>
+
+      <p class="badge-none no-print" id="badgeNone" hidden></p>
+
+      <div class="badge-actions action-buttons no-print">
+        <button type="button" class="action-button edit-button" id="printBadgeButton" hidden>Print badge</button>
+        <button type="button" class="action-button edit-button" id="issueBadgeButton" hidden>Issue badge</button>
+        <button type="button" class="action-button delete-button" id="reissueBadgeButton" hidden>
+          Reissue (lost or damaged card)
+        </button>
+      </div>
+    </main>
+
+    <script src="/csrf.js"></script>
+    <script src="/session.js"></script>
+    <script src="/badge.js"></script>
+  </body>
+</html>

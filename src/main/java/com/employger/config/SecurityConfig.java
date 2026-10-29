@@ -115,6 +115,17 @@ public class SecurityConfig {
                                                                 "HR_MANAGER",
                                                                 "GENERAL_MANAGER")
 
+                                                // Attendance kiosk: badge scans from the kiosk
+                                                // login only (and only from the kiosk computer:
+                                                // KioskController).
+                                                .requestMatchers("/api/kiosk/**")
+                                                .hasRole("KIOSK")
+
+                                                // Attendance badges: a badge code is enough to
+                                                // clock in, so not general managers.
+                                                .requestMatchers("/api/employees/*/badge/**")
+                                                .hasAnyRole("ADMINISTRATOR", "HR_MANAGER")
+
                                                 // Self-service: any logged-in user, limited by
                                                 // the service to the employee linked to that login.
                                                 .requestMatchers("/api/me/**")

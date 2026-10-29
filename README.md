@@ -37,7 +37,7 @@ You need a **JDK 25 or newer** and **MariaDB 10.11 or newer**. The commands belo
 .\mvnw.cmd package
 ```
 
-**2. Create the database.** The script creates `employger_db` and applies every migration in [db/migrations](db/migrations) in order, from `V1__base_schema.sql` through the newest (V16 today). It asks for the MariaDB root password. If `employger_db` already exists, it stops and changes nothing.
+**2. Create the database.** The script creates `employger_db` and applies every migration in [db/migrations](db/migrations) in order, from `V1__base_schema.sql` through the newest (V17 today). It asks for the MariaDB root password. If `employger_db` already exists, it stops and changes nothing.
 
 ```powershell
 .\scripts\setup-db.ps1
@@ -93,7 +93,8 @@ The tests run on an in-memory H2 database and never connect to MariaDB.
 | [EMPLOYGER_SYSTEM_PLAN.md](EMPLOYGER_SYSTEM_PLAN.md) | Architecture, roles, design decisions and known limitations |
 | [docs/OOP_CONCEPTS.md](docs/OOP_CONCEPTS.md) | Where the code applies encapsulation, abstraction, inheritance and polymorphism |
 | [docs/AUDIT_REPORT.md](docs/AUDIT_REPORT.md) | The initial audit, every fix since then and the progress log |
-| [docs/TEST_CASES.md](docs/TEST_CASES.md) | Manual test cases: salary, employees, work hours and documents |
+| [docs/TEST_CASES.md](docs/TEST_CASES.md) | Manual test cases: salary, employees, work hours, documents and the attendance kiosk |
+| [docs/ATTENDANCE_KIOSK.md](docs/ATTENDANCE_KIOSK.md) | Setting up the attendance kiosk and badges, and what a scan does |
 | [docs/STATUTORY_DEDUCTIONS.md](docs/STATUTORY_DEDUCTIONS.md) | SSS, PhilHealth, Pag-IBIG and tax rules, with their official sources |
 | [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) | Every table's primary key, the foreign keys between them and their delete rules, with a diagram |
 | [docs/DATABASE_ACCOUNT.md](docs/DATABASE_ACCOUNT.md) | The app's database account and credentials |
